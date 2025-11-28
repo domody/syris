@@ -2,9 +2,9 @@ import json
 
 from ollama import chat
 from ollama import ChatResponse
-from  core.memory import Memory
+from  .memory import Memory
 
-from modules.tools import TOOLS, TOOL_MAP
+from ..modules.tools import TOOLS, TOOL_MAP
 
 class SyrisLLM:
     def __init__(self, model = "gemma3", system_prompt = ""):
