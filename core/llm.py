@@ -1,3 +1,5 @@
+import json
+
 from ollama import chat
 from ollama import ChatResponse
 from  core.memory import Memory
@@ -14,15 +16,38 @@ class SyrisLLM:
         self.tools = TOOLS
         self.tool_map = TOOL_MAP
 
+        self.logging = False
+
+    def log(self, label, data):
+        if not self.logging:
+            return  # early exit
+
+        try:
+            if hasattr(data, "model_dump"):
+                data = data.model_dump()
+
+            print(f"\n--- {label} ---")
+            print(json.dumps(data, indent=2))
+            print("--- END ---\n")
+
+        except Exception as e:
+            print(f"\n--- LOGGING ERROR [{label}] ---")
+            print(str(e))
+            print("--- END ---\n")
+
+
+
     def ask(self, text):
         self.memory.add(role="user", content=text)
 
         messages = [self.system_message] + self.memory.get_context()
 
         response: ChatResponse = chat(model=self.model, messages=messages, tools=self.tools, think='low')
+        self.log("RAW RESPONSE", response)
         reply = response['message']['content']
         
         if response.message.tool_calls:
+            self.log("TOOL CALL", response.message.tool_calls)
             call = response.message.tool_calls[0]
 
             tool_name = call.function.name
@@ -38,7 +63,7 @@ class SyrisLLM:
                 "tool_name": tool_name,
                 "content": str(result),
             }
-
+            self.log("TOOL RESULT", {"name": tool_name, "result": result})
             final_messages = messages + [tool_message]
 
             final_response: ChatResponse = chat(
@@ -47,6 +72,7 @@ class SyrisLLM:
                 tools=self.tools,
                 think="low"
             )
+            self.log("FINAL RESPONSE", final_response)
 
             final_reply = final_response.message.content
 
