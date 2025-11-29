@@ -1,5 +1,5 @@
 import json
-
+import asyncio
 from ollama import chat
 from ollama import ChatResponse
 from  .memory import Memory
@@ -34,8 +34,6 @@ class SyrisLLM:
             print(f"\n--- LOGGING ERROR [{label}] ---")
             print(str(e))
             print("--- END ---\n")
-
-
 
     def ask(self, text):
         self.memory.add(role="user", content=text)
@@ -83,6 +81,29 @@ class SyrisLLM:
 
         return reply
     
+    async def stream(self, text: str):
+        self.memory.add(role="user", content=text)
+
+        messages = [self.system_message] + self.memory.get_context()
+
+        stream = chat(
+            model=self.model,
+            messages=messages,
+            tools=self.tools,
+            think="low",
+            stream=True,
+        )
+
+        full_reply = ""
+
+        for chunk in stream:
+            token = chunk["message"]["content"]
+            full_reply += token
+            yield token
+            await asyncio.sleep(0)  # yield control
+
+        self.memory.add("assistant", full_reply)
+        
     def run_chat_loop(self):
         print("SYRIS online.")
         
