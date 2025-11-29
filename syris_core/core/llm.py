@@ -94,15 +94,31 @@ class SyrisLLM:
             stream=True,
         )
 
-        full_reply = ""
+        in_thinking = False
+        content = ''
+        thinking = ''
 
         for chunk in stream:
-            token = chunk["message"]["content"]
-            full_reply += token
-            yield token
-            await asyncio.sleep(0)  # yield control
+            if chunk.message.thinking:
+                if not in_thinking:
+                    in_thinking = True
 
-        self.memory.add("assistant", full_reply)
+                thinking += chunk.message.thinking
+                yield {
+                    "type": "thinking",
+                    "token": chunk.message.thinking
+                }
+            elif chunk.message.content:
+                if in_thinking:
+                    in_thinking = False
+                
+                content += chunk.message.content
+                yield {
+                    "type": "content",
+                    "token": chunk.message.content
+                }
+                
+        self.memory.add("assistant", content)
         
     def run_chat_loop(self):
         print("SYRIS online.")

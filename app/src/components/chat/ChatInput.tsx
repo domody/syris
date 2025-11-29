@@ -9,7 +9,13 @@ import {
 } from "@/components/ui/input-group";
 import { ArrowUp } from "lucide-react";
 
-export function ChatInput({ onSend }: { onSend: (msg: string) => void }) {
+export function ChatInput({
+  isLoading,
+  onSend,
+}: {
+  isLoading: boolean;
+  onSend: (msg: string) => void;
+}) {
   const [value, setValue] = useState<string>("");
 
   function submit() {
@@ -35,11 +41,11 @@ export function ChatInput({ onSend }: { onSend: (msg: string) => void }) {
       />
 
       <InputGroupAddon align={"block-end"}>
-        <InputGroupButton 
-        variant={"default"}
+        <InputGroupButton
+          variant={"default"}
           className="rounded-full ml-auto"
           size="icon-xs"
-          disabled={!value.trim()}
+          disabled={isLoading}
           onClick={submit}
         >
           <ArrowUp />

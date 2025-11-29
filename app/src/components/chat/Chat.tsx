@@ -4,15 +4,17 @@ import { sendMessageToSyris } from "@/lib/api";
 import { ChatInput } from "./ChatInput";
 import { MessageBubble } from "./MessageBubble";
 import { streamSyrisMessage } from "@/lib/stream";
+import { Lightbulb } from "lucide-react";
 
 export function Chat({ chatId }: { chatId: string }) {
   const [messages, setMessages] = useState<
     {
       role: "user" | "assistant" | "system";
       content: string;
+      thinking?: string;
     }[]
   >([]);
-  const [isThinking, setIsThinking] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const mutation = useMutation({
     mutationFn: sendMessageToSyris,
@@ -43,30 +45,51 @@ export function Chat({ chatId }: { chatId: string }) {
   async function sendStreaming(msg: string) {
     setMessages((prev) => [...prev, { role: "user", content: msg }]);
 
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: "", thinking: "" },
+    ]);
 
-    setIsThinking(true);
+    setIsLoading(true);
 
-    let accumulated = "";
+    let accumulated_content = "";
+    let accumulated_thinking = "";
 
     streamSyrisMessage(
       msg,
       (token) => {
-        console.log("Token: ", token);
-        accumulated += token;
+        accumulated_thinking += token;
 
         setMessages((prev) => {
           const copy = [...prev];
-          copy[copy.length - 1] = {
-            role: "assistant",
-            content: accumulated,
+          const lastIndex = copy.length - 1;
+
+          copy[lastIndex] = {
+            ...copy[lastIndex],
+            thinking: accumulated_thinking,
           };
+
+          return copy;
+        });
+      },
+      (token) => {
+        accumulated_content += token;
+
+        setMessages((prev) => {
+          const copy = [...prev];
+          const lastIndex = copy.length - 1;
+
+          copy[lastIndex] = {
+            ...copy[lastIndex],
+            content: accumulated_content,
+            thinking: accumulated_thinking,
+          };
+
           return copy;
         });
       },
       () => {
-        setIsThinking(false);
-        console.log(messages);
+        setIsLoading(false);
       }
     );
   }
@@ -81,14 +104,21 @@ export function Chat({ chatId }: { chatId: string }) {
           </div>
         ) : (
           messages.map((m, i) => (
-            <>
-              <MessageBubble key={i} role={m.role} content={m.content} />
-            </>
+            <div key={i} className="w-full flex flex-col space-y-1">
+              {m.thinking && m.thinking.length > 0 && (
+                <div className="flex gap-1.5 text-muted-foreground text-xs">
+                  <Lightbulb className="size-3.5" />
+                  <span>{m.thinking}</span>
+                </div>
+              )}
+              <MessageBubble role={m.role} content={m.content} />
+            </div>
           ))
         )}
       </div>
+
       <div className="w-full pb-2">
-        <ChatInput onSend={sendStreaming} />
+        <ChatInput isLoading={isLoading} onSend={sendStreaming} />
       </div>
     </div>
   );

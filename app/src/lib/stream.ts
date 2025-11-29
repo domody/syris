@@ -1,6 +1,7 @@
 export function streamSyrisMessage(
   message: string,
-  onToken: (token: string) => void,
+  onThinking: (token: string) => void,
+  onContent: (token: string) => void,
   onDone: () => void
 ) {
   const url = `http://127.0.0.1:4311/syris/stream?message=${encodeURIComponent(
@@ -12,13 +13,14 @@ export function streamSyrisMessage(
   es.onmessage = (e) => {
     const parsed = JSON.parse(e.data);
 
-    if (parsed.token === "[END]") {
+    if (parsed.type === "end") {
       es.close();
       onDone();
       return;
     }
 
-    onToken(parsed.token);
+    if (parsed.type === "thinking") onThinking(parsed.token);
+    if (parsed.type === "content") onContent(parsed.token);
   };
 
   es.onerror = (err) => {

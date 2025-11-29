@@ -18,9 +18,10 @@ def chat(req: ChatRequest):
 async def stream_chat(message: str):
     async def token_generator():
         async for token in engine.stream(message):
-            safe = json.dumps({"token": token})
+            safe = json.dumps(token)
             yield f"data: {safe}\n\n"
-        yield "data: {\"token\": \"[END]\"}\n\n"
+
+        yield 'data: {"type": "end"}\n\n'
 
     return StreamingResponse(
         token_generator(),
