@@ -12,7 +12,7 @@ export function streamSyrisMessage(
 
   es.onmessage = (e) => {
     const parsed = JSON.parse(e.data);
-
+    console.log(parsed);
     if (parsed.type === "end") {
       es.close();
       onDone();
