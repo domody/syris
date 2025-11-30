@@ -4,10 +4,10 @@ from pydantic import BaseModel
 from syris_core import engine
 import json
 
-router = APIRouter()
-
 class ChatRequest(BaseModel):
     message: str
+
+router = APIRouter()
 
 @router.post("/chat")
 def chat(req: ChatRequest):

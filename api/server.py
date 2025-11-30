@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .router import router as syris_router
+from .data_router import router as data_router
 
 def create_app():
     app = FastAPI()
@@ -12,6 +13,7 @@ def create_app():
         allow_headers=["*"]
     )
     app.include_router(syris_router, prefix="/syris")
+    app.include_router(data_router, prefix="/data")
     return app
 
 # Only run the server if this file is executed directly
