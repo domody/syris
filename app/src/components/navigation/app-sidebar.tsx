@@ -7,6 +7,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarGroupLabel,
 } from "@/components/ui/sidebar";
 import { BrainCircuit, NotebookPen, Cog } from "lucide-react";
 
@@ -31,11 +32,15 @@ const appSidebarItems = [
   },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ subNav }: { subNav: React.ReactNode }) {
   return (
-    <Sidebar>
+    <Sidebar
+      collapsible="none"
+      // className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r"
+    >
       <SidebarContent>
         <SidebarGroup>
+          <SidebarGroupLabel>{window.location.href}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {appSidebarItems.map((item) => (
@@ -43,6 +48,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <Link to={item.to} params={item.params} title={item.title}>
                       <item.icon />
+                      <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -50,6 +56,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {subNav}
       </SidebarContent>
     </Sidebar>
   );

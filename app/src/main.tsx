@@ -16,10 +16,11 @@ const router = createRouter({
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <SidebarProvider
-      style={{
-        "--sidebar-width": "3rem",
-        "--sidebar-width-mobile": "3rem",
-      }}
+      style={
+        {
+          "--sidebar-width": "16rem",
+        } as React.CSSProperties
+      }
     >
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />

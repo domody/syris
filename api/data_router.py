@@ -50,7 +50,7 @@ def create_chat(title: str, db: sqlite3.Connection = Depends(get_db)):
 def list_messages(chat_id: int, db: sqlite3.Connection = Depends(get_db)):
     cur = db.cursor()
     cur.execute(
-        "SELECT id, role, content, created_at FROM messages WHERE chat_id = ? ORDER BY created_at ASC",
+        "SELECT id, role, content, thinking, created_at FROM messages WHERE chat_id = ? ORDER BY created_at ASC",
         (chat_id,),
     )
     return [dict(row) for row in cur.fetchall()]

@@ -1,51 +1,34 @@
+import * as React from "react";
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { sendMessageToSyris } from "@/lib/api";
 import { ChatInput } from "./ChatInput";
 import { MessageBubble } from "./MessageBubble";
 import { streamSyrisMessage } from "@/lib/stream";
 import { Lightbulb } from "lucide-react";
+import { useChat } from "@/hooks/use-chats";
+
+import { MessagesReponse } from "@/types";
 
 export function Chat({ chatId }: { chatId: string }) {
-  const [messages, setMessages] = useState<
-    {
-      role: "user" | "assistant" | "system";
-      content: string;
-      thinking?: string;
-    }[]
-  >([]);
+  const chatQuery = useChat(chatId === "new" ? "" : chatId);
+  const allMessages = chatQuery?.data ?? [];
+  const [streamingMessages, setStreamingMessages] = useState<MessagesReponse[]>(
+    []
+  );
   const [isLoading, setIsLoading] = useState(false);
 
-  const mutation = useMutation({
-    mutationFn: sendMessageToSyris,
-    onMutate: (userMessage: string) => {
-      setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
-    },
-    onSuccess: (data) => {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.response },
-      ]);
-    },
-    onError: (err, userMessage) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "system",
-          content: `Failed to send: ${userMessage} \n\n Error: ${err}`,
-        },
-      ]);
-    },
-  });
+  React.useEffect(() => {
+    setStreamingMessages([]);
+  }, [chatId]);
 
-  async function handleSend(message: string) {
-    mutation.mutate(message);
-  }
+  const finalMessages = [...allMessages, ...streamingMessages];
 
-  async function sendStreaming(msg: string) {
-    setMessages((prev) => [...prev, { role: "user", content: msg }]);
+  async function sendStreaming(message: string) {
+    setStreamingMessages((prev) => [
+      ...prev,
+      { role: "user", content: message },
+    ]);
 
-    setMessages((prev) => [
+    setStreamingMessages((prev) => [
       ...prev,
       { role: "assistant", content: "", thinking: "" },
     ]);
@@ -56,16 +39,16 @@ export function Chat({ chatId }: { chatId: string }) {
     let accumulated_thinking = "";
 
     streamSyrisMessage(
-      msg,
+      message,
       (token) => {
         accumulated_thinking += token;
 
-        setMessages((prev) => {
+        setStreamingMessages((prev) => {
           const copy = [...prev];
-          const lastIndex = copy.length - 1;
+          const last = copy.length - 1;
 
-          copy[lastIndex] = {
-            ...copy[lastIndex],
+          copy[last] = {
+            ...copy[last],
             thinking: accumulated_thinking,
           };
 
@@ -75,7 +58,7 @@ export function Chat({ chatId }: { chatId: string }) {
       (token) => {
         accumulated_content += token;
 
-        setMessages((prev) => {
+        setStreamingMessages((prev) => {
           const copy = [...prev];
           const lastIndex = copy.length - 1;
 
@@ -94,32 +77,40 @@ export function Chat({ chatId }: { chatId: string }) {
     );
   }
 
-  return (
+  async function handleSend(message: string) {
+    sendStreaming(message);
+  }
+
+  return chatId === "new" || chatQuery ? (
     <div className="flex flex-col w-full h-screen relative max-w-2xl mx-auto">
       <div className="w-full h-full px-2 pt-8 pb-8 overflow-y-auto space-y-8 no-scrollbar">
-        {chatId == "new" && messages.length === 0 ? (
+        {chatId == "new" && finalMessages.length === 0 ? (
           <div className="h-full flex items-center justify-center flex-col">
             <h2 className="font-bold text-lg">S.Y.R.I.S</h2>
             <p className="text-muted-foreground">alpha version</p>
           </div>
         ) : (
-          messages.map((m, i) => (
-            <div key={i} className="w-full flex flex-col space-y-1">
-              {m.thinking && m.thinking.length > 0 && (
-                <div className="flex gap-1.5 text-muted-foreground text-xs">
-                  <Lightbulb className="size-3.5" />
-                  <span>{m.thinking}</span>
-                </div>
-              )}
-              <MessageBubble role={m.role} content={m.content} />
-            </div>
-          ))
+          <React.Fragment key={chatId}>
+            {finalMessages.map((m, i) => (
+              <div key={i} className="w-full flex flex-col space-y-1">
+                {m.thinking && m.thinking.length > 0 && (
+                  <div className="flex gap-1.5 text-muted-foreground text-xs">
+                    <Lightbulb className="size-3.5" />
+                    <span>{m.thinking}</span>
+                  </div>
+                )}
+                <MessageBubble role={m.role} content={m.content} />
+              </div>
+            ))}
+          </React.Fragment>
         )}
       </div>
 
       <div className="w-full pb-2">
-        <ChatInput isLoading={isLoading} onSend={sendStreaming} />
+        <ChatInput isLoading={isLoading} onSend={handleSend} />
       </div>
     </div>
+  ) : (
+    <div className="">Loading...</div>
   );
 }

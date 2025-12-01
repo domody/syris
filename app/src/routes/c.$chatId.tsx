@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppSidebar } from "@/components/navigation/app-sidebar";
+import { ChatSidebar } from "@/components/navigation/chat-sidebar";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Chat } from "@/components/chat/Chat";
 
@@ -21,17 +21,15 @@ function RouteComponent() {
 
   if (chatId == "new") {
     return (
-      <SidebarLayout sidebar={<AppSidebar />}>
+      <SidebarLayout sidebar={<ChatSidebar />}>
         <Chat chatId={chatId} />
       </SidebarLayout>
     );
-  } else {
-    return (
-      <div className="">
-        <AppSidebar />
-        <p>S.Y.R.I.S</p>
-        <p>Existing Chat</p>
-      </div>
-    );
   }
+
+  return (
+    <SidebarLayout sidebar={<ChatSidebar />}>
+      <Chat chatId={chatId} />
+    </SidebarLayout>
+  );
 }
