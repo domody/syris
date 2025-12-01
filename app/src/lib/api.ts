@@ -43,6 +43,20 @@ export async function sendMessageToSyris(message: string) {
   return response.json() as Promise<{ response: string }>;
 }
 
+export async function createChat(title: string) {
+  const response = await fetch(`http://127.0.0.1:4311/data/chats`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create chat");
+  }
+
+  return await response.json();
+}
+
 interface PostMessagePayload {
   role: "user" | "assistant" | "system";
   content: string;
@@ -61,6 +75,10 @@ export async function postMessage(
     payload.thinking = thinking;
   }
 
+  console.log("Posting message...");
+  console.log("chatId: ", chatId);
+  console.log('payload: ', payload);
+  
   const response = await fetch(
     `http://127.0.0.1:4311/data/chats/${chatId}/messages`,
     {

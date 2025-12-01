@@ -5,10 +5,12 @@ import { MessageBubble } from "./MessageBubble";
 import { streamSyrisMessage } from "@/lib/stream";
 import { Lightbulb } from "lucide-react";
 import { useChat } from "@/hooks/use-chats";
-import { postMessage } from "@/lib/api";
+import { createChat, postMessage } from "@/lib/api";
 import { MessagesReponse } from "@/types";
+import { useNavigate } from "@tanstack/react-router";
 
 export function Chat({ chatId }: { chatId: string }) {
+  const navigate = useNavigate();
   const chatQuery = useChat(chatId === "new" ? "" : chatId);
   const allMessages = chatQuery?.data ?? [];
   const [streamingMessages, setStreamingMessages] = useState<MessagesReponse[]>(
@@ -23,6 +25,22 @@ export function Chat({ chatId }: { chatId: string }) {
   const finalMessages = [...allMessages, ...streamingMessages];
 
   async function sendStreaming(message: string) {
+    let activeChatId = chatId;
+
+    if (chatId === "new") {
+      try {
+        const result = await createChat("New Chat");
+        activeChatId = result.id;
+
+        navigate({ to: "/c/$chatId", params: { chatId: result.id } });
+
+        // Clear streaming messages because new chat starts fresh
+        setStreamingMessages([]);
+      } catch (err) {
+        console.error("Failed to create chat:", err);
+        return;
+      }
+    }
     // Optimistically show user message
     setStreamingMessages((prev) => [
       ...prev,
@@ -31,7 +49,7 @@ export function Chat({ chatId }: { chatId: string }) {
 
     // Send user message to python backend
     try {
-      await postMessage(chatId, "user", message);
+      await postMessage(activeChatId, "user", message);
     } catch (err) {
       console.error("Failed to save user message", err);
     }
@@ -90,7 +108,7 @@ export function Chat({ chatId }: { chatId: string }) {
         // Save assistant message
         try {
           await postMessage(
-            chatId,
+            activeChatId,
             "assistant",
             accumulated_content,
             accumulated_thinking
@@ -117,6 +135,9 @@ export function Chat({ chatId }: { chatId: string }) {
           <div className="h-full flex items-center justify-center flex-col">
             <h2 className="font-bold text-lg">S.Y.R.I.S</h2>
             <p className="text-muted-foreground">alpha version</p>
+            <div className="w-full pt-8">
+              <ChatInput isLoading={isLoading} onSend={handleSend} />
+            </div>
           </div>
         ) : (
           <React.Fragment key={chatId}>
@@ -131,12 +152,11 @@ export function Chat({ chatId }: { chatId: string }) {
                 <MessageBubble role={m.role} content={m.content} />
               </div>
             ))}
+            <div className="w-full pb-2">
+              <ChatInput isLoading={isLoading} onSend={handleSend} />
+            </div>
           </React.Fragment>
         )}
-      </div>
-
-      <div className="w-full pb-2">
-        <ChatInput isLoading={isLoading} onSend={handleSend} />
       </div>
     </div>
   ) : (

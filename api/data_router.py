@@ -12,6 +12,9 @@ class Role(str, Enum):
     assistant = "assistant"
     system = "system"
 
+class NewChat(BaseModel):
+    title: str
+
 class NewMessage(BaseModel):
     role: Role
     content: str
@@ -40,11 +43,11 @@ def list_chats(db: sqlite3.Connection = Depends(get_db)):
     return [dict(row) for row in cur.fetchall()]
 
 @router.post("/chats")
-def create_chat(title: str, db: sqlite3.Connection = Depends(get_db)):
+def create_chat(payload: NewChat, db: sqlite3.Connection = Depends(get_db)):
     cur = db.cursor()
-    cur.execute("INSERT INTO chats (title) VALUES (?)", (title,))
+    cur.execute("INSERT INTO chats (title) VALUES (?)", (payload.title,))
     db.commit()
-    return {"id": cur.lastrowid, "title": title}
+    return {"id": cur.lastrowid, "title": payload.title}
 
 @router.get("/chats/{chat_id}/messages")
 def list_messages(chat_id: int, db: sqlite3.Connection = Depends(get_db)):
