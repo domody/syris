@@ -45,7 +45,7 @@ export function AppSidebar({ subNav }: { subNav: React.ReactNode }) {
             <SidebarMenu>
               {appSidebarItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild isActive={window.location.pathname.slice(0, 3) === item.to.slice(0, 3)}>
                     <Link to={item.to} params={item.params} title={item.title}>
                       <item.icon />
                       <span>{item.title}</span>

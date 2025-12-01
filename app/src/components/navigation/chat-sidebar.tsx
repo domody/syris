@@ -29,7 +29,10 @@ export function ChatSidebar() {
             <>
               {data.map((chat) => (
                 <SidebarMenuItem key={chat.id}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={window.location.pathname === `/c/${chat.id}`}
+                  >
                     <Link
                       to="/c/$chatId"
                       params={{ chatId: chat.id }}
