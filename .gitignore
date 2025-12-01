@@ -3,3 +3,5 @@
 
 **/__pycache__/
 core/__pycache__/config.cpython-314.pyc
+
+data/*.db
