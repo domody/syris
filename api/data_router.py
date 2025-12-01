@@ -75,3 +75,20 @@ def add_message(
 
     db.commit()
     return {"id": cur.lastrowid}
+
+@router.post("/chats/{chat_id}/delete")
+def delete_chat(
+    chat_id: int,
+    db: sqlite3.Connection = Depends(get_db)
+):
+    cur = db.cursor()
+    cur.execute(
+        """
+        DELETE FROM chats WHERE id = ? 
+        """,
+        (chat_id,)
+    )
+
+    db.commit()
+
+    return  {"status": "ok", "deleted_chat_id": chat_id}

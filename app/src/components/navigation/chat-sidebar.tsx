@@ -1,4 +1,6 @@
 import { useChats } from "@/hooks/use-chats";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import {
   Sidebar,
@@ -18,10 +20,13 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
 } from "../ui/dropdown-menu";
-import { Button } from "../ui/button";
 import { Ellipsis, Pen, Trash2 } from "lucide-react";
 
+import { deleteChat } from "@/lib/api";
+
 export function ChatSidebar() {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { data, isLoading, error } = useChats();
 
   if (!data) return;
@@ -66,7 +71,20 @@ export function ChatSidebar() {
                         <Pen />
                         <span>Rename</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem variant={"destructive"}>
+                      <DropdownMenuItem
+                        variant={"destructive"}
+                        onClick={async () => {
+                          try {
+                            await deleteChat(chat.id);
+                            queryClient.invalidateQueries({
+                              queryKey: ["chats"],
+                            });
+                            navigate({ to: "/c/new" });
+                          } catch (err) {
+                            console.error("Error deleting chat", err);
+                          }
+                        }}
+                      >
                         <Trash2 />
                         <span>Delete</span>
                       </DropdownMenuItem>

@@ -7,9 +7,11 @@ import { Lightbulb } from "lucide-react";
 import { useChat } from "@/hooks/use-chats";
 import { createChat, postMessage } from "@/lib/api";
 import { MessagesReponse } from "@/types";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
 export function Chat({ chatId }: { chatId: string }) {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const chatQuery = useChat(chatId === "new" ? "" : chatId);
   const allMessages = chatQuery?.data ?? [];
@@ -27,12 +29,16 @@ export function Chat({ chatId }: { chatId: string }) {
   async function sendStreaming(message: string) {
     let activeChatId = chatId;
 
+    // If in a new chat, create new chat in db and route to it
     if (chatId === "new") {
       try {
         const result = await createChat("New Chat");
         activeChatId = result.id;
 
         navigate({ to: "/c/$chatId", params: { chatId: result.id } });
+
+        // Invalidate chat list to refresh sidebar
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
 
         // Clear streaming messages because new chat starts fresh
         setStreamingMessages([]);
@@ -41,6 +47,7 @@ export function Chat({ chatId }: { chatId: string }) {
         return;
       }
     }
+    
     // Optimistically show user message
     setStreamingMessages((prev) => [
       ...prev,
