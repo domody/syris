@@ -130,17 +130,20 @@ export function Chat({ chatId }: { chatId: string }) {
 
   return chatId === "new" || chatQuery ? (
     <div className="flex flex-col w-full h-screen relative max-w-2xl mx-auto">
-      <div className="w-full h-full px-2 pt-8 pb-8 overflow-y-auto space-y-8 no-scrollbar">
-        {chatId == "new" && finalMessages.length === 0 ? (
-          <div className="h-full flex items-center justify-center flex-col">
-            <h2 className="font-bold text-lg">S.Y.R.I.S</h2>
-            <p className="text-muted-foreground">alpha version</p>
-            <div className="w-full pt-8">
-              <ChatInput isLoading={isLoading} onSend={handleSend} />
-            </div>
+      {chatId == "new" && finalMessages.length === 0 ? (
+        <div className="h-full flex items-center justify-center flex-col">
+          <h2 className="font-bold text-lg">S.Y.R.I.S</h2>
+          <p className="text-muted-foreground">alpha version</p>
+          <div className="w-full pt-8">
+            <ChatInput isLoading={isLoading} onSend={handleSend} />
           </div>
-        ) : (
-          <React.Fragment key={chatId}>
+        </div>
+      ) : (
+        <>
+          <div
+            key={chatId}
+            className="w-full h-full px-2 pt-8 pb-8 overflow-y-auto space-y-8 no-scrollbar"
+          >
             {finalMessages.map((m, i) => (
               <div key={i} className="w-full flex flex-col space-y-1">
                 {m.thinking && m.thinking.length > 0 && (
@@ -152,12 +155,12 @@ export function Chat({ chatId }: { chatId: string }) {
                 <MessageBubble role={m.role} content={m.content} />
               </div>
             ))}
-            <div className="w-full pb-2">
-              <ChatInput isLoading={isLoading} onSend={handleSend} />
-            </div>
-          </React.Fragment>
-        )}
-      </div>
+          </div>
+          <div className="w-full pb-2 mt-auto">
+            <ChatInput isLoading={isLoading} onSend={handleSend} />
+          </div>
+        </>
+      )}
     </div>
   ) : (
     <div className="">Loading...</div>

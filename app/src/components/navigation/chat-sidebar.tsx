@@ -9,7 +9,17 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarGroupLabel,
+  SidebarMenuAction,
 } from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+} from "../ui/dropdown-menu";
+import { Button } from "../ui/button";
+import { Ellipsis, Pen, Trash2 } from "lucide-react";
 
 export function ChatSidebar() {
   const { data, isLoading, error } = useChats();
@@ -41,6 +51,27 @@ export function ChatSidebar() {
                       {chat.title ?? `Chat ${chat.id}`}
                     </Link>
                   </SidebarMenuButton>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <SidebarMenuAction showOnHover>
+                        <Ellipsis />
+                      </SidebarMenuAction>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="w-56"
+                      side="right"
+                      align="start"
+                    >
+                      <DropdownMenuItem>
+                        <Pen />
+                        <span>Rename</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem variant={"destructive"}>
+                        <Trash2 />
+                        <span>Delete</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </SidebarMenuItem>
               ))}
             </>

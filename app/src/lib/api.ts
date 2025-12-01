@@ -75,10 +75,6 @@ export async function postMessage(
     payload.thinking = thinking;
   }
 
-  console.log("Posting message...");
-  console.log("chatId: ", chatId);
-  console.log('payload: ', payload);
-  
   const response = await fetch(
     `http://127.0.0.1:4311/data/chats/${chatId}/messages`,
     {
