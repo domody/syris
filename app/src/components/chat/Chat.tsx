@@ -5,7 +5,7 @@ import { MessageBubble } from "./MessageBubble";
 import { streamSyrisMessage } from "@/lib/stream";
 import { Lightbulb } from "lucide-react";
 import { useChat } from "@/hooks/use-chats";
-
+import { postMessage } from "@/lib/api";
 import { MessagesReponse } from "@/types";
 
 export function Chat({ chatId }: { chatId: string }) {
@@ -23,11 +23,20 @@ export function Chat({ chatId }: { chatId: string }) {
   const finalMessages = [...allMessages, ...streamingMessages];
 
   async function sendStreaming(message: string) {
+    // Optimistically show user message
     setStreamingMessages((prev) => [
       ...prev,
       { role: "user", content: message },
     ]);
 
+    // Send user message to python backend
+    try {
+      await postMessage(chatId, "user", message);
+    } catch (err) {
+      console.error("Failed to save user message", err);
+    }
+
+    // Create optimistic placeholder for assistant
     setStreamingMessages((prev) => [
       ...prev,
       { role: "assistant", content: "", thinking: "" },
@@ -38,8 +47,10 @@ export function Chat({ chatId }: { chatId: string }) {
     let accumulated_content = "";
     let accumulated_thinking = "";
 
+    // Stream response
     streamSyrisMessage(
       message,
+      // Thinking tokens
       (token) => {
         accumulated_thinking += token;
 
@@ -55,6 +66,7 @@ export function Chat({ chatId }: { chatId: string }) {
           return copy;
         });
       },
+      // Content tokens
       (token) => {
         accumulated_content += token;
 
@@ -71,8 +83,25 @@ export function Chat({ chatId }: { chatId: string }) {
           return copy;
         });
       },
-      () => {
+      // On done
+      async () => {
         setIsLoading(false);
+
+        // Save assistant message
+        try {
+          await postMessage(
+            chatId,
+            "assistant",
+            accumulated_content,
+            accumulated_thinking
+          );
+        } catch (err) {
+          console.error("Failed to save assistant message", err);
+        }
+
+        // Refetch messages
+        setStreamingMessages([]);
+        chatQuery.refetch();
       }
     );
   }
