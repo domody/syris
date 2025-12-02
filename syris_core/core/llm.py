@@ -1,14 +1,11 @@
 import json
-import asyncio
 from ollama import chat
 from ollama import ChatResponse
 from  .memory import Memory
-
 from ..modules.tools import TOOLS, TOOL_MAP
 
-
 class SyrisLLM:
-    def __init__(self, model = "gemma3", system_prompt = ""):
+    def __init__(self, model = "gpt-oss", system_prompt = ""):
         self.model = model
         self.memory = Memory()
 
@@ -208,8 +205,6 @@ class SyrisLLM:
         self.log("STREAM END", {})
         yield {"type": "end"}
 
-
-
     def run_chat_loop(self):
         print("SYRIS online.")
         
@@ -220,4 +215,3 @@ class SyrisLLM:
                 break
 
             print("SYRIS:", self.stream(user))
-
