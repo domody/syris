@@ -92,6 +92,23 @@ export async function postMessage(
   return data;
 }
 
+export async function renameChat(chatId: number, newTitle: string) {
+  const response = await fetch(
+    `http://127.0.0.1:4311/data/chats/${chatId}/rename`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ new_title: newTitle }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to rename chat");
+  }
+
+  return await response.json();
+}
+
 export async function deleteChat(chatId: number) {
   const response = await fetch(
     `http://127.0.0.1:4311/data/chats/${chatId}/delete`,

@@ -140,7 +140,7 @@ export function Chat({ chatId }: { chatId: string }) {
       {chatId == "new" && finalMessages.length === 0 ? (
         <div className="h-full flex items-center justify-center flex-col">
           <h2 className="font-bold text-lg">S.Y.R.I.S</h2>
-          <p className="text-muted-foreground">alpha version</p>
+          <p className="text-muted-foreground">runtime build a-0001</p>
           <div className="w-full pt-8">
             <ChatInput isLoading={isLoading} onSend={handleSend} />
           </div>
@@ -159,7 +159,7 @@ export function Chat({ chatId }: { chatId: string }) {
                     <span>{m.thinking}</span>
                   </div>
                 )}
-                <MessageBubble role={m.role} content={m.content} />
+                <MessageBubble role={m.role} content={m.content} isLoading={isLoading} />
               </div>
             ))}
           </div>

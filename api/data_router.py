@@ -20,6 +20,9 @@ class NewMessage(BaseModel):
     content: str
     thinking: Optional[str] = None
     
+class RenameChatBody(BaseModel):
+    new_title: str
+    
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Server startup")
@@ -75,6 +78,25 @@ def add_message(
 
     db.commit()
     return {"id": cur.lastrowid}
+
+@router.post("/chats/{chat_id}/rename")
+def rename_chat(
+    chat_id: int,
+    body: RenameChatBody,
+    db: sqlite3.Connection = Depends(get_db)
+):
+    cur = db.cursor()
+    cur.execute(
+        """
+        UPDATE chats
+        SET title = ?
+        WHERE id = ?
+        """,
+        (body.new_title, chat_id,)
+    )
+
+    db.commit()
+    return {"id": chat_id, "new_title": body.new_title}
 
 @router.post("/chats/{chat_id}/delete")
 def delete_chat(

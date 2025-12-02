@@ -3,9 +3,11 @@ import { Streamdown } from "streamdown";
 export function MessageBubble({
   role,
   content,
+  isLoading,
 }: {
   role: "user" | "assistant" | "system";
   content: string;
+  isLoading: boolean;
 }) {
   // User's bubble
   if (role == "user") {
@@ -21,7 +23,10 @@ export function MessageBubble({
   //   Models bubble
   return (
     <div className="text-left w-full">
-      <Streamdown className="inline-block w-full" isAnimating={true}>
+      <Streamdown
+        className="inline-block w-full"
+        isAnimating={role === "assistant" && isLoading === true}
+      >
         {content}
       </Streamdown>
     </div>

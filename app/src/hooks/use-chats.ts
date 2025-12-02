@@ -1,5 +1,5 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { getChats, getChat } from "@/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getChats, getChat, renameChat } from "@/lib/api";
 
 export const useChats = () => {
   return useQuery({
@@ -19,3 +19,19 @@ export const useChat = (chatId: string) => {
     staleTime: 1500,
   });
 };
+
+export function useRenameChat() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ chatId, newTitle }: { chatId: number; newTitle: string }) =>
+      renameChat(chatId, newTitle),
+    onSuccess: (_, { chatId }) => {
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+      queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+    },
+    onError: (error) => {
+      console.error("Failed to rename chat:", error);
+    },
+  });
+}
