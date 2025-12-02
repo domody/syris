@@ -187,7 +187,7 @@ class SyrisLLM:
                 self.log("TOOL EXECUTE", {"name": tool_name, "args": args})
 
                 if tool_name in self.tool_map:
-                    result = self.tool_map[tool_name](**args)
+                    result = self.tool_map[tool_name]["func"](**args)
                 else:
                     result = f"Unknown tool: {tool_name}"
 
