@@ -2,15 +2,14 @@ import { Link } from "@tanstack/react-router";
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarGroupLabel,
+  SidebarHeader,
 } from "@/components/ui/sidebar";
-import { BrainCircuit, NotebookPen, Cog } from "lucide-react";
-
+import { BrainCircuit, NotebookPen } from "lucide-react";
+import { SettingsDialog } from "../settings/settings-dialog";
 const appSidebarItems = [
   {
     title: "SYRIS",
@@ -24,12 +23,6 @@ const appSidebarItems = [
     to: "/n/$noteId",
     params: { noteId: "new" },
   },
-  {
-    title: "Settings",
-    icon: Cog,
-    to: "/settings",
-    params: {},
-  },
 ];
 
 export function AppSidebar({ subNav }: { subNav: React.ReactNode }) {
@@ -38,26 +31,28 @@ export function AppSidebar({ subNav }: { subNav: React.ReactNode }) {
       collapsible="none"
       // className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r"
     >
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>{window.location.href}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {appSidebarItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={window.location.pathname.slice(0, 3) === item.to.slice(0, 3)}>
-                    <Link to={item.to} params={item.params} title={item.title}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        {subNav}
-      </SidebarContent>
+      <SidebarHeader>
+        <SidebarGroupLabel>{window.location.href}</SidebarGroupLabel>
+        <SidebarMenu>
+          {appSidebarItems.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton
+                asChild
+                isActive={
+                  window.location.pathname.slice(0, 3) === item.to.slice(0, 3)
+                }
+              >
+                <Link to={item.to} params={item.params} title={item.title}>
+                  <item.icon />
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+          <SettingsDialog />
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>{subNav}</SidebarContent>
     </Sidebar>
   );
 }

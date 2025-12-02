@@ -136,6 +136,7 @@ export function ChatSidebar() {
                       <SidebarMenuButton
                         asChild
                         isActive={window.location.pathname === `/c/${chat.id}`}
+                        className="truncate line-clamp-1"
                       >
                         <Link
                           to="/c/$chatId"
