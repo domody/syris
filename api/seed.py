@@ -1,45 +1,54 @@
-from .db import get_connection
+from .db.memory_vector import get_vector_connection as get_connection
+import numpy as np
+import time
+
 
 def seed():
+    print("Seeding vector_memory database...")
+
     conn = get_connection()
     cur = conn.cursor()
 
-    # Clear existing
-    cur.executescript("""
-        DELETE FROM messages;
-        DELETE FROM chats;
-    """)
+    # Clear existing rows
+    cur.execute("DELETE FROM vector_memory;")
 
-    # Insert sample chats
-    chats = [
-        ("First Chat",),
-        ("Project Discussion",),
-        ("Random Thoughts",)
+    # Sample dummy memories
+    sample_texts = [
+        "The user prefers dark mode.",
+        "We implemented the new tool metadata system.",
+        "The movement prototype for UE5 is complete.",
+        "SYRIS should remember long-term goals.",
+        "Vector memory testing entry.",
     ]
-    cur.executemany("INSERT INTO chats (title) VALUES (?)", chats)
 
-    # Fetch chat IDs
-    cur.execute("SELECT id FROM chats ORDER BY id ASC")
-    chat_ids = [row["id"] for row in cur.fetchall()]
+    entries = []
+    for text in sample_texts:
+        # Create a simple deterministic embedding (3 floats)
+        # Replace with real embeddings later
+        vec = np.array(
+            [hash(text) % 1000 / 1000.0,
+             len(text) % 100 / 100.0,
+             (sum(map(ord, text)) % 500) / 500.0],
+            dtype=np.float16
+        )
 
-    # Insert messages
-    messages = [
-        (chat_ids[0], "user", "Hey, how are you?"),
-        (chat_ids[0], "assistant", "I'm quite well, thank you."),
+        blob = vec.tobytes()
+        timestamp = time.time()
 
-        (chat_ids[1], "user", "Let's plan the next sprint."),
-        (chat_ids[1], "assistant", "Sure. What are the priorities?"),
+        entries.append((blob, text, timestamp))
 
-        (chat_ids[2], "user", "Write down this idea."),
-    ]
+    # Insert rows
     cur.executemany(
-        "INSERT INTO messages (chat_id, role, content) VALUES (?, ?, ?)",
-        messages
+        "INSERT INTO vector_memory (embedding, text, created_at) VALUES (?, ?, ?)",
+        entries
     )
 
     conn.commit()
     conn.close()
+
+    print(f"Inserted {len(entries)} vector memory entries.")
     print("Seed completed.")
+
 
 if __name__ == "__main__":
     seed()

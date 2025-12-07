@@ -1,4 +1,4 @@
-import { ChatResponse, MessagesReponse } from "@/types";
+import { ChatResponse, MessagesReponse, VectorMemoryResponse   } from "@/types";
 
 export async function getChats(): Promise<ChatResponse[]> {
   const response = await fetch(`http://127.0.0.1:4311/data/chats`, {
@@ -121,6 +121,18 @@ export async function deleteChat(chatId: number) {
 
   if (!response.ok) {
     throw new Error("Failed to delete chat");
+  }
+
+  return await response.json();
+}
+
+export async function getVectorMemories(): Promise<VectorMemoryResponse[]> {
+  const response = await fetch(`http://127.0.0.1:4311/memory/vector`, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to retreive vector memories");
   }
 
   return await response.json();

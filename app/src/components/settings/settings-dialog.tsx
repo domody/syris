@@ -30,6 +30,7 @@ import {
   Code,
   FlaskConical,
 } from "lucide-react";
+import { MemoryContextTab } from "./memory-context-tab";
 
 const data = {
   nav: [
@@ -78,7 +79,7 @@ export function SettingsDialog() {
 
   return (
     <Dialog>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <SidebarMenuItem>
           <SidebarMenuButton>
             <Settings />
@@ -118,7 +119,9 @@ export function SettingsDialog() {
               </SidebarGroup>
             </SidebarContent>
           </Sidebar>
-          <main className="flex h-[480px] flex-1 flex-col overflow-y-auto"></main>
+          <main className="flex h-[480px] flex-1 flex-col overflow-y-auto">
+            {activeTab === "Memory & Context" && <MemoryContextTab />}
+          </main>
         </SidebarProvider>
       </DialogContent>
     </Dialog>

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, FastAPI, Depends
 import sqlite3
-from .db import get_connection, init_db
+from ..db.chat import init_chat_db, get_chat_connection
 from contextlib import asynccontextmanager
 
 from pydantic import BaseModel
@@ -25,15 +25,15 @@ class RenameChatBody(BaseModel):
     
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Server startup")
-    init_db()
+    print("Data router startup")
+    init_chat_db()
     yield
-    print("Server shut down")
+    print("Data router shut down")
 
 router = APIRouter(lifespan=lifespan)
 
 def get_db():
-    conn = get_connection()
+    conn = get_chat_connection()
     try:
         yield conn
     finally:

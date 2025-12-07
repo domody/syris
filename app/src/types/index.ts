@@ -12,3 +12,10 @@ export interface MessagesReponse {
   thinking?: string;
   created_at?: string;
 }
+
+export interface VectorMemoryResponse {
+    id: number,
+    embedding: number[],
+    text: string,
+    created_at: number
+}
