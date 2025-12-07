@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from syris_core import engine
+from syris_core_depr import engine
 import json
 
 class ChatRequest(BaseModel):
