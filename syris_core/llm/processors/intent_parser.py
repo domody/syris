@@ -8,7 +8,7 @@ class IntentParser:
     def __init__(self, provider: LLMProvider, system_prompt: str):
         self.provider = provider
         self.system_prompt = system_prompt
-        
+
     async def parse(self, text: str) -> Intent:
         prompt = (
             f"{text}"

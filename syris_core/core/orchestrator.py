@@ -7,6 +7,7 @@ from syris_core.llm.processors.response_composer import ResponseComposer
 from syris_core.core.dispatcher import Dispatcher
 from syris_core.types.events import Event, EventType
 from syris_core.events.bus import EventBus
+from syris_core.memory.working_memory import WorkingMemory
 from syris_core.util.logger import log
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "llm" / "prompts"
@@ -16,11 +17,14 @@ class Orchestrator:
         # self.tool_registry = tool_registry
         # self.memory_client = memory_client
 
+        # Memory
+        self.working_memory = WorkingMemory()
+        
         # LLM Layer
         intent_prompt = open(PROMPTS_DIR / "intent.txt").read()
         response_prompt = open(PROMPTS_DIR / "system.txt").read()
 
-        provider = LLMProvider(model_name="gpt-oss")
+        provider = LLMProvider(working_memory=self.working_memory, model_name="gpt-oss")
         intent_parser = IntentParser(provider=provider, system_prompt=intent_prompt)
         response_composer = ResponseComposer(provider=provider, system_prompt=response_prompt)
 
@@ -62,5 +66,9 @@ class Orchestrator:
 
     # Handle input events
     async def _handle_input(self, event: Event):
+        self.working_memory.add(role="user", content=event.payload["text"])
+
         reply = await self.dispatcher.process_input(event)
+        self.working_memory.add(role="assistant", content=reply)
+
         await self._emit_response(reply)
