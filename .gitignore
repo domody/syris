@@ -5,8 +5,11 @@
 
 *.db
 .db
+data
 data/*.db
 data/chat.db
+data/*.log
+data/log/*.log
 
 .env
 .env.local

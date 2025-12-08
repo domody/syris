@@ -55,8 +55,15 @@ SOURCE_DISPLAY_NAMES = {
     "event_bus": "EVENT BUS",
 }
 
+# Log folders
+LOG_DIR = "data/logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# Thread lock so logs dont overlap
+_write_lock = threading.Lock()
+
 # Log function for clean centralised logging throughout system 
-def log(source: LogSource, message: str, level: str = "info", write_file=False):
+def log(source: LogSource, message: str, level: str = "info", write_file=True):
 
     timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -69,4 +76,10 @@ def log(source: LogSource, message: str, level: str = "info", write_file=False):
 
     print(console_line)
 
-    # Implement file writing to data/logs
+    if write_file: 
+        file_line = f"[{timestamp}] [{level.upper()}] [{display_source}] {message}\n"
+        file_path = os.path.join(LOG_DIR, "syris.log")
+
+        with _write_lock:
+            with open(file_path, "a", encoding="utf-8") as f:
+                f.write(file_line)
