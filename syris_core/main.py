@@ -1,0 +1,33 @@
+import asyncio
+from syris_core.core.orchestrator import Orchestrator
+from syris_core.types.events import Event, EventType
+from syris_core.events.handlers import log_input_event
+from syris_core.util.logger import log
+from syris_core.tools.agents.dev_input_agent import DevInputAgent
+
+
+async def main():
+    log("core", "Booting System...")
+
+    # Init orchestrator
+    orch = Orchestrator()
+
+    # Register global event handlers
+    dev_agent = DevInputAgent(orch.event_bus)
+    asyncio.create_task(dev_agent.start())
+    
+    # Start background agents
+
+    # Listeners
+
+    # Log
+    log("core", "System Initialized.")
+    log("core", "Entering main orchestration loop.")
+
+    await orch.start()
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        log("core", "Shutdown requested by user.")
