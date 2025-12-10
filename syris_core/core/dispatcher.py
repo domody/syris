@@ -10,11 +10,9 @@ class Dispatcher:
     async def process_input(self, event: Event):
         text = event.payload["text"]
 
+        # Return intent
         intent = await self.intent_parser.parse(text)
 
-        # return intent
-        # plan, delegate tools, etc
-
+        # Create response based on intent
         response = await self.response_composer.compose(intent=intent, user_input=text)
-
         return response

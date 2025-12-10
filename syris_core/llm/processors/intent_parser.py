@@ -14,7 +14,7 @@ class IntentParser:
             f"{text}"
         )
 
-        log("llm", f"[IntentParser] Parsing input (text={text}) (prompt={prompt})")
+        log("llm", f"[IntentParser] Parsing input (text={text})")
 
         raw = await self.provider.complete(system_prompt=self.system_prompt, prompt=prompt)
        
