@@ -10,8 +10,11 @@ class WorkingMemory:
     def __init__(self, max_messages: int = 8):
         self.buffer = deque(maxlen=max_messages)
 
-    def add(self, role: str, content: str):
-        self.buffer.append({"role": role, "content": content})
+    def add(self, role: str, content: str, tool_name: str | None = None):
+        if tool_name: 
+            self.buffer.append({"role": role, "tool_name": tool_name, "content": content})
+        else:
+            self.buffer.append({"role": role, "content": content})
 
     def get_context(self):
         return list(self.buffer)

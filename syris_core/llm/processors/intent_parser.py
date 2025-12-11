@@ -2,6 +2,7 @@ import json
 
 from syris_core.llm.provider import LLMProvider
 from syris_core.types.llm import Intent, IntentType
+from syris_core.tools.registry import TOOL_MANIFEST
 from syris_core.util.logger import log
 
 class IntentParser:
@@ -16,8 +17,20 @@ class IntentParser:
 
         log("llm", f"[IntentParser] Parsing input (text={text})")
 
-        raw = await self.provider.complete(system_prompt=self.system_prompt, prompt=prompt)
+        response = await self.provider.complete(system_prompt=self.system_prompt, prompt=prompt, tools=TOOL_MANIFEST)
        
+        if response.message.tool_calls:
+            intent = Intent(
+                type = IntentType.RUN_TOOL,
+                subtype = response.message.tool_calls[0].function.name,
+                confidence= 1.0,
+                arguments = dict(response.message.tool_calls[0].function.arguments)
+            )
+            log("llm", f"[IntentParser] Intent classified via ToolExtraction as: {intent}")
+            return intent
+            
+        raw: str = response['message']['content']
+
         try:
             data = json.loads(raw)
         except Exception:
@@ -25,7 +38,9 @@ class IntentParser:
             return Intent(type=IntentType.UNKNOWN, subtype=None, confidence=0.0, arguments={})
 
         try:
-            return Intent(**data)
+            intent = Intent(**data)
+            log("llm", f"[IntentParser] Intent classified as: {intent}")
+            return intent
         except Exception as e:
             log("error", f"[IntentParser] Invalid Intent shape: {data}")
             log("error", str(e))

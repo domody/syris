@@ -4,10 +4,11 @@ from pathlib import Path
 from syris_core.llm.provider import LLMProvider
 from syris_core.llm.processors.intent_parser import IntentParser
 from syris_core.llm.processors.response_composer import ResponseComposer
-from syris_core.core.dispatcher import Dispatcher
 from syris_core.types.events import Event, EventType
+from syris_core.types.llm import Intent, IntentType
 from syris_core.events.bus import EventBus
 from syris_core.memory.working_memory import WorkingMemory
+from syris_core.tools.registry import TOOL_REGISTRY
 from syris_core.util.logger import log
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "llm" / "prompts"
@@ -25,13 +26,8 @@ class Orchestrator:
         response_prompt = open(PROMPTS_DIR / "system.txt").read()
 
         provider = LLMProvider(working_memory=self.working_memory, model_name="gpt-oss")
-        intent_parser = IntentParser(provider=provider, system_prompt=intent_prompt)
-        response_composer = ResponseComposer(provider=provider, system_prompt=response_prompt)
-
-        self.dispatcher = Dispatcher(
-            intent_parser=intent_parser,
-            response_composer=response_composer
-        )
+        self.intent_parser = IntentParser(provider=provider, system_prompt=intent_prompt)
+        self.response_composer = ResponseComposer(provider=provider, system_prompt=response_prompt)
 
         # Event queue
         self._event_queue = asyncio.Queue()
@@ -57,7 +53,6 @@ class Orchestrator:
         log("orchestrator", f"Handling event: {event.type} -> {event.payload}")
 
         if event.type == EventType.INPUT:
-            # print("Hello sir.")
             await self._handle_input(event=event)
     
     # Emit response
@@ -66,9 +61,65 @@ class Orchestrator:
 
     # Handle input events
     async def _handle_input(self, event: Event):
-        self.working_memory.add(role="user", content=event.payload["text"])
+        user_text = event.payload["text"]
+        self.working_memory.add(role="user", content=user_text)
 
-        reply = await self.dispatcher.process_input(event)
+        intent = await self.intent_parser.parse(user_text)
+
+        reply = await self._route_intent(intent=intent, user_text=user_text)
+
         self.working_memory.add(role="assistant", content=reply)
 
         await self._emit_response(reply)
+    
+    # Route to correct handler based on intent type
+    async def _route_intent(self, intent: Intent, user_text: str) -> str:
+        intent_type = intent.type
+
+        if intent_type == IntentType.CHAT:
+            return await self._handle_chat(intent=intent, user_text=user_text)
+
+        elif intent_type == "query":
+            pass
+
+        elif intent_type == IntentType.RUN_TOOL:
+            return await self._handle_tool(intent=intent, user_text=user_text)
+
+        elif intent_type == "control":
+            pass
+
+        elif intent_type == "schedule":
+            pass
+
+        elif intent_type == "autonmy":
+            pass
+
+        else: 
+            pass
+
+        return "Apologies, that intent type is not set up for routing yet."
+
+    async def _handle_chat(self, intent: Intent, user_text: str):
+        return await self.response_composer.compose(
+            intent=intent,
+            user_input=user_text
+        )
+    
+    async def _handle_tool(self, intent: Intent, user_text):
+        tool_name = intent.subtype
+        args = intent.arguments
+        log("orchestrator", f"Handling tool {tool_name} with arguments {args}")
+
+        tool_entry = TOOL_REGISTRY.get(tool_name)
+        if not tool_entry:
+            # return await self.response_composer.compose(status="Error")
+            return "Tool not found."
+
+        result = tool_entry["func"](**args)
+        self.working_memory.add(role="tool", tool_name=tool_name, content=result)
+
+        return await self.response_composer.compose(
+            intent=intent,
+            user_input=user_text,
+            result={"result": result}
+        )

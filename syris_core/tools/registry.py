@@ -2,9 +2,9 @@ import pkgutil
 import importlib
 import pathlib
 
-TOOLS = []
-TOOL_MAP = {}
-OLLAMA_MAP = []
+TOOL_FUNCTIONS = []
+TOOL_REGISTRY = {}
+TOOL_MANIFEST = []
 
 TOOLS_DIR = pathlib.Path(__file__).parent
 PACKAGE_PREFIX = "syris_core.tools"
@@ -28,12 +28,13 @@ for module_info in pkgutil.iter_modules([str(TOOLS_DIR)]):
             continue
 
         func = getattr(module, file_name)
-        TOOLS.append(func)
+        TOOL_FUNCTIONS.append(func)
 
         tool_key = f"{folder_name}.{file_name}"
         metadata = getattr(module, "METADATA", None) or {}
+        description = metadata.get("description", f"Tool: {tool_key}")
 
-        TOOL_MAP[tool_key] = {
+        TOOL_REGISTRY[tool_key] = {
             "func": func,
             "metadata": metadata,
         }
@@ -42,7 +43,7 @@ for module_info in pkgutil.iter_modules([str(TOOLS_DIR)]):
             "type": "function",
             "function": {
                 "name": tool_key,
-                "description": metadata.get("description", f"Tool: {tool_key}"),
+                "description": description,
 
                 "parameters": {
                     "type": "object",
@@ -52,4 +53,4 @@ for module_info in pkgutil.iter_modules([str(TOOLS_DIR)]):
             "py_function": func
         }
 
-        OLLAMA_MAP.append(tool_dict)
+        TOOL_MANIFEST.append(tool_dict)

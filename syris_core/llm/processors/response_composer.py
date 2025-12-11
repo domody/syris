@@ -27,4 +27,6 @@ class ResponseComposer:
         log("llm", f"[ResponseComposer] Generating reply (status={status}) (prompt={prompt})")
 
         response = await self.provider.complete(system_prompt=self.system_prompt, prompt=prompt)
-        return response.strip()
+        raw: str = response['message']['content']
+
+        return raw.strip()

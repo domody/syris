@@ -1,6 +1,5 @@
 from ollama import chat, ChatResponse
 from syris_core.memory.working_memory import WorkingMemory
-from syris_core.tools.registry import TOOLS, OLLAMA_MAP
 from syris_core.util.logger import log
 
 class LLMProvider:
@@ -9,16 +8,15 @@ class LLMProvider:
 
         self.working_memory = working_memory
     
-    async def complete(self, prompt:str, system_prompt: str) -> str:
+    async def complete(self, prompt:str, system_prompt: str, tools = None) -> ChatResponse:
         messages = [
                 {"role": "system", "content": system_prompt},
                 *self.working_memory.get_context(),
-                {"role": "user", "content": prompt}
             ]
-        
-        # log("memory", f"[WorkingMemory] Previous Messages: {[*self.working_memory.get_context(), {"role": "user", "content": prompt}]}")
-        response: ChatResponse = chat(model=self.model_name, tools=OLLAMA_MAP, messages=messages, think='low')
-        reply = response['message']['content']
+        log("memory", f"[WorkingMemory] Previous Messages: {[*self.working_memory.get_context()]}")
 
-        return reply
+        response: ChatResponse = chat(model=self.model_name, tools=tools, messages=messages, think='low')
+        log("llm", f"[Provider] Response generated as: {response}")
+
+        return response
 
