@@ -21,7 +21,7 @@ class IntentParser:
        
         if response.message.tool_calls:
             intent = Intent(
-                type = IntentType.RUN_TOOL,
+                type = IntentType.TOOL,
                 subtype = response.message.tool_calls[0].function.name,
                 confidence= 1.0,
                 arguments = dict(response.message.tool_calls[0].function.arguments)

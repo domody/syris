@@ -16,7 +16,7 @@ STRICT RULES:
    - "chat":
        Used for greetings, casual conversation, emotional statements, or anything that does not request an action.
 
-   - "run_tool":
+   - "tool":
        Use when the user's request SHOULD be fulfilled by calling a system tool or function.
        IMPORTANT:
         - You MUST NOT run any tools.

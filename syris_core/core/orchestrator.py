@@ -82,7 +82,7 @@ class Orchestrator:
         elif intent_type == "query":
             pass
 
-        elif intent_type == IntentType.RUN_TOOL:
+        elif intent_type == IntentType.TOOL:
             return await self._handle_tool(intent=intent, user_text=user_text)
 
         elif intent_type == "control":
