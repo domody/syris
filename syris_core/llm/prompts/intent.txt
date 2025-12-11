@@ -36,6 +36,34 @@ STRICT RULES:
        Used when the user asks SYRIS to create or modify an automation rule.
        Examples: "Every morning at 8 turn on the heating."
 
+   - "plan":
+       Used when the user's request requires a multi-step process, workflow, or ordered sequence of actions.
+       This includes:
+        - Requests that require multiple tools that depend on each other.
+        - High-level tasks that imply reasoning before execution.
+        - Complex instructions that cannot be fulfilled by a single tool call.
+        - Multi-action tasks (e.g. "clean logs then summarize them").
+        - Requests that describe a procedure, routine, or operation rather than a simple information query.
+
+       A "plan" MUST be used when:
+        - The user describes a task, not a question.
+        - The user gives a high-level goal requiring interpretation.
+        - The request involves verbs like: clean, organize, prepare, optimize, fix, analyze, generate report, process.
+        - The request implies sequential steps or workflows.
+        - Multiple tools are required AND their outputs depend on each other.
+        - Completing the request requires ordering, transformation, or reasoning.
+
+       NOT considered "plan":
+        - Informational queries that simply require multiple independent tools
+           (e.g. "What is the date and time?").
+        - Any request where each tool output is independent and no reasoning is required.
+        - Basic data retrieval, even if multi-tool, should remain "tool".
+
+       When selecting "plan":
+        - Set "subtype" to null unless a predefined static plan name is known.
+        - Set "arguments" to any extracted parameters relevant to the workflow.
+        - Confidence should be high (≥ 0.80) only when the request clearly implies a workflow.
+      
    - "unknown":
        Used when the intent cannot be determined confidently.
 

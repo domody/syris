@@ -81,8 +81,8 @@ class Orchestrator:
         if intent_type == IntentType.CHAT:
             return await self._handle_chat(intent=intent, user_text=user_text)
 
-        elif intent_type == "query":
-            pass
+        elif intent_type == IntentType.PLAN:
+            return await self._handle_plan(intent=intent, user_text=user_text)
 
         elif intent_type == IntentType.TOOL:
             return await self._handle_tool(intent=intent, user_text=user_text)
@@ -142,3 +142,9 @@ class Orchestrator:
             )
         except Exception as e:
             return f"Error: {e}"
+        
+    async def _handle_plan(self, intent: Intent, user_text):
+        return await self.response_composer.compose_optimistic(
+            intent=intent,
+            user_input=user_text
+        )

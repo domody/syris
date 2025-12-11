@@ -11,10 +11,6 @@ class IntentParser:
         self.system_prompt = system_prompt
 
     async def parse(self, text: str) -> Intent:
-        prompt = (
-            f"{text}"
-        )
-
         log("llm", f"[IntentParser] Parsing input (text={text})")
 
         response = await self.provider.complete(system_prompt=self.system_prompt, format=Intent.model_json_schema())

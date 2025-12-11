@@ -9,6 +9,7 @@ class IntentType(str, Enum):
     CONTROL = "control"               # device actions (lights, volume, etc.)
     SCHEDULE = "schedule"             # reminders, timers, alarms
     AUTONOMY = "autonomy"             # set automations (IFTTT style rules)
+    PLAN = "plan"                     # delegate request to the planner
     UNKNOWN = "unknown"
 
 class Intent(BaseModel):

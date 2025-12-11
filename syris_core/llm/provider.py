@@ -18,7 +18,7 @@ class LLMProvider:
         ]
         log("memory", f"[WorkingMemory] Previous Messages: {[*self.working_memory.get_context()]}")
 
-        response: ChatResponse = chat(model=self.model_name, tools=tools, messages=messages, format=format, think='low')
+        response: ChatResponse = chat(model=self.model_name, messages=messages, format=format, think='low')
         log("llm", f"[Provider] Response generated as: {response}")
 
         return response

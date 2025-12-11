@@ -16,6 +16,7 @@ class ResponseComposer:
             user_input: str,
             result: dict[str, Any] | None = None,
             status: str = "normal",
+            instructions: str | None = None
     ):
         intent_json = json.dumps(intent.model_dump(), ensure_ascii=False)
         prompt = (
@@ -24,10 +25,25 @@ class ResponseComposer:
             f"Execution results: {result}\n"
             f"Status: {status}"
         )
+        final_prompt = self.system_prompt + instructions if isinstance(instructions, str) else self.system_prompt
 
         log("llm", f"[ResponseComposer] Generating reply (status={status}) (prompt={prompt})")
 
-        response = await self.provider.complete(system_prompt=self.system_prompt)
+        response = await self.provider.complete(system_prompt=final_prompt)
         raw: str = response['message']['content']
 
         return raw.strip()
+    
+    # compose optimistic / error / error / tool response ?? / summarize
+
+    async def compose_optimistic(
+            self,
+            intent: Intent,
+            user_input: str,
+    ):
+        optimistic_prompt = "Produce a short confirmation message acknowledging the request.\nMaximum 7 words. No explanation. Maintain SYRIS tone.\nExamples:\n - “Right away, sir.”\n - “On it, sir.”\n - “Initiating now.”\n - “Working on that.”\n - “As you wish.”\n - “Beginning the process.”\n - “Understood.”\n - “Certainly.”"
+        return await self.compose(
+            intent=intent, 
+            user_input=user_input,
+            instructions=optimistic_prompt
+        )
