@@ -17,14 +17,19 @@ class IntentParser:
 
         log("llm", f"[IntentParser] Parsing input (text={text})")
 
-        response = await self.provider.complete(system_prompt=self.system_prompt, prompt=prompt, tools=TOOL_MANIFEST)
+        response = await self.provider.complete(system_prompt=self.system_prompt, format=Intent.model_json_schema())
        
         if response.message.tool_calls:
+            tool_calls = response.message.tool_calls
+
             intent = Intent(
                 type = IntentType.TOOL,
-                subtype = response.message.tool_calls[0].function.name,
+                subtype = [tc.function.name for tc in tool_calls],
                 confidence= 1.0,
-                arguments = dict(response.message.tool_calls[0].function.arguments)
+                arguments = {
+                    tc.function.name: dict(tc.function.arguments)
+                    for tc in tool_calls
+                },
             )
             log("llm", f"[IntentParser] Intent classified via ToolExtraction as: {intent}")
             return intent

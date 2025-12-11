@@ -1,4 +1,5 @@
 import asyncio 
+import json
 from pathlib import Path
 
 from syris_core.llm.provider import LLMProvider
@@ -8,8 +9,9 @@ from syris_core.types.events import Event, EventType
 from syris_core.types.llm import Intent, IntentType
 from syris_core.events.bus import EventBus
 from syris_core.memory.working_memory import WorkingMemory
-from syris_core.tools.registry import TOOL_REGISTRY
+from syris_core.tools.registry import TOOL_REGISTRY, TOOL_PROMPT_LIST
 from syris_core.util.logger import log
+from syris_core.util.helpers import normalize_message_content
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "llm" / "prompts"
 
@@ -26,7 +28,7 @@ class Orchestrator:
         response_prompt = open(PROMPTS_DIR / "system.txt").read()
 
         provider = LLMProvider(working_memory=self.working_memory, model_name="gpt-oss")
-        self.intent_parser = IntentParser(provider=provider, system_prompt=intent_prompt)
+        self.intent_parser = IntentParser(provider=provider, system_prompt=intent_prompt.replace("{TOOL_PROMPT_LIST}", TOOL_PROMPT_LIST.strip()))
         self.response_composer = ResponseComposer(provider=provider, system_prompt=response_prompt)
 
         # Event queue
@@ -106,20 +108,37 @@ class Orchestrator:
         )
     
     async def _handle_tool(self, intent: Intent, user_text):
-        tool_name = intent.subtype
+        tool_names = intent.subtype if isinstance(intent.subtype, list) else [intent.subtype]
+
         args = intent.arguments
-        log("orchestrator", f"Handling tool {tool_name} with arguments {args}")
+        log("orchestrator", f"Handling tools {tool_names} with arguments {args}")
 
-        tool_entry = TOOL_REGISTRY.get(tool_name)
-        if not tool_entry:
-            # return await self.response_composer.compose(status="Error")
-            return "Tool not found."
+        results = {}
 
-        result = tool_entry["func"](**args)
-        self.working_memory.add(role="tool", tool_name=tool_name, content=result)
+        for tool_name in tool_names:
+            if not tool_name:
+                continue
 
-        return await self.response_composer.compose(
-            intent=intent,
-            user_input=user_text,
-            result={"result": result}
-        )
+            tool_entry = TOOL_REGISTRY.get(tool_name)
+
+            if not tool_entry:
+                # return await self.response_composer.compose(status="Error")
+                results[tool_name] = "Tool not found."
+                continue
+
+            tool_args = args.get(tool_name, {}) if isinstance(args, dict) else args
+
+            result = tool_entry["func"](**tool_args)
+            results[tool_name] = result
+
+            content = normalize_message_content(result)
+            self.working_memory.add(role="tool", tool_name=tool_name, content=content)
+        
+        try:
+            return await self.response_composer.compose(
+                intent=intent,
+                user_input=user_text,
+                result=results
+            )
+        except Exception as e:
+            return f"Error: {e}"

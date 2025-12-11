@@ -5,7 +5,7 @@ from pydantic import BaseModel
 class IntentType(str, Enum):
     CHAT = "chat"                     # normal conversation, greetings, small talk
     QUERY = "query"                   # ask for info (time, weather, definitions)
-    TOOL = "tool"             # direct invocation of a tool
+    TOOL = "tool"                     # direct invocation of a tool
     CONTROL = "control"               # device actions (lights, volume, etc.)
     SCHEDULE = "schedule"             # reminders, timers, alarms
     AUTONOMY = "autonomy"             # set automations (IFTTT style rules)
@@ -13,6 +13,6 @@ class IntentType(str, Enum):
 
 class Intent(BaseModel):
     type: IntentType
-    subtype: Optional[str] = None
+    subtype: Optional[str | list[str]] = None
     confidence: float
     arguments: Dict[str, Any] = {}

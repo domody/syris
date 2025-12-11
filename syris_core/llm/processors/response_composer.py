@@ -1,5 +1,6 @@
 import json
 
+from typing import Any
 from syris_core.llm.provider import LLMProvider
 from syris_core.types.llm import Intent
 from syris_core.util.logger import log
@@ -13,7 +14,7 @@ class ResponseComposer:
             self,
             intent: Intent,
             user_input: str,
-            result: dict | None = None,
+            result: dict[str, Any] | None = None,
             status: str = "normal",
     ):
         intent_json = json.dumps(intent.model_dump(), ensure_ascii=False)
@@ -26,7 +27,7 @@ class ResponseComposer:
 
         log("llm", f"[ResponseComposer] Generating reply (status={status}) (prompt={prompt})")
 
-        response = await self.provider.complete(system_prompt=self.system_prompt, prompt=prompt)
+        response = await self.provider.complete(system_prompt=self.system_prompt)
         raw: str = response['message']['content']
 
         return raw.strip()

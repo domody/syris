@@ -3,6 +3,7 @@ import importlib
 import pathlib
 
 TOOL_FUNCTIONS = []
+TOOL_PROMPT_LIST = ""
 TOOL_REGISTRY = {}
 TOOL_MANIFEST = []
 
@@ -54,3 +55,5 @@ for module_info in pkgutil.iter_modules([str(TOOLS_DIR)]):
         }
 
         TOOL_MANIFEST.append(tool_dict)
+
+        TOOL_PROMPT_LIST = TOOL_PROMPT_LIST + f"\n- {tool_key}: {metadata.get("description", f"No description")}"
