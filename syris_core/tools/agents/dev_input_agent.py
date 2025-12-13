@@ -1,4 +1,6 @@
 import asyncio
+import time
+
 from syris_core.types.events import Event, EventType
 from syris_core.util.logger import log
 
@@ -23,7 +25,7 @@ class DevInputAgent:
                 user_id="dev",
                 source="dev_console",
                 payload={"text": text},
-                timestamp=1
+                timestamp=time.time()
             )
 
             await self.event_bus.publish(event)

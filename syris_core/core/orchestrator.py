@@ -61,7 +61,7 @@ class Orchestrator:
     async def handle_event(self, event: Event):
         log("orchestrator", f"Handling event: {event.type} -> {event.payload}")
 
-        if event.type == EventType.INPUT:
+        if event.type in (EventType.INPUT, EventType.SCHEDULE):
             await self._handle_input(event=event)
     
     # Emit response
