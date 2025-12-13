@@ -4,11 +4,13 @@ from pathlib import Path
 
 from syris_core.llm.provider import LLMProvider
 from syris_core.llm.processors.intent_parser import IntentParser
+from syris_core.llm.processors.plan_generator import Planner
 from syris_core.llm.processors.response_composer import ResponseComposer
 from syris_core.types.events import Event, EventType
-from syris_core.types.llm import Intent, IntentType
+from syris_core.types.llm import Intent, IntentType, Plan, PlanExecutionResult
 from syris_core.events.bus import EventBus
 from syris_core.memory.working_memory import WorkingMemory
+from syris_core.execution.plan_executor import PlanExecutor
 from syris_core.tools.registry import TOOL_REGISTRY, TOOL_PROMPT_LIST
 from syris_core.util.logger import log
 from syris_core.util.helpers import normalize_message_content
@@ -25,15 +27,20 @@ class Orchestrator:
         
         # LLM Layer
         intent_prompt = open(PROMPTS_DIR / "intent.txt").read()
+        plan_prompt = open(PROMPTS_DIR / "planning.txt").read()
         response_prompt = open(PROMPTS_DIR / "system.txt").read()
 
         provider = LLMProvider(working_memory=self.working_memory, model_name="gpt-oss")
         self.intent_parser = IntentParser(provider=provider, system_prompt=intent_prompt.replace("{TOOL_PROMPT_LIST}", TOOL_PROMPT_LIST.strip()))
+        self.planner = Planner(provider=provider, system_prompt=plan_prompt.replace("{TOOL_PROMPT_LIST}", TOOL_PROMPT_LIST.strip()))
         self.response_composer = ResponseComposer(provider=provider, system_prompt=response_prompt)
 
         # Event queue
         self._event_queue = asyncio.Queue()
         self.event_bus = EventBus(self.dispatch_event)
+
+        # Execution
+        self.plan_executor = PlanExecutor()
 
     # Main loop
     async def start(self):
@@ -60,7 +67,7 @@ class Orchestrator:
     # Emit response
     async def _emit_response(self, text: str):
         log("core", f"{text}")
-
+    
     # Handle input events
     async def _handle_input(self, event: Event):
         user_text = event.payload["text"]
@@ -70,22 +77,22 @@ class Orchestrator:
 
         reply = await self._route_intent(intent=intent, user_text=user_text)
 
-        self.working_memory.add(role="assistant", content=reply)
-
-        await self._emit_response(reply)
+        if reply is not None:
+            self.working_memory.add(role="assistant", content=reply)
+            await self._emit_response(reply)
     
     # Route to correct handler based on intent type
-    async def _route_intent(self, intent: Intent, user_text: str) -> str:
+    async def _route_intent(self, intent: Intent, user_text: str) -> str | None:
         intent_type = intent.type
 
         if intent_type == IntentType.CHAT:
             return await self._handle_chat(intent=intent, user_text=user_text)
 
-        elif intent_type == IntentType.PLAN:
-            return await self._handle_plan(intent=intent, user_text=user_text)
-
         elif intent_type == IntentType.TOOL:
             return await self._handle_tool(intent=intent, user_text=user_text)
+
+        elif intent_type == IntentType.PLAN:
+            return await self._handle_plan(intent=intent, user_text=user_text)
 
         elif intent_type == "control":
             pass
@@ -106,6 +113,15 @@ class Orchestrator:
             intent=intent,
             user_input=user_text
         )
+    
+    async def _call_tool(self, tool_name: str, args):
+        tool_entry = TOOL_REGISTRY.get(tool_name)
+
+        if not tool_entry:
+            return "Tool not found."
+
+        result = tool_entry["func"](**args)
+        return result
     
     async def _handle_tool(self, intent: Intent, user_text):
         tool_names = intent.subtype if isinstance(intent.subtype, list) else [intent.subtype]
@@ -144,7 +160,24 @@ class Orchestrator:
             return f"Error: {e}"
         
     async def _handle_plan(self, intent: Intent, user_text):
-        return await self.response_composer.compose_optimistic(
+        optimistic = await self.response_composer.compose_optimistic(
             intent=intent,
             user_input=user_text
         )
+        await self._emit_response(optimistic)
+
+        asyncio.create_task(self._execute_plan_async(intent=intent, user_text=user_text))
+        return None
+    
+    async def _execute_plan_async(self, intent: Intent, user_text: str):
+        plan = await self.planner.generate()
+
+        result:PlanExecutionResult = await self.plan_executor.execute(user_text=user_text, plan=plan)
+        
+        assert not result.status == "in_progress"
+
+        response = await self.response_composer.compose_plan_summary(status=result.status, result=result)
+        self.working_memory.add(role="assistant", content=response)
+        await self._emit_response(response)
+
+    

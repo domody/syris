@@ -11,14 +11,14 @@ class LLMProvider:
 
         self.working_memory = working_memory
     
-    async def complete(self, system_prompt: str, format: Dict[str, Any] | Literal['', 'json'] | None = None, tools = None) -> ChatResponse:
+    async def complete(self, system_prompt: str, format: Dict[str, Any] | Literal['', 'json'] | None = None, tools = None, think: Literal["low", "medium", "high"] = "low") -> ChatResponse:
         messages = [
                 {"role": "system", "content": system_prompt},
                 *self.working_memory.get_context(),
         ]
         log("memory", f"[WorkingMemory] Previous Messages: {[*self.working_memory.get_context()]}")
 
-        response: ChatResponse = chat(model=self.model_name, messages=messages, format=format, think='low')
+        response: ChatResponse = chat(model=self.model_name, messages=messages, format=format, think=think)
         log("llm", f"[Provider] Response generated as: {response}")
 
         return response
