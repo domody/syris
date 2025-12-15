@@ -1,7 +1,8 @@
 import json
 
 from syris_core.llm.provider import LLMProvider
-from syris_core.types.llm import Intent, IntentType
+from syris_core.types.llm import Intent, IntentType, LLMCallOptions
+from syris_core.types.memory import MemorySnapshot
 from syris_core.tools.registry import TOOL_MANIFEST
 from syris_core.util.logger import log
 
@@ -10,10 +11,14 @@ class IntentParser:
         self.provider = provider
         self.system_prompt = system_prompt
 
-    async def parse(self, text: str) -> Intent:
+    async def parse(self, text: str, snap: MemorySnapshot) -> Intent:
         log("llm", f"[IntentParser] Parsing input (text={text})")
 
-        response = await self.provider.complete(system_prompt=self.system_prompt, format=Intent.model_json_schema())
+        response = await self.provider.complete(LLMCallOptions(
+                system_prompt=self.system_prompt, 
+                memory=snap.messages,
+                format=Intent.model_json_schema(),
+        ))
        
         if response.message.tool_calls:
             tool_calls = response.message.tool_calls

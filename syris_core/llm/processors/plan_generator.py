@@ -1,7 +1,8 @@
 import json
 
 from syris_core.llm.provider import LLMProvider
-from syris_core.types.llm import Intent, Plan
+from syris_core.types.llm import Intent, Plan, LLMCallOptions
+from syris_core.types.memory import MemorySnapshot
 from syris_core.util.logger import  log
 
 class Planner:
@@ -12,7 +13,12 @@ class Planner:
     async def generate(self) -> Plan:
         log("llm", f"[Planner] Generating plan...")
 
-        response = await self.provider.complete(system_prompt=self.system_prompt, format=Plan.model_json_schema(), think="medium")
+        response = await self.provider.complete(LLMCallOptions(
+                system_prompt=self.system_prompt, 
+                format=Plan.model_json_schema(), 
+                think="medium"
+            ))
+        
         raw: str = response["message"]["content"]
 
         try:

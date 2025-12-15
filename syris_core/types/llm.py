@@ -40,3 +40,9 @@ class PlanExecutionResult(BaseModel):
     start_time: float
     end_time: float | None
     exception: str | None = None
+
+class LLMCallOptions(BaseModel):
+    system_prompt: str
+    memory: Optional[list[dict[str, Any]]] = None
+    format: Dict[str, Any] | Literal["", "json"] | None = None
+    think: Literal["low", "medium", "high"] = "low"

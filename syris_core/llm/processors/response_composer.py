@@ -1,8 +1,9 @@
 import json
 
-from typing import Any, Literal
+from typing import Any, Optional
 from syris_core.llm.provider import LLMProvider
-from syris_core.types.llm import Intent, PlanExecutionResult
+from syris_core.types.llm import Intent, PlanExecutionResult, LLMCallOptions
+from syris_core.types.memory import MemorySnapshot
 from syris_core.util.logger import log
 
 class ResponseComposer:
@@ -11,49 +12,42 @@ class ResponseComposer:
         self.system_prompt = system_prompt
 
     async def compose(
-            self,
-            intent: Intent,
-            user_input: str,
-            result: dict[str, Any] | None = None,
-            status: str = "normal",
-            instructions: str | None = None
-    ):
-        intent_json = json.dumps(intent.model_dump(), ensure_ascii=False)
-        # prompt = (
-        #     f"Intent: {intent_json}\n"
-        #     f"User message: {user_input}\n"
-        #     f"Execution results: {result}\n"
-        #     f"Status: {status}"
-        # )
-        final_prompt = self.system_prompt + instructions if isinstance(instructions, str) else self.system_prompt
+            self, *, 
+            snap: MemorySnapshot | None, 
+            override_prompt: str | None = None, 
+            instructions: str | None = None,
+            extra_messages: Optional[list[dict[str, Any]]] = None
+        ):
+ 
+        base = override_prompt or self.system_prompt
+        final = base if not instructions else f"{base}\n\n{instructions}"
 
+        messages = [*snap.messages, *(extra_messages or [])] if snap else []
         # log("llm", f"[ResponseComposer] Generating reply (status={status}) (prompt={prompt})")
 
-        response = await self.provider.complete(system_prompt=final_prompt)
-        raw: str = response['message']['content']
-
-        return raw.strip()
+        response = await self.provider.complete(LLMCallOptions(
+            system_prompt=final,
+            memory=messages
+        ))
+        return response["message"]["content"].strip()
     
     # compose optimistic / error / tool response ?? / summarize
 
     async def compose_optimistic(
             self,
-            intent: Intent,
-            user_input: str,
+            snap: MemorySnapshot | None
     ):
-        optimistic_prompt = "Produce a short confirmation message acknowledging the request.\nMaximum 7 words. No explanation. Maintain SYRIS tone.\nExamples:\n - “Right away, sir.”\n - “On it, sir.”\n - “Initiating now.”\n - “Working on that.”\n - “As you wish.”\n - “Beginning the process.”\n - “Understood.”\n - “Certainly.”"
+        optimistic_instructions = "Produce a short confirmation message acknowledging the request.\nMaximum 7 words. No explanation. Maintain SYRIS tone.\nExamples:\n - “Right away, sir.”\n - “On it, sir.”\n - “Initiating now.”\n - “Working on that.”\n - “As you wish.”\n - “Beginning the process.”\n - “Understood.”\n - “Certainly.”"
 
         return await self.compose(
-            intent=intent, 
-            user_input=user_input,
-            instructions=optimistic_prompt,
-            status="confirm"
+            snap = snap,
+            instructions = optimistic_instructions
         )
     
     async def compose_plan_summary(
             self,
             result: PlanExecutionResult,
-            status: Literal["success", "partial", "failed"]
+            snap: MemorySnapshot | None
     ):  
     
         assert result.end_time
@@ -112,7 +106,7 @@ User request:
 {result.user_input}
 
 Execution status:
-{result.user_input}
+{result.status}
 
 Completed steps:
 {", ".join(result.completed_steps) if len(result.completed_steps) > 0 else "None"}
@@ -136,7 +130,7 @@ Exception (if any):
 
 """
 
-        response = await self.provider.complete(system_prompt=plan_summary_prompt)
-        raw: str = response['message']['content']
-
-        return raw.strip()
+        return await self.compose(
+            snap = snap,
+            override_prompt = plan_summary_prompt
+        )
