@@ -16,18 +16,9 @@ class AutomationScheduler:
 
     def start(self):
         for automation in AUTOMATIONS:
-            self.scheduler.add_job(
-                func=self._emit_automation_event,
-                trigger=automation.trigger,
-                kwargs={"automation": automation},
-                id=automation.id,
-                replace_existing=True,
-            )
+            self.register(automation=automation)
 
         self.scheduler.start()
-
-    def shutdown(self):
-        self.scheduler.shutdown()
 
     async def _emit_automation_event(self, automation: Automation):
         event = Event(
@@ -38,3 +29,18 @@ class AutomationScheduler:
         log("scheduler", f"Automation fired: {automation.id}")
 
         await self.event_bus.publish(event)
+
+    def register(self, automation: Automation):
+        self.scheduler.add_job(
+            func=self._emit_automation_event,
+            trigger=automation.trigger,
+            kwargs={"automation": automation},
+            id=automation.id,
+            replace_existing=True,
+        )
+
+    def remove(self, automation_id: str):
+        self.scheduler.remove_job(job_id=automation_id)
+
+    def shutdown(self):
+        self.scheduler.shutdown()

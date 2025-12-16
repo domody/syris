@@ -2,6 +2,7 @@ import asyncio
 from syris_core.core.orchestrator import Orchestrator
 from syris_core.types.events import Event, EventType
 from syris_core.automation.scheduler import AutomationScheduler
+from syris_core.automation.service import SchedulingService
 from syris_core.util.logger import log
 from syris_core.tools.agents.dev_input_agent import DevInputAgent
 
@@ -19,6 +20,9 @@ async def main():
     # Start background agents
     scheduler = AutomationScheduler(orch.event_bus)
     scheduler.start()
+
+    scheduling_service = SchedulingService(scheduler)
+    orch.set_scheduling_service(scheduling_service=scheduling_service)
 
     # Listeners
 

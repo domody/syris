@@ -8,6 +8,7 @@ from syris_core.llm.processors.plan_generator import Planner
 from syris_core.llm.processors.response_composer import ResponseComposer
 from syris_core.types.events import Event, EventType
 from syris_core.types.task import Automation
+from syris_core.automation.service import SchedulingService
 from syris_core.types.llm import Intent, IntentType, Plan, PlanExecutionResult
 from syris_core.types.memory import MemorySnapshot
 from syris_core.events.bus import EventBus
@@ -57,6 +58,9 @@ class Orchestrator:
         # Execution
         self.plan_executor = PlanExecutor()
 
+        # Scheduling
+        self.scheduling_service: SchedulingService | None = None
+
     # Main loop
     async def start(self):
         log("orchestrator", "Started event loop.")
@@ -67,6 +71,14 @@ class Orchestrator:
             asyncio.create_task(self._handle_event_safe(event))
 
             self._event_queue.task_done()
+
+    def set_scheduling_service(self, scheduling_service: SchedulingService):
+        self.scheduling_service = scheduling_service
+
+    def require_scheduling_service(self) -> SchedulingService:
+        if not self.scheduling_service:
+            raise RuntimeError("SchedulingService not initialized on Orchestrator")
+        return self.scheduling_service
 
     async def _handle_event_safe(self, event: Event):
         try:
@@ -108,6 +120,7 @@ class Orchestrator:
             self.working_memory.add(role="assistant", content=reply)
             await self._emit_response(reply)
 
+    # Handle scheduled events
     async def _handle_automation(self, event: Event):
         automation: Automation = event.payload["automation"]
         if automation.mode == "plan":
