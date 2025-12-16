@@ -85,42 +85,7 @@ class Orchestrator:
         if event.type == EventType.INPUT:
             await self._handle_input(event=event)
         elif event.type == EventType.SCHEDULE:
-            automation: Automation = event.payload["automation"]
-            if automation.mode == "plan":
-                plan: Plan = automation.plan
-                result: PlanExecutionResult = await self.plan_executor.execute(
-                    user_text="No user text available; Plan generated from automation.",
-                    plan=plan,
-                )
-
-                assert not result.status == "in_progress"
-
-                # generate plan summary with no memory as automated plans should be independant of recent working memory
-                response = await self.response_composer.compose_plan_summary(
-                    snap=None, result=result
-                )
-
-                self.working_memory.add(
-                    role="assistant", scope="automation", content=response
-                )
-                await self._emit_response(response)
-
-            elif automation.mode == "prompt":
-                await self._handle_input(
-                    Event(
-                        type=EventType.SCHEDULE,
-                        user_id=event.user_id,
-                        source=event.source,
-                        payload={"text": automation.text},
-                        timestamp=event.timestamp,
-                    )
-                )
-
-            elif automation.mode == "timer":
-                log("core", "Your timer is done.")
-
-            elif automation.mode == "alarm":
-                log("core", "Your alarm has been triggered.")
+            await self._handle_automation(event=event)
 
     # Emit response
     async def _emit_response(self, text: str):
@@ -142,6 +107,44 @@ class Orchestrator:
         if reply is not None:
             self.working_memory.add(role="assistant", content=reply)
             await self._emit_response(reply)
+
+    async def _handle_automation(self, event: Event):
+        automation: Automation = event.payload["automation"]
+        if automation.mode == "plan":
+            plan: Plan = automation.plan
+            result: PlanExecutionResult = await self.plan_executor.execute(
+                user_text="No user text available; Plan generated from automation.",
+                plan=plan,
+            )
+
+            assert not result.status == "in_progress"
+
+            # generate plan summary with no memory as automated plans should be independant of recent working memory
+            response = await self.response_composer.compose_plan_summary(
+                snap=None, result=result
+            )
+
+            self.working_memory.add(
+                role="assistant", scope="automation", content=response
+            )
+            await self._emit_response(response)
+
+        elif automation.mode == "prompt":
+            await self._handle_input(
+                Event(
+                    type=EventType.SCHEDULE,
+                    user_id=event.user_id,
+                    source=event.source,
+                    payload={"text": automation.text},
+                    timestamp=event.timestamp,
+                )
+            )
+
+        elif automation.mode == "timer":
+            log("core", "Your timer is done.")
+
+        elif automation.mode == "alarm":
+            log("core", "Your alarm has been triggered.")
 
     # Route to correct handler based on intent type
     async def _route_intent(
