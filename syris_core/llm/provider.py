@@ -9,7 +9,7 @@ from syris_core.util.logger import log
 class LLMProvider:
     def __init__(self, model_name: str = "gpt-oss"):
         self.model_name = model_name
-        self.client = AsyncClient()
+        self.client = AsyncClient(host = "http://127.0.0.1:11434")
 
     async def complete(
             self, 
