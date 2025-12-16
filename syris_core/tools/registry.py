@@ -45,15 +45,17 @@ for module_info in pkgutil.iter_modules([str(TOOLS_DIR)]):
             "function": {
                 "name": tool_key,
                 "description": description,
-
                 "parameters": {
                     "type": "object",
                     "properties": {},
                 },
             },
-            "py_function": func
+            "py_function": func,
         }
 
         TOOL_MANIFEST.append(tool_dict)
 
-        TOOL_PROMPT_LIST = TOOL_PROMPT_LIST + f"\n- {tool_key}: {metadata.get("description", f"No description")}"
+        TOOL_PROMPT_LIST = (
+            TOOL_PROMPT_LIST
+            + f"\n- {tool_key}: {metadata.get('description', f'No description')}"
+        )

@@ -6,52 +6,43 @@ from syris_core.types.llm import Intent, PlanExecutionResult, LLMCallOptions
 from syris_core.types.memory import MemorySnapshot
 from syris_core.util.logger import log
 
+
 class ResponseComposer:
     def __init__(self, provider: LLMProvider, system_prompt: str):
         self.provider = provider
         self.system_prompt = system_prompt
 
     async def compose(
-            self, *, 
-            snap: MemorySnapshot | None, 
-            override_prompt: str | None = None, 
-            instructions: str | None = None,
-            extra_messages: Optional[list[dict[str, Any]]] = None
-        ):
- 
+        self,
+        *,
+        snap: MemorySnapshot | None,
+        override_prompt: str | None = None,
+        instructions: str | None = None,
+        extra_messages: Optional[list[dict[str, Any]]] = None,
+    ):
         base = override_prompt or self.system_prompt
         final = base if not instructions else f"{base}\n\n{instructions}"
 
         messages = [*snap.messages, *(extra_messages or [])] if snap else []
         # log("llm", f"[ResponseComposer] Generating reply (status={status}) (prompt={prompt})")
 
-        response = await self.provider.complete(LLMCallOptions(
-            system_prompt=final,
-            memory=messages
-        ))
+        response = await self.provider.complete(
+            LLMCallOptions(system_prompt=final, memory=messages)
+        )
         return response["message"]["content"].strip()
-    
+
     # compose optimistic / error / tool response ?? / summarize
 
-    async def compose_optimistic(
-            self,
-            snap: MemorySnapshot | None
-    ):
+    async def compose_optimistic(self, snap: MemorySnapshot | None):
         optimistic_instructions = "Produce a short confirmation message acknowledging the request.\nMaximum 7 words. No explanation. Maintain SYRIS tone.\nExamples:\n - “Right away, sir.”\n - “On it, sir.”\n - “Initiating now.”\n - “Working on that.”\n - “As you wish.”\n - “Beginning the process.”\n - “Understood.”\n - “Certainly.”"
 
-        return await self.compose(
-            snap = snap,
-            instructions = optimistic_instructions
-        )
-    
+        return await self.compose(snap=snap, instructions=optimistic_instructions)
+
     async def compose_plan_summary(
-            self,
-            result: PlanExecutionResult,
-            snap: MemorySnapshot | None
-    ):  
-    
+        self, result: PlanExecutionResult, snap: MemorySnapshot | None
+    ):
         assert result.end_time
-        
+
         plan_summary_prompt = f"""
 You are summarizing the outcome of a completed plan execution.
 
@@ -130,7 +121,4 @@ Exception (if any):
 
 """
 
-        return await self.compose(
-            snap = snap,
-            override_prompt = plan_summary_prompt
-        )
+        return await self.compose(snap=snap, override_prompt=plan_summary_prompt)

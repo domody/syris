@@ -9,22 +9,19 @@ from syris_core.types.memory import MemorySnapshot
 #  - Hybring working memory containing: immediate messages, thread context, system state, relevant semantic recalls.
 #  - When a thread goes stale, summarize contents and relevant points, archive to relevant stores, remove.
 
+
 class WorkingMemory:
     def __init__(self, max_messages: int = 8):
         self.max_messages = max_messages
         self._buffers: dict[str, deque] = {
-            "chat": deque(maxlen = max_messages),
-            "automation": deque(maxlen = max_messages)
+            "chat": deque(maxlen=max_messages),
+            "automation": deque(maxlen=max_messages),
         }
 
     def add(
-        self, 
-        role: str, 
-        content: str, 
-        scope: str = "chat",
-        tool_name: str | None = None
+        self, role: str, content: str, scope: str = "chat", tool_name: str | None = None
     ):
-        buffer = self._buffers.setdefault(scope, deque(maxlen = self.max_messages))
+        buffer = self._buffers.setdefault(scope, deque(maxlen=self.max_messages))
         msg = {"role": role, "content": content}
         if tool_name:
             msg["tool_name"] = tool_name
@@ -37,8 +34,8 @@ class WorkingMemory:
             buffer = self._buffers.get(scope)
             if buffer:
                 merged.extend(list(buffer))
-                
-        return MemorySnapshot(messages = merged)
+
+        return MemorySnapshot(messages=merged)
 
     def clear(self, *, scope: str | None = None):
         if scope is None:

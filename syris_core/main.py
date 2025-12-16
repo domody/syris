@@ -15,7 +15,7 @@ async def main():
     # Register global event handlers
     dev_agent = DevInputAgent(orch.event_bus)
     asyncio.create_task(dev_agent.start())
-    
+
     # Start background agents
     scheduler = AutomationScheduler(orch.event_bus)
     scheduler.start()
@@ -27,6 +27,7 @@ async def main():
     log("core", "Entering main orchestration loop.")
 
     await orch.start()
+
 
 if __name__ == "__main__":
     try:

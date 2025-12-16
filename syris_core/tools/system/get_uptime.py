@@ -1,6 +1,7 @@
 import psutil
 import time
 
+
 def get_uptime():
     boot = psutil.boot_time()
     seconds = time.time() - boot
