@@ -13,8 +13,10 @@ CREATE TABLE IF NOT EXISTS vector_memory (
 );
 """
 
+
 def get_vector_connection() -> sqlite3.Connection:
     return get_connection(DB_PATH, enable_foreign_keys=False)
+
 
 def init_vector_db():
     init_db(DB_PATH, SCHEMA, enable_foreign_keys=False)

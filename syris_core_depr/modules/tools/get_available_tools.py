@@ -8,17 +8,11 @@ METADATA: Metadata = {
         "Returns a dictionary mapping each registered tool name to its metadata, "
         "including description, input schema, output schema, errors, and examples."
     ),
-    "input_schema": {
-        "type": "object",
-        "properties": {},
-        "required": []
-    },
+    "input_schema": {"type": "object", "properties": {}, "required": []},
     "output_schema": {
         "type": "object",
-        "properties": {
-            "type": "object"
-        },
-        "description": "Dictionary mapping tool names to their associated metadata."
+        "properties": {"type": "object"},
+        "description": "Dictionary mapping tool names to their associated metadata.",
     },
     "errors": [],
     "examples": [
@@ -30,15 +24,14 @@ METADATA: Metadata = {
                     "input_schema": {...},
                     "output_schema": {...},
                     "errors": [...],
-                    "examples": [...]
+                    "examples": [...],
                 },
-                "get_memory_usage": {
-                    "...": "..."
-                }
-            }
+                "get_memory_usage": {"...": "..."},
+            },
         }
-    ]
+    ],
 }
+
 
 def get_available_tools():
     tools_metadata = {}
@@ -50,17 +43,13 @@ def get_available_tools():
             meta = {
                 "name": name,
                 "description": "No metadata available.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                },
+                "input_schema": {"type": "object", "properties": {}, "required": []},
                 "output_schema": {
                     "type": "object",
-                    "description": "Unknown result structure."
+                    "description": "Unknown result structure.",
                 },
                 "errors": [],
-                "examples": []
+                "examples": [],
             }
 
         tools_metadata[name] = meta

@@ -12,7 +12,9 @@ DB_PATH = Path(__file__).parent.parent.parent / "data" / "memory_vector.db"
 
 if __name__ == "__main__":
     print("Query: 'What typing system did we choose?'\n")
-    results = query_vector_memory("what typing system did we use", top_k=4, db_path=DB_PATH)
+    results = query_vector_memory(
+        "what typing system did we use", top_k=4, db_path=DB_PATH
+    )
 
     for score, text in results:
         print(f"{score:.3f} - {text}")

@@ -30,7 +30,59 @@ STRICT RULES:
        Examples: lights, volume, smart home actions.
 
    - "schedule":
-       Used for any intent to create, modify, or cancel reminders, alarms, timers, or events scheduled for the future.
+       Used for any intent related to creating, listing, or canceling time-based events.
+       This includes timers, alarms, and scheduled automations.
+       When "type" is "schedule", you MUST select exactly one valid schedule action
+       using the "subtype" field.
+
+       Valid schedule subtypes:
+         - "schedule.set"     -> create a new timer, alarm, or automation
+         - "schedule.cancel"  -> cancel an existing timer, alarm, or automation
+         - "schedule.list"    -> list existing timers, alarms, or automations
+
+       When subtype == "schedule.set":
+        - Arguments MUST describe the schedule being created.
+        - You MUST specify the kind of schedule using:
+          kind: "timer" | "alarm" | "automation" | "plan"
+
+        - Timing fields:
+          You MUST provide EXACTLY ONE timing field appropriate to the kind.
+          Allowed timing fields are:
+            delay_seconds    -> for timers (relative time)
+            run_at           -> for one-time alarms (absolute datetime)
+            cron             -> for recurring schedules (automations; or plans if recurring)
+            time_expression  -> for natural-language time (e.g. "tomorrow 4am", "in 20 minutes", "weekdays at 9am")
+
+        - Rules:
+          - You MUST NOT include multiple timing fields.
+          - Prefer using time_expression when the user uses relative / natural phrases
+            ("tomorrow", "next week", "weekdays", "every day", "in 20 minutes").
+          - Only use delay_seconds/run_at/cron when the user gives an unambiguous value
+            OR when you can confidently express it without guessing.
+          - If the user’s request is ambiguous (e.g. "set an alarm for 9"), still output
+            time_expression capturing the ambiguity (e.g. "9am") rather than inventing
+            a date.
+
+        - Labels:
+          - Include a "label" when one is implied or provided (e.g. "Weekday 9am alarm").
+
+        - A cron value is a string that defines a recurring schedule using 5 fields:
+          minute hour day-of-month month day-of-week
+          Examples:
+          - "0 9 * * *"    → every day at 9:00
+          - "*/10 * * * *" → every 10 minutes
+          - "0 8 * * 1"    → every Monday at 8:00
+          - "0 18 * * 1-5" → weekdays at 6:00 PM
+
+       When type == "schedule" and subtype == "schedule.cancel":
+          - "arguments" MUST identify the schedule to cancel.
+          - Use an "id" if known.
+          - Use a "label" if the user refers to the schedule by name.
+
+       When type == "schedule" and subtype == "schedule.list":
+          - "arguments" MUST include:
+              kind: "timer" | "alarm" | "automation" | "all"
+          - If no kind is specified, list all schedules.
 
    - "autonomy":
        Used when the user asks SYRIS to create or modify an automation rule.

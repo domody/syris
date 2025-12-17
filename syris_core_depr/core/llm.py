@@ -1,11 +1,12 @@
 import json
 from ollama import chat
 from ollama import ChatResponse
-from  .memory import Memory
+from .memory import Memory
 from ..modules.tools import TOOLS, TOOL_MAP
 
+
 class SyrisLLM:
-    def __init__(self, model = "gpt-oss", system_prompt = ""):
+    def __init__(self, model="gpt-oss", system_prompt=""):
         self.model = model
         self.memory = Memory()
 
@@ -34,7 +35,6 @@ class SyrisLLM:
             print("--- END ---\n")
 
     def _safe_serialize(self, obj):
-
         if obj is None:
             return None
 
@@ -51,16 +51,18 @@ class SyrisLLM:
             return {k: self._safe_serialize(v) for k, v in obj.items()}
 
         return obj
- 
+
     def ask(self, text):
         self.memory.add(role="user", content=text)
 
         messages = [self.system_message] + self.memory.get_context()
 
-        response: ChatResponse = chat(model=self.model, messages=messages, tools=self.tools, think='low')
+        response: ChatResponse = chat(
+            model=self.model, messages=messages, tools=self.tools, think="low"
+        )
         self.log("RAW RESPONSE", response)
-        reply = response['message']['content']
-        
+        reply = response["message"]["content"]
+
         if response.message.tool_calls:
             self.log("TOOL CALL", response.message.tool_calls)
             call = response.message.tool_calls[0]
@@ -82,10 +84,7 @@ class SyrisLLM:
             final_messages = messages + [tool_message]
 
             final_response: ChatResponse = chat(
-                model=self.model,
-                messages=final_messages,
-                tools=self.tools,
-                think="low"
+                model=self.model, messages=final_messages, tools=self.tools, think="low"
             )
             self.log("FINAL RESPONSE", final_response)
 
@@ -97,7 +96,7 @@ class SyrisLLM:
         self.memory.add("assistant", reply)
 
         return reply
-        
+
     async def stream(self, text: str):
         self.memory.add(role="user", content=text)
 
@@ -111,7 +110,9 @@ class SyrisLLM:
         while True:
             loop_count += 1
             if loop_count > MAX_LOOPS:
-                self.log("ERROR", "Exceeded max tool-call loops (possible infinite loop)")
+                self.log(
+                    "ERROR", "Exceeded max tool-call loops (possible infinite loop)"
+                )
                 yield {"type": "error", "token": "Tool loop exceeded"}
                 return
 
@@ -146,8 +147,13 @@ class SyrisLLM:
                 if chunk.message.tool_calls:
                     accumulated_tool_calls.extend(chunk.message.tool_calls)
 
-                    self.log("TOOL CALL", self._safe_serialize(chunk.message.tool_calls))
-                    yield {"type": "tool_call", "token": self._safe_serialize(chunk.message.tool_calls)}
+                    self.log(
+                        "TOOL CALL", self._safe_serialize(chunk.message.tool_calls)
+                    )
+                    yield {
+                        "type": "tool_call",
+                        "token": self._safe_serialize(chunk.message.tool_calls),
+                    }
                     continue
 
                 if chunk.message.content:
@@ -196,18 +202,20 @@ class SyrisLLM:
                     "token": str(result),
                 }
 
-                messages.append({
-                    "role": "tool",
-                    "tool_name": tool_name,
-                    "content": str(result),
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_name": tool_name,
+                        "content": str(result),
+                    }
+                )
 
         self.log("STREAM END", {})
         yield {"type": "end"}
 
     def run_chat_loop(self):
         print("SYRIS online.")
-        
+
         while True:
             user = input("You: ")
             if user.lower() in ["exit", "quit"]:

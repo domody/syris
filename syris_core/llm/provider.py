@@ -15,13 +15,20 @@ class LLMProvider:
     async def complete(self, call: LLMCallOptions) -> ChatResponse:
         messages = [{"role": "system", "content": call.system_prompt}]
 
+        if call.instructions:
+            messages.extend([{"role": "system", "content": call.instructions}])
+
         if call.memory:
             messages.extend(call.memory)
             log("memory", f"[WorkingMemory] Previous Messages: {call.memory}")
 
-        return await self.client.chat(
+        response = await self.client.chat(
             model=self.model_name,
             messages=messages,
             format=call.format,
             think=call.think,
         )
+
+        log("llm", f"[Provider] Thinking: {response.message.thinking}")
+
+        return response

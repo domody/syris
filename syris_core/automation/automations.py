@@ -31,20 +31,20 @@ AUTOMATIONS: list[Automation] = [
         mode="plan",
         plan=SYSTEM_DIAGNOSTIC_PLAN,
     ),
-    PlanAutomation(
-        id="dev_startup_diagnostic",
-        trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=10)),
-        mode="plan",
-        plan=SYSTEM_DIAGNOSTIC_PLAN,
-    ),
-    TimerAutomation(
-        id="dev_startup_timer",
-        trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=3)),
-        mode="timer",
-    ),
-    AlarmAutomation(
-        id="dev_startup_alarm",
-        trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=6)),
-        mode="alarm",
-    ),
+    # PlanAutomation(
+    #     id="dev_startup_diagnostic",
+    #     trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=10)),
+    #     mode="plan",
+    #     plan=SYSTEM_DIAGNOSTIC_PLAN,
+    # ),
+    # TimerAutomation(
+    #     id="dev_startup_timer",
+    #     trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=3)),
+    #     mode="timer",
+    # ),
+    # AlarmAutomation(
+    #     id="dev_startup_alarm",
+    #     trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=6)),
+    #     mode="alarm",
+    # ),
 ]

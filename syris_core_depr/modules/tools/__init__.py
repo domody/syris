@@ -15,5 +15,5 @@ for module_info in pkgutil.iter_modules(package):
 
         if hasattr(module, "METADATA"):
             TOOL_MAP[module_name] = {"func": func, "metadata": module.METADATA}
-        else: 
+        else:
             TOOL_MAP[module_name] = {"func": func, "metadata": None}

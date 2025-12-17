@@ -1,6 +1,7 @@
 from pathlib import Path
 import sqlite3
 
+
 def get_connection(db_path: Path, enable_foreign_keys: bool = True):
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -9,6 +10,7 @@ def get_connection(db_path: Path, enable_foreign_keys: bool = True):
     if enable_foreign_keys:
         conn.execute("PRAGMA foreign_keys = ON;")
     return conn
+
 
 def init_db(db_path: Path, schema_sql: str, enable_foreign_keys: bool = True) -> None:
     conn = get_connection(db_path=db_path, enable_foreign_keys=enable_foreign_keys)

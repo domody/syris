@@ -1,22 +1,39 @@
 import asyncio
-import json
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from pathlib import Path
+from apscheduler.triggers.date import DateTrigger
+from apscheduler.triggers.cron import CronTrigger
 
 from syris_core.llm.provider import LLMProvider
 from syris_core.llm.processors.intent_parser import IntentParser
 from syris_core.llm.processors.plan_generator import Planner
 from syris_core.llm.processors.response_composer import ResponseComposer
 from syris_core.types.events import Event, EventType
-from syris_core.types.task import Automation
+from syris_core.types.task import (
+    Automation,
+    AlarmAutomation,
+    PlanAutomation,
+    PromptAutomation,
+    TimerAutomation,
+    TriggerType,
+)
 from syris_core.automation.service import SchedulingService
-from syris_core.types.llm import Intent, IntentType, Plan, PlanExecutionResult
+from syris_core.types.llm import (
+    Intent,
+    IntentType,
+    Plan,
+    PlanExecutionResult,
+    ScheduleAction,
+    ScheduleSetArgs,
+)
 from syris_core.types.memory import MemorySnapshot
 from syris_core.events.bus import EventBus
 from syris_core.memory.working_memory import WorkingMemory
 from syris_core.execution.plan_executor import PlanExecutor
 from syris_core.tools.registry import TOOL_REGISTRY, TOOL_PROMPT_LIST
 from syris_core.util.logger import log
-from syris_core.util.helpers import normalize_message_content
+from syris_core.util.helpers import normalize_message_content, resolve_run_at
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "llm" / "prompts"
 
@@ -163,7 +180,7 @@ class Orchestrator:
     async def _route_intent(
         self, intent: Intent, user_text: str, snap: MemorySnapshot
     ) -> str | None:
-        intent_type = intent.type
+        intent_type = intent.root.type
 
         if intent_type == IntentType.CHAT:
             return await self._handle_chat(
@@ -180,10 +197,12 @@ class Orchestrator:
                 intent=intent, user_text=user_text, snap=snap
             )
 
-        elif intent_type == "control":
-            pass
+        elif intent_type == IntentType.SCHEDULE:
+            return await self._handle_schedule(
+                intent=intent, user_text=user_text, snap=snap
+            )
 
-        elif intent_type == "schedule":
+        elif intent_type == "control":
             pass
 
         elif intent_type == "autonmy":
@@ -207,10 +226,14 @@ class Orchestrator:
         return result
 
     async def _handle_tool(self, intent: Intent, user_text, snap: MemorySnapshot):
+        intent_obj = intent.root
+        assert not intent_obj.type == IntentType.SCHEDULE
         tool_names = (
-            intent.subtype if isinstance(intent.subtype, list) else [intent.subtype]
+            intent_obj.subtype
+            if isinstance(intent_obj.subtype, list)
+            else [intent_obj.subtype]
         )
-        args = intent.arguments
+        args = intent_obj.arguments
         results = {}
         tool_messages: list[dict] = []
 
@@ -275,3 +298,68 @@ class Orchestrator:
 
         self.working_memory.add(role="assistant", content=response)
         await self._emit_response(response)
+
+    async def _handle_schedule(
+        self, intent: Intent, user_text: str, snap: MemorySnapshot
+    ):
+        intent_obj = intent.root
+
+        if intent_obj.subtype != ScheduleAction.SET:
+            return
+
+        args = intent_obj.arguments
+        if not isinstance(args, ScheduleSetArgs):
+            raise TypeError(f"Schedule arguments are of incorrect type: {type(args)!r}")
+
+        tz = ZoneInfo("Europe/London")
+        now = datetime.now(tz=tz)
+        trigger = self._build_trigger(args=args, now=now, tz=tz)
+        automation = self._build_automation(args=args, trigger=trigger)
+        log("core", f"{automation}")
+
+        scheduler = self.require_scheduling_service()
+        await scheduler.add_automation(automation=automation)
+        await self._emit_response("Yes sir.")
+
+    def _build_trigger(self, args: ScheduleSetArgs, now: datetime, tz: ZoneInfo):
+        # Pick exactly one scheduling mechanism.
+        if args.time_expression:
+            run_at = resolve_run_at(
+                time_expression=args.time_expression, now=now, tz=tz
+            )
+            return DateTrigger(run_date=run_at)
+
+        if args.cron:
+            minute, hour, day, month, day_of_week = args.cron.split()
+            return CronTrigger(
+                minute=minute,
+                hour=hour,
+                day=day,
+                month=month,
+                day_of_week=day_of_week,
+            )
+
+        if args.delay_seconds is not None:
+            return DateTrigger(run_date=now + timedelta(seconds=args.delay_seconds))
+
+        if args.run_at:
+            return DateTrigger(run_date=args.run_at)
+
+        raise ValueError(
+            "No scheduling info provided (expected time_expression, cron, delay_seconds, or run_at)."
+        )
+
+    def _build_automation(self, args: ScheduleSetArgs, trigger: TriggerType):
+        common = dict(
+            id=args.id,
+            trigger=trigger,
+            label=args.label,
+        )
+
+        if args.kind == "alarm":
+            return AlarmAutomation(mode="alarm", **common)
+
+        if args.kind == "timer":
+            return TimerAutomation(mode="timer", **common)
+
+        raise ValueError(f"Unknown automation kind: {args.kind!r}")

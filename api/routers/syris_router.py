@@ -4,15 +4,19 @@ from pydantic import BaseModel
 from syris_core_depr import engine
 import json
 
+
 class ChatRequest(BaseModel):
     message: str
 
+
 router = APIRouter()
+
 
 @router.post("/chat")
 def chat(req: ChatRequest):
     reply = engine.ask(req.message)
     return {"response": reply}
+
 
 @router.get("/stream")
 async def stream_chat(message: str):
@@ -23,7 +27,4 @@ async def stream_chat(message: str):
 
         yield 'data: {"type": "end"}\n\n'
 
-    return StreamingResponse(
-        token_generator(),
-        media_type="text/event-stream"
-    )
+    return StreamingResponse(token_generator(), media_type="text/event-stream")

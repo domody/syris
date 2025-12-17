@@ -26,10 +26,12 @@ def seed():
         # Create a simple deterministic embedding (3 floats)
         # Replace with real embeddings later
         vec = np.array(
-            [hash(text) % 1000 / 1000.0,
-             len(text) % 100 / 100.0,
-             (sum(map(ord, text)) % 500) / 500.0],
-            dtype=np.float16
+            [
+                hash(text) % 1000 / 1000.0,
+                len(text) % 100 / 100.0,
+                (sum(map(ord, text)) % 500) / 500.0,
+            ],
+            dtype=np.float16,
         )
 
         blob = vec.tobytes()
@@ -40,7 +42,7 @@ def seed():
     # Insert rows
     cur.executemany(
         "INSERT INTO vector_memory (embedding, text, created_at) VALUES (?, ?, ?)",
-        entries
+        entries,
     )
 
     conn.commit()

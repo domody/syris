@@ -1,8 +1,9 @@
 import json
 import os
 
-class Memory: 
-    def __init__(self, long_term_file="data/memory.json", max_short_term = 20):
+
+class Memory:
+    def __init__(self, long_term_file="data/memory.json", max_short_term=20):
         self.long_term_file = long_term_file
         self.max_short_term = max_short_term
 
@@ -41,14 +42,14 @@ class Memory:
     def _load_long_term(self):
         if not os.path.exists(self.long_term_file):
             return []
-        
+
         try:
             with open(self.long_term_file, "r", encoding="utf-8") as f:
                 return json.load(f)
-        
+
         except:
             return []
-    
+
     def _save_long_term(self):
         os.makedirs(os.path.dirname(self.long_term_file), exist_ok=True)
         with open(self.long_term_file, "w", encoding="utf-8") as f:

@@ -25,8 +25,10 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 """
 
+
 def get_chat_connection() -> sqlite3.Connection:
     return get_connection(DB_PATH, enable_foreign_keys=True)
+
 
 def init_chat_db():
     init_db(DB_PATH, SCHEMA, enable_foreign_keys=True)
