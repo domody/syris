@@ -1,24 +1,15 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
-from apscheduler.triggers.date import DateTrigger
-from apscheduler.triggers.cron import CronTrigger
 
+from syris_core.core.config import OrchestratorConfig
 from syris_core.llm.provider import LLMProvider
 from syris_core.llm.processors.intent_parser import IntentParser
 from syris_core.llm.processors.plan_generator import Planner
 from syris_core.llm.processors.response_composer import ResponseComposer
 from syris_core.types.events import Event, EventType
-from syris_core.types.task import (
-    Automation,
-    AlarmAutomation,
-    PlanAutomation,
-    PromptAutomation,
-    TimerAutomation,
-    TriggerType,
-)
-from syris_core.automation.service import SchedulingService
+from syris_core.types.task import Automation
 from syris_core.types.llm import (
     Intent,
     IntentType,
@@ -27,31 +18,34 @@ from syris_core.types.llm import (
     ScheduleAction,
     ScheduleSetArgs,
 )
+from syris_core.automation.service import SchedulingService
 from syris_core.types.memory import MemorySnapshot
 from syris_core.events.bus import EventBus
 from syris_core.memory.working_memory import WorkingMemory
 from syris_core.execution.plan_executor import PlanExecutor
+from syris_core.core.tool_runner import ToolRunner
+from syris_core.core.scheduling_factory import build_automation, build_trigger
 from syris_core.tools.registry import TOOL_REGISTRY, TOOL_PROMPT_LIST
 from syris_core.util.logger import log
-from syris_core.util.helpers import normalize_message_content, resolve_run_at
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "llm" / "prompts"
 
 
 class Orchestrator:
     def __init__(self):
-        # self.tool_registry = tool_registry
-        # self.memory_client = memory_client
+        self.config = OrchestratorConfig()
 
         # Memory
         self.working_memory = WorkingMemory()
 
         # LLM Layer
-        intent_prompt = open(PROMPTS_DIR / "intent.txt").read()
-        plan_prompt = open(PROMPTS_DIR / "planning.txt").read()
-        response_prompt = open(PROMPTS_DIR / "system.txt").read()
+        intent_prompt = open(PROMPTS_DIR / self.config.intent_prompt_file).read()
+        plan_prompt = open(PROMPTS_DIR / self.config.planning_prompt_file).read()
+        response_prompt = open(
+            PROMPTS_DIR / self.config.system_prompt_file
+        ).read()
 
-        provider = LLMProvider(model_name="gpt-oss")
+        provider = LLMProvider(model_name=self.config.model_name)
         self.intent_parser = IntentParser(
             provider=provider,
             system_prompt=intent_prompt.replace(
@@ -71,12 +65,28 @@ class Orchestrator:
         # Event queue
         self._event_queue = asyncio.Queue()
         self.event_bus = EventBus(self.dispatch_event)
+        self._sem_events = asyncio.Semaphore(self.config.max_concurrent_events)
+        self._tasks: set[asyncio.Task] = set()
 
         # Execution
         self.plan_executor = PlanExecutor()
+        self.tool_runner = ToolRunner(TOOL_REGISTRY)
 
         # Scheduling
         self.scheduling_service: SchedulingService | None = None
+
+        # Dispatch Maps
+        self._event_handlers = {
+            EventType.INPUT: self._handle_input,
+            EventType.SCHEDULE: self._handle_automation,
+        }
+
+        self._intent_handlers = {
+            IntentType.CHAT: self._handle_chat,
+            IntentType.TOOL: self._handle_tool,
+            IntentType.PLAN: self._handle_plan,
+            IntentType.SCHEDULE: self._handle_schedule,
+        }
 
     # Main loop
     async def start(self):
@@ -84,10 +94,39 @@ class Orchestrator:
 
         while True:
             event = await self._event_queue.get()
+            task = asyncio.create_task(self._handle_event_with_limits(event))
+            self._tasks.add(task)
 
-            asyncio.create_task(self._handle_event_safe(event))
+            def _done(t: asyncio.Task):
+                self._tasks.discard(t)
+                try:
+                    t.result()
+                except Exception as e:
+                    log("orchestrator", f"Unhandled task error: {e}")
+                finally:
+                    self._event_queue.task_done()
 
-            self._event_queue.task_done()
+            task.add_done_callback(_done)
+
+    async def _handle_event_with_limits(self, event: Event):
+        async with self._sem_events:
+            await self._handle_event_safe(event=event)
+
+    async def _handle_event_safe(self, event: Event):
+        try:
+            await self.handle_event(event)
+        except Exception as e:
+            log("orchestrator", f"Error handling event {event.type}: {e}")
+
+    # Handle event based on event type
+    async def handle_event(self, event: Event):
+        log("orchestrator", f"Handling event: {event.type} -> {event.payload}")
+
+        handler = self._event_handlers.get(event.type, self._handle_unknown_event)
+        return await handler(event)
+
+    async def _handle_unknown_event(self, event: Event):
+        await self._emit_response(f"Unknown Event: {event}")
 
     def set_scheduling_service(self, scheduling_service: SchedulingService):
         self.scheduling_service = scheduling_service
@@ -97,24 +136,9 @@ class Orchestrator:
             raise RuntimeError("SchedulingService not initialized on Orchestrator")
         return self.scheduling_service
 
-    async def _handle_event_safe(self, event: Event):
-        try:
-            await self.handle_event(event)
-        except Exception as e:
-            log("orchestrator", f"Error handling event {event.type}: {e}")
-
     # Add event to event queue, called by EventBus
     async def dispatch_event(self, event: Event):
         await self._event_queue.put(event)
-
-    # Handle event based on event type
-    async def handle_event(self, event: Event):
-        log("orchestrator", f"Handling event: {event.type} -> {event.payload}")
-
-        if event.type == EventType.INPUT:
-            await self._handle_input(event=event)
-        elif event.type == EventType.SCHEDULE:
-            await self._handle_automation(event=event)
 
     # Emit response
     async def _emit_response(self, text: str):
@@ -149,7 +173,7 @@ class Orchestrator:
 
             assert not result.status == "in_progress"
 
-            # generate plan summary with no memory as automated plans should be independant of recent working memory
+            # generate plan summary with no memory as automated plans should be independnt of recent working memory
             response = await self.response_composer.compose_plan_summary(
                 snap=None, result=result
             )
@@ -180,91 +204,39 @@ class Orchestrator:
     async def _route_intent(
         self, intent: Intent, user_text: str, snap: MemorySnapshot
     ) -> str | None:
-        intent_type = intent.root.type
+        handler = self._intent_handlers.get(
+            intent.root.type, self._handle_unknown_intent
+        )
+        return await handler(intent, user_text, snap)
 
-        if intent_type == IntentType.CHAT:
-            return await self._handle_chat(
-                intent=intent, user_text=user_text, snap=snap
-            )
-
-        elif intent_type == IntentType.TOOL:
-            return await self._handle_tool(
-                intent=intent, user_text=user_text, snap=snap
-            )
-
-        elif intent_type == IntentType.PLAN:
-            return await self._handle_plan(
-                intent=intent, user_text=user_text, snap=snap
-            )
-
-        elif intent_type == IntentType.SCHEDULE:
-            return await self._handle_schedule(
-                intent=intent, user_text=user_text, snap=snap
-            )
-
-        elif intent_type == "control":
-            pass
-
-        elif intent_type == "autonmy":
-            pass
-
-        else:
-            pass
-
+    def _handle_unknown_intent(self):
         return "Apologies, that intent type is not set up for routing yet."
 
     async def _handle_chat(self, intent: Intent, user_text: str, snap: MemorySnapshot):
         return await self.response_composer.compose(snap=snap)
 
-    async def _call_tool(self, tool_name: str, args):
-        tool_entry = TOOL_REGISTRY.get(tool_name)
-
-        if not tool_entry:
-            return "Tool not found."
-
-        result = tool_entry["func"](**args)
-        return result
-
     async def _handle_tool(self, intent: Intent, user_text, snap: MemorySnapshot):
         intent_obj = intent.root
-        assert not intent_obj.type == IntentType.SCHEDULE
         tool_names = (
             intent_obj.subtype
             if isinstance(intent_obj.subtype, list)
             else [intent_obj.subtype]
         )
-        args = intent_obj.arguments
-        results = {}
-        tool_messages: list[dict] = []
 
-        log("orchestrator", f"Handling tools {tool_names} with arguments {args}")
+        log(
+            "orchestrator",
+            f"Handling tools {tool_names} with arguments {intent_obj.arguments}",
+        )
 
-        for tool_name in tool_names:
-            if not tool_name:
-                continue
-
-            tool_entry = TOOL_REGISTRY.get(tool_name)
-            if not tool_entry:
-                # return await self.response_composer.compose(status="Error")
-                results[tool_name] = "Tool not found."
-                continue
-
-            tool_args = args.get(tool_name, {}) if isinstance(args, dict) else args
-
-            # potential refactor to await asyncio.to_thread(func) if tools can block the process
-            result = tool_entry["func"](**tool_args)
-            results[tool_name] = result
-
-            content = normalize_message_content(result)
-            tool_messages.append(
-                {"role": "tool", "tool_name": tool_name, "content": content}
-            )
+        _, tool_messages = await self.tool_runner.run_tools(
+            tool_names=tool_names, args=intent_obj.arguments
+        )
 
         reply = await self.response_composer.compose(
             snap=snap, extra_messages=tool_messages
         )
 
-        # persist tool messages incase later calls need to make use of it
+        # persist tool messages
         for m in tool_messages:
             self.working_memory.add(
                 role=m["role"], content=m["content"], tool_name=m.get("tool_name")
@@ -311,55 +283,12 @@ class Orchestrator:
         if not isinstance(args, ScheduleSetArgs):
             raise TypeError(f"Schedule arguments are of incorrect type: {type(args)!r}")
 
-        tz = ZoneInfo("Europe/London")
+        tz = ZoneInfo(self.config.tz_name)
         now = datetime.now(tz=tz)
-        trigger = self._build_trigger(args=args, now=now, tz=tz)
-        automation = self._build_automation(args=args, trigger=trigger)
+        trigger = build_trigger(args=args, now=now, tz=tz)
+        automation = build_automation(args=args, trigger=trigger)
         log("core", f"{automation}")
 
         scheduler = self.require_scheduling_service()
         await scheduler.add_automation(automation=automation)
         await self._emit_response("Yes sir.")
-
-    def _build_trigger(self, args: ScheduleSetArgs, now: datetime, tz: ZoneInfo):
-        # Pick exactly one scheduling mechanism.
-        if args.time_expression:
-            run_at = resolve_run_at(
-                time_expression=args.time_expression, now=now, tz=tz
-            )
-            return DateTrigger(run_date=run_at)
-
-        if args.cron:
-            minute, hour, day, month, day_of_week = args.cron.split()
-            return CronTrigger(
-                minute=minute,
-                hour=hour,
-                day=day,
-                month=month,
-                day_of_week=day_of_week,
-            )
-
-        if args.delay_seconds is not None:
-            return DateTrigger(run_date=now + timedelta(seconds=args.delay_seconds))
-
-        if args.run_at:
-            return DateTrigger(run_date=args.run_at)
-
-        raise ValueError(
-            "No scheduling info provided (expected time_expression, cron, delay_seconds, or run_at)."
-        )
-
-    def _build_automation(self, args: ScheduleSetArgs, trigger: TriggerType):
-        common = dict(
-            id=args.id,
-            trigger=trigger,
-            label=args.label,
-        )
-
-        if args.kind == "alarm":
-            return AlarmAutomation(mode="alarm", **common)
-
-        if args.kind == "timer":
-            return TimerAutomation(mode="timer", **common)
-
-        raise ValueError(f"Unknown automation kind: {args.kind!r}")
