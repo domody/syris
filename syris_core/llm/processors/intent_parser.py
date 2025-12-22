@@ -28,26 +28,6 @@ class IntentParser:
             )
         )
 
-        if response.message.tool_calls:
-            tool_calls = response.message.tool_calls
-
-            intent = Intent(
-                BaseIntent(
-                    type=IntentType.TOOL,
-                    subtype=[tc.function.name for tc in tool_calls],
-                    confidence=1.0,
-                    arguments={
-                        tc.function.name: dict(tc.function.arguments)
-                        for tc in tool_calls
-                    },
-                )
-            )
-            log(
-                "llm",
-                f"[IntentParser] Intent classified via ToolExtraction as: {intent}",
-            )
-            return intent
-
         raw: str = response["message"]["content"]
 
         try:

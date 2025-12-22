@@ -16,7 +16,12 @@ from syris_core.types.llm import (
     Plan,
     PlanExecutionResult,
     ScheduleAction,
+    ScheduleArgs,
     ScheduleSetArgs,
+    ScheduleIntent,
+    ChatIntent,
+    ToolIntent,
+    ControlIntent
 )
 from syris_core.automation.service import SchedulingService
 from syris_core.types.memory import MemorySnapshot
@@ -27,6 +32,7 @@ from syris_core.core.tool_runner import ToolRunner
 from syris_core.core.scheduling_factory import build_automation, build_trigger
 from syris_core.tools.registry import TOOL_REGISTRY, TOOL_PROMPT_LIST
 from syris_core.util.logger import log
+from syris_core.util.helpers import assert_intent_type
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "llm" / "prompts"
 
@@ -41,9 +47,7 @@ class Orchestrator:
         # LLM Layer
         intent_prompt = open(PROMPTS_DIR / self.config.intent_prompt_file).read()
         plan_prompt = open(PROMPTS_DIR / self.config.planning_prompt_file).read()
-        response_prompt = open(
-            PROMPTS_DIR / self.config.system_prompt_file
-        ).read()
+        response_prompt = open(PROMPTS_DIR / self.config.system_prompt_file).read()
 
         provider = LLMProvider(model_name=self.config.model_name)
         self.intent_parser = IntentParser(
@@ -216,12 +220,10 @@ class Orchestrator:
         return await self.response_composer.compose(snap=snap)
 
     async def _handle_tool(self, intent: Intent, user_text, snap: MemorySnapshot):
-        intent_obj = intent.root
-        tool_names = (
-            intent_obj.subtype
-            if isinstance(intent_obj.subtype, list)
-            else [intent_obj.subtype]
-        )
+        intent_obj = assert_intent_type(intent=intent, expected_type=ToolIntent)
+        
+        tool_names = intent_obj.subtype
+        
 
         log(
             "orchestrator",
@@ -274,12 +276,16 @@ class Orchestrator:
     async def _handle_schedule(
         self, intent: Intent, user_text: str, snap: MemorySnapshot
     ):
-        intent_obj = intent.root
+        intent_obj = assert_intent_type(intent=intent, expected_type=ScheduleIntent)
 
-        if intent_obj.subtype != ScheduleAction.SET:
+        if not isinstance(intent_obj, ScheduleIntent):
+            return
+
+        if intent_obj.arguments.subtype != ScheduleAction.SET:
             return
 
         args = intent_obj.arguments
+
         if not isinstance(args, ScheduleSetArgs):
             raise TypeError(f"Schedule arguments are of incorrect type: {type(args)!r}")
 
@@ -287,6 +293,7 @@ class Orchestrator:
         now = datetime.now(tz=tz)
         trigger = build_trigger(args=args, now=now, tz=tz)
         automation = build_automation(args=args, trigger=trigger)
+
         log("core", f"{automation}")
 
         scheduler = self.require_scheduling_service()

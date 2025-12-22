@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Optional, Dict, Any, Literal, Union
+from typing import Optional, Dict, Any, Literal, Union, Annotated, List
 from datetime import datetime
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel, RootModel, Field
 
 
 class IntentType(str, Enum):
@@ -15,6 +15,13 @@ class IntentType(str, Enum):
     UNKNOWN = "unknown"
 
 
+class BaseIntent(BaseModel):
+    type: Literal[IntentType.UNKNOWN]
+    subtype: Optional[str | list[str]] = None
+    confidence: float
+    arguments: Dict[str, Any] = {}
+
+
 class ScheduleAction(str, Enum):
     SET = "schedule.set"
     CANCEL = "schedule.cancel"
@@ -22,60 +29,122 @@ class ScheduleAction(str, Enum):
 
 
 class ScheduleSetArgs(BaseModel):
+    subtype: Literal[ScheduleAction.SET]
     id: str
     kind: Literal["timer", "alarm", "plan", "automation"]
-    delay_seconds: Optional[int] = None
-    run_at: Optional[datetime] = None
-    cron: Optional[str] = None
-    time_expression: Optional[str] = None
-    label: Optional[str] = None
+    delay_seconds: int | None = None
+    run_at: datetime | None = None
+    cron: str | None = None
+    time_expression: str | None = None
+    label: str | None = None
 
 
 class ScheduleCancelArgs(BaseModel):
+    subtype: Literal[ScheduleAction.CANCEL]
     id: str
 
 
 class ScheduleListArgs(BaseModel):
+    subtype: Literal[ScheduleAction.LIST]
     kind: Literal["timer", "alarm", "automation", "all"]
 
 
-class BaseIntent(BaseModel):
-    type: IntentType
-    subtype: Optional[str | list[str]] = None
-    confidence: float
-    arguments: Dict[str, Any] = {}
-
-
-class ScheduleSetIntent(BaseModel):
-    type: Literal[IntentType.SCHEDULE]
-    subtype: Literal[ScheduleAction.SET]
-    confidence: float
-    arguments: ScheduleSetArgs
-
-
-class ScheduleCancelIntent(BaseModel):
-    type: Literal[IntentType.SCHEDULE]
-    subtype: Literal[ScheduleAction.CANCEL]
-    confidence: float
-    arguments: ScheduleCancelArgs
-
-
-class ScheduleListIntent(BaseModel):
-    type: Literal[IntentType.SCHEDULE]
-    subtype: Literal[ScheduleAction.LIST]
-    confidence: float
-    arguments: ScheduleListArgs
-
-
-ScheduleIntent = Union[
-    ScheduleSetIntent,
-    ScheduleCancelIntent,
-    ScheduleListIntent,
+ScheduleArgs = Annotated[
+    Union[ScheduleSetArgs, ScheduleCancelArgs, ScheduleListArgs],
+    Field(discriminator="subtype"),
 ]
 
 
-class Intent(RootModel[Union[ScheduleIntent, BaseIntent]]):
+class ScheduleIntent(BaseModel):
+    type: Literal[IntentType.SCHEDULE]
+    subtype: None
+    confidence: float
+    arguments: ScheduleArgs
+
+
+class ControlDomain(str, Enum):
+    LIGHT = "light"
+    COVER = "cover"
+    CLIMATE = "climate"
+    SWITCH = "switch"
+    MEDIA_PLAYER = "media_player"
+
+
+class TargetScope(str, Enum):
+    HOME = "home"
+    AREA = "area"
+    NAME = "name"
+    ENTITY_ID = "entity_id"
+
+
+class TargetSpec(BaseModel):
+    # scope: TargetScope
+    scope: Literal["home"] = "home"
+    selector: Literal["all", "one", "many"] = "one"
+
+    area: Optional[str] = None
+    name: Optional[str] = None
+    entity_ids: Optional[List[str]] = None
+
+
+class ControlAction(BaseModel):
+    domain: ControlDomain
+    service: str
+    target: TargetSpec
+    data: Dict[str, Any] = Field(default_factory=dict)
+    requires_confirmation: bool = False
+
+
+class ControlArgs(BaseModel):
+    actions: List[ControlAction]
+    # dry_run: bool = False
+
+
+class ControlIntent(BaseModel):
+    type: Literal[IntentType.CONTROL]
+    subtype: Literal["ha.service_call_plan"] = "ha.service_call_plan"
+    confidence: float
+    arguments: ControlArgs
+
+
+class ChatArgs(BaseModel):
+    text: str
+
+
+class ChatIntent(BaseModel):
+    type: Literal[IntentType.CHAT]
+    subtype: None
+    confidence: float
+    arguements: ChatArgs
+
+
+class ToolArgs(BaseModel):
+    arguments: Dict[str, Any] # Any -> Dict of args. Format not confirmed
+
+class ToolIntent(BaseModel):
+    type: Literal[IntentType.TOOL]
+    subtype: List[str]
+    confidence: float
+    arguments: ToolArgs
+
+IntentUnion = Annotated[
+    Union[
+        ScheduleIntent,
+        ControlIntent,
+        ToolIntent,
+        ChatIntent,
+        BaseIntent,  # fallback
+    ],
+    Field(discriminator="type"),
+]
+
+
+class Intent(RootModel[IntentUnion]):
     pass
+
+
+# class IntentEnvelope(BaseModel):
+#     intent: IntentUnion
 
 
 class PlanStep(BaseModel):
