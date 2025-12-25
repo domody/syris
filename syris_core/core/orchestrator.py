@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
+import json
 
 from syris_core.core.config import OrchestratorConfig
 from syris_core.llm.provider import LLMProvider
@@ -21,8 +22,15 @@ from syris_core.types.llm import (
     ScheduleIntent,
     ChatIntent,
     ToolIntent,
-    ControlIntent
+    ControlIntent,
+    ControlArgs,
+    ControlAction,
+    QueryAction,
+    ControlDomain,
+    ControlOperation,
+    TargetSpec,
 )
+from syris_core.types.home_assistant import QueryResult, ControlResult
 from syris_core.automation.service import SchedulingService
 from syris_core.types.memory import MemorySnapshot
 from syris_core.events.bus import EventBus
@@ -33,12 +41,13 @@ from syris_core.core.scheduling_factory import build_automation, build_trigger
 from syris_core.tools.registry import TOOL_REGISTRY, TOOL_PROMPT_LIST
 from syris_core.util.logger import log
 from syris_core.util.helpers import assert_intent_type
+from syris_core.home_assistant.executor import ControlExecutor
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "llm" / "prompts"
 
 
 class Orchestrator:
-    def __init__(self):
+    def __init__(self, control_executor: ControlExecutor):
         self.config = OrchestratorConfig()
 
         # Memory
@@ -90,7 +99,11 @@ class Orchestrator:
             IntentType.TOOL: self._handle_tool,
             IntentType.PLAN: self._handle_plan,
             IntentType.SCHEDULE: self._handle_schedule,
+            IntentType.CONTROL: self._handle_control,
         }
+
+        # Home Assistant
+        self.control_executor = control_executor
 
     # Main loop
     async def start(self):
@@ -159,6 +172,41 @@ class Orchestrator:
 
         intent = await self.intent_parser.parse(user_text, snap)
 
+        # intent = Intent(
+        #     ControlIntent(
+        #         type=IntentType.CONTROL,
+        #         subtype="ha.service_call_plan",
+        #         confidence=0.85,
+        #         arguments=ControlArgs(
+        #             actions=[
+        #                 # ControlAction(
+        #                 #     domain=ControlDomain.LIGHT,
+        #                 #     operation=ControlOperation.POWER_TOGGLE,
+        #                 #     target=TargetSpec(
+        #                 #         scope="home",
+        #                 #         selector="all",
+        #                 #         area=None,
+        #                 #         name=None,
+        #                 #         entity_ids=[],
+        #                 #     ),
+        #                 #     data={},
+        #                 #     requires_confirmation=False,
+        #                 # )
+        #                 QueryAction(
+        #                     domain=ControlDomain.LIGHT,
+        #                     target=TargetSpec(
+        #                         scope="home",
+        #                         selector="all",
+        #                         area=None,
+        #                         name=None,
+        #                         entity_ids=[],
+        #                     ),
+        #                 )
+        #             ]
+        #         ),
+        #     )
+        # )
+
         reply = await self._route_intent(intent=intent, user_text=user_text, snap=snap)
 
         if reply is not None:
@@ -221,9 +269,8 @@ class Orchestrator:
 
     async def _handle_tool(self, intent: Intent, user_text, snap: MemorySnapshot):
         intent_obj = assert_intent_type(intent=intent, expected_type=ToolIntent)
-        
+
         tool_names = intent_obj.subtype
-        
 
         log(
             "orchestrator",
@@ -298,4 +345,74 @@ class Orchestrator:
 
         scheduler = self.require_scheduling_service()
         await scheduler.add_automation(automation=automation)
-        await self._emit_response("Yes sir.")
+        # await self._emit_response("Yes sir.")
+        return "Yes sir."
+
+    async def _handle_control(
+        self, intent: Intent, user_text: str, snap: MemorySnapshot
+    ):
+        QUERY_INSTRUCTIONS = (
+            "Use ONLY the tool result to answer. Do not invent entities or states."
+            "Do NOT mention any internal limits or phrases like 'up to 5'."
+            "Decision rule for mentioning device names:\n- If ALL relevant devices share the same state (e.g. all off, all on), say the single-sentence summary only. Do NOT list device names.\n- If states are mixed, summarize first (counts or “most are…”), then mention ONLY the exceptions (the devices that break the majority pattern), by name and state.\n- If any devices are unavailable/unknown, mention those by name.\n- If the user asked about a specific device name or a subset, mention only those relevant devices."
+            "Keep the entire reply concise."
+        )
+
+        MIXED_INSTRUCTIONS = (
+            "Use ONLY the tool result to answer. Do not invent entities or states."
+            "First, briefly acknowledge the control actions from home_assistant_control (one short phrase)"
+            "Then answer the home_assistant_query results using this rule"
+            "Do NOT mention any internal limits or phrases like 'up to 5'."
+            "Decision rule for mentioning device names:\n- If ALL relevant devices share the same state (e.g. all off, all on), say the single-sentence summary only. Do NOT list device names.\n- If states are mixed, summarize first (counts or “most are…”), then mention ONLY the exceptions (the devices that break the majority pattern), by name and state.\n- If any devices are unavailable/unknown, mention those by name.\n- If the user asked about a specific device name or a subset, mention only those relevant devices."
+            "Keep the entire reply concise."
+        )
+
+        intent_obj = assert_intent_type(intent=intent, expected_type=ControlIntent)
+        
+        extra_messages = []
+        had_control = False
+        had_query = False
+
+        control_results = []
+
+        for action in intent_obj.arguments.actions:
+            data = await self.control_executor.execute_action(action=action)
+            
+            if isinstance(action, QueryAction):
+                had_query = True
+                assert isinstance(data, QueryResult)
+                extra_messages.append({
+                    "role": "tool",
+                    "tool_name": "home_assistant_query",
+                    "content": data.model_dump_json()
+                })
+
+            elif isinstance(action, ControlAction):
+                had_control = True
+                assert isinstance(data, ControlResult)
+                control_results.append(data)
+
+        if had_control and not had_query:
+            return await self.response_composer.compose_optimistic(
+                snap=snap
+            )
+
+            
+        if had_query and not had_control:
+            return await self.response_composer.compose(
+                snap = snap,
+                extra_messages= extra_messages,
+                instructions=QUERY_INSTRUCTIONS
+            )
+        
+        extra_messages.append({
+            "role": "tool",
+            "tool_name": "home_assistant_control",
+            "content": json.dumps(control_results, ensure_ascii=False, default=str),
+        })
+
+        return await self.response_composer.compose(
+            snap=snap,
+            extra_messages=extra_messages,
+            instructions=MIXED_INSTRUCTIONS,
+        )

@@ -5,15 +5,22 @@ from syris_core.automation.scheduler import AutomationScheduler
 from syris_core.automation.service import SchedulingService
 from syris_core.util.logger import log
 from syris_core.tools.agents.dev_input_agent import DevInputAgent
-
-import datetime
-
+from syris_core.home_assistant.client import TestHomeAssistantClient
+from syris_core.home_assistant.executor import ControlExecutor
+from syris_core.home_assistant.target_resolver import TargetResolver
+from syris_core.home_assistant.registry.service_catalog import ServiceCatalog
 
 async def main():
     log("core", "Booting System...")
 
-    # Init orchestrator
-    orch = Orchestrator()
+    # Init pre-req
+    target_resolver = TargetResolver()
+    ha = TestHomeAssistantClient()
+    service_catalog = await ServiceCatalog.build(ha=ha)
+    executor = ControlExecutor(ha=ha, resolver=target_resolver, catalog=service_catalog)
+
+    # Init orch
+    orch = Orchestrator(control_executor=executor)
 
     # Register global event handlers
     dev_agent = DevInputAgent(orch.event_bus)

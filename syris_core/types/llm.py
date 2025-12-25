@@ -70,6 +70,21 @@ class ControlDomain(str, Enum):
     MEDIA_PLAYER = "media_player"
 
 
+class ControlOperation(str, Enum):
+    POWER_ON = "power_on"
+    POWER_OFF = "power_off"
+    POWER_TOGGLE = "power_toggle"
+
+    SET_BRIGHTNESS = "set_brightness"
+    SET_COLOR_TEMP = "set_color_temp"
+
+    OPEN = "open"
+    CLOSE = "close"
+    SET_POSITION = "set_position"
+
+    SET_TEMPERATURE = "set_temperature"
+
+
 class TargetScope(str, Enum):
     HOME = "home"
     AREA = "area"
@@ -79,24 +94,40 @@ class TargetScope(str, Enum):
 
 class TargetSpec(BaseModel):
     # scope: TargetScope
-    scope: Literal["home"] = "home"
-    selector: Literal["all", "one", "many"] = "one"
+    scope: Literal["home", "entity_id", "name"] = "home"
+    selector: Literal["all", "one", "many"] = "all"
 
     area: Optional[str] = None
     name: Optional[str] = None
     entity_ids: Optional[List[str]] = None
 
+class StateQueryKind(str, Enum):
+    STATE = "state"          # on/off/unavailable + main attributes
+    BRIGHTNESS = "brightness"
+    POSITION = "position"
+    TEMPERATURE = "temperature"
+
+class QueryAction(BaseModel):
+    kind: Literal["state_query"]
+    domain: ControlDomain
+    target: TargetSpec
+
+    query: StateQueryKind = StateQueryKind.STATE
+
+    # summarize: bool = True
 
 class ControlAction(BaseModel):
+    kind: Literal["service_call"]
     domain: ControlDomain
-    service: str
+    operation: ControlOperation
     target: TargetSpec
     data: Dict[str, Any] = Field(default_factory=dict)
     requires_confirmation: bool = False
 
+Action = Annotated[Union[ControlAction, QueryAction], Field(discriminator="kind")]
 
 class ControlArgs(BaseModel):
-    actions: List[ControlAction]
+    actions: List[Action]
     # dry_run: bool = False
 
 
@@ -115,17 +146,19 @@ class ChatIntent(BaseModel):
     type: Literal[IntentType.CHAT]
     subtype: None
     confidence: float
-    arguements: ChatArgs
+    arguments: ChatArgs
 
 
 class ToolArgs(BaseModel):
-    arguments: Dict[str, Any] # Any -> Dict of args. Format not confirmed
+    arguments: Dict[str, Any]  # Any -> Dict of args. Format not confirmed
+
 
 class ToolIntent(BaseModel):
     type: Literal[IntentType.TOOL]
     subtype: List[str]
     confidence: float
     arguments: ToolArgs
+
 
 IntentUnion = Annotated[
     Union[
@@ -141,10 +174,6 @@ IntentUnion = Annotated[
 
 class Intent(RootModel[IntentUnion]):
     pass
-
-
-# class IntentEnvelope(BaseModel):
-#     intent: IntentUnion
 
 
 class PlanStep(BaseModel):
