@@ -22,6 +22,7 @@ from syris_core.types.llm import (
     ScheduleIntent,
     ChatIntent,
     ToolIntent,
+    ToolArgs,
     ControlIntent,
     ControlArgs,
     ControlAction,
@@ -386,11 +387,26 @@ class Orchestrator:
                     "tool_name": "home_assistant_query",
                     "content": data.model_dump_json()
                 })
+                self.working_memory.add(
+                    role = "tool",
+                    tool_name="home_assistant_query",
+                    content=data.model_dump_json()
+                )
 
             elif isinstance(action, ControlAction):
                 had_control = True
                 assert isinstance(data, ControlResult)
                 control_results.append(data)
+                extra_messages.append({
+                    "role": "tool",
+                    "tool_name": "home_assistant_control",
+                    "content": data.model_dump_json(),
+                })
+                self.working_memory.add(
+                    role = "tool",
+                    tool_name="home_assistant_control",
+                    content=data.model_dump_json()
+                )
 
         if had_control and not had_query:
             return await self.response_composer.compose_optimistic(
@@ -401,15 +417,9 @@ class Orchestrator:
         if had_query and not had_control:
             return await self.response_composer.compose(
                 snap = snap,
-                extra_messages= extra_messages,
+                extra_messages=extra_messages,
                 instructions=QUERY_INSTRUCTIONS
             )
-        
-        extra_messages.append({
-            "role": "tool",
-            "tool_name": "home_assistant_control",
-            "content": json.dumps(control_results, ensure_ascii=False, default=str),
-        })
 
         return await self.response_composer.compose(
             snap=snap,

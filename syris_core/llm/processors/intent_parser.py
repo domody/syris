@@ -19,7 +19,7 @@ class IntentParser:
 
         tz = ZoneInfo("Europe/London")
         additional_instructions = f"Current local time is {datetime.datetime.now(tz=tz)}. Use this as the reference for relative times like tomorrow/next week/in 20 minutes."
-        print(Intent.model_json_schema())
+
         response = await self.provider.complete(
             LLMCallOptions(
                 system_prompt=self.system_prompt,

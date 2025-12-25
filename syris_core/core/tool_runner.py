@@ -3,6 +3,7 @@ import inspect
 from pydantic import BaseModel
 from typing import Any, Callable
 
+from syris_core.types.llm import ToolArgs
 from syris_core.util.helpers import normalize_message_content
 
 
@@ -18,7 +19,7 @@ class ToolRunner:
         self._sem = asyncio.Semaphore(max_concurency)
 
     async def run_tools(
-        self, tool_names: list[str], args: Any
+        self, tool_names: list[str], args: ToolArgs
     ) -> tuple[dict[str, Any], list[dict]]:
         tasks: list[asyncio.Task[ToolCallResult]] = []
 
@@ -26,7 +27,7 @@ class ToolRunner:
             if not tool_name:
                 continue
             tasks.append(
-                asyncio.create_task(self._run_one(tool_name=tool_name, args=args))
+                asyncio.create_task(self._run_one(tool_name=tool_name, args=args.arguments))
             )
 
         done: list[ToolCallResult] = await asyncio.gather(*tasks)
@@ -55,6 +56,7 @@ class ToolRunner:
             tool_args = {}
 
         async with self._sem:
+
             try:
                 if inspect.iscoroutinefunction(func):
                     result = await func(**tool_args)
