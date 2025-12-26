@@ -33,10 +33,11 @@ class ResponseComposer:
 
     # compose optimistic / error / tool response ?? / summarize
 
-    async def compose_optimistic(self, snap: MemorySnapshot | None):
+    async def compose_optimistic(self, snap: MemorySnapshot | None,         override_prompt: str | None = None,
+        extra_messages: Optional[list[dict[str, Any]]] = None,):
         optimistic_instructions = "Produce a short confirmation message acknowledging the request.\nMaximum 7 words. No explanation. Maintain SYRIS tone.\nExamples:\n - “Right away, sir.”\n - “On it, sir.”\n - “Initiating now.”\n - “Working on that.”\n - “As you wish.”\n - “Beginning the process.”\n - “Understood.”\n - “Certainly.”"
 
-        return await self.compose(snap=snap, instructions=optimistic_instructions)
+        return await self.compose(snap=snap, instructions=optimistic_instructions, override_prompt=override_prompt, extra_messages=extra_messages)
 
     async def compose_plan_summary(
         self, result: PlanExecutionResult, snap: MemorySnapshot | None

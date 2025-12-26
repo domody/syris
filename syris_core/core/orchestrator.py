@@ -410,7 +410,8 @@ class Orchestrator:
 
         if had_control and not had_query:
             return await self.response_composer.compose_optimistic(
-                snap=snap
+                snap=snap,
+                extra_messages=extra_messages
             )
 
             
