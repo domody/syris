@@ -79,3 +79,14 @@ def log(source: LogSource, message: str, level: str = "info", write_file=True):
         with _write_lock:
             with open(file_path, "a", encoding="utf-8") as f:
                 f.write(file_line)
+
+
+_lora_write_lock = threading.Lock()
+
+def log_lora_data(message: str):
+    file_line = message
+    file_path = os.path.join(LOG_DIR, "lora_data.log")
+
+    with _lora_write_lock:
+        with open(file_path, "a", encoding="utf-8") as f: 
+            f.write(file_line)
