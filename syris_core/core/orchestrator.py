@@ -48,7 +48,7 @@ PROMPTS_DIR = Path(__file__).resolve().parents[1] / "llm" / "prompts"
 
 
 class Orchestrator:
-    def __init__(self, control_executor: ControlExecutor):
+    def __init__(self, control_executor: ControlExecutor, event_bus: EventBus):
         self.config = OrchestratorConfig()
 
         # Memory
@@ -77,8 +77,7 @@ class Orchestrator:
         )
 
         # Event queue
-        self._event_queue = asyncio.Queue()
-        self.event_bus = EventBus(self.dispatch_event)
+        self.event_bus = event_bus
         self._sem_events = asyncio.Semaphore(self.config.max_concurrent_events)
         self._tasks: set[asyncio.Task] = set()
 
@@ -111,7 +110,8 @@ class Orchestrator:
         log("orchestrator", "Started event loop.")
 
         while True:
-            event = await self._event_queue.get()
+            event = await self.event_bus.next_event()
+
             task = asyncio.create_task(self._handle_event_with_limits(event))
             self._tasks.add(task)
 
@@ -122,7 +122,7 @@ class Orchestrator:
                 except Exception as e:
                     log("orchestrator", f"Unhandled task error: {e}")
                 finally:
-                    self._event_queue.task_done()
+                    self.event_bus.task_done()
 
             task.add_done_callback(_done)
 
@@ -153,10 +153,6 @@ class Orchestrator:
         if not self.scheduling_service:
             raise RuntimeError("SchedulingService not initialized on Orchestrator")
         return self.scheduling_service
-
-    # Add event to event queue, called by EventBus
-    async def dispatch_event(self, event: Event):
-        await self._event_queue.put(event)
 
     # Emit response
     async def _emit_response(self, text: str):

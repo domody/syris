@@ -1,11 +1,12 @@
+import asyncio
 from typing import Callable, Dict, List, Coroutine, Any
 from syris_core.types.events import Event, EventType
 
 
 class EventBus:
-    def __init__(self, dispatch_event: Callable[[Event], Coroutine]):
+    def __init__(self):
         self._subscribers: Dict[EventType, List[Callable[[Event], Any]]] = {}
-        self._dispatch_event = dispatch_event
+        self._queue = asyncio.Queue()
 
     # Subscribe to a callback to a specific event type
     def subscribe(self, event_type: EventType, callback: Callable[[Event], Any]):
@@ -16,4 +17,10 @@ class EventBus:
         for callback in self._subscribers.get(event.type, []):
             callback(event)
 
-        await self._dispatch_event(event)
+        await self._queue.put(event)
+
+    async def next_event(self) -> Event:
+        return await self._queue.get()
+
+    def task_done(self):
+        self._queue.task_done()

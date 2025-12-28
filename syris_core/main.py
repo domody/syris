@@ -1,6 +1,7 @@
 import asyncio
+from syris_core.events.bus import EventBus
 from syris_core.core.orchestrator import Orchestrator
-from syris_core.types.events import Event, EventType
+from syris_core.types.home_assistant import EntityState
 from syris_core.automation.scheduler import AutomationScheduler
 from syris_core.automation.service import SchedulingService
 from syris_core.util.logger import log
@@ -9,27 +10,41 @@ from syris_core.home_assistant.client import TestHomeAssistantClient
 from syris_core.home_assistant.executor import ControlExecutor
 from syris_core.home_assistant.target_resolver import TargetResolver
 from syris_core.home_assistant.registry.service_catalog import ServiceCatalog
+from syris_core.home_assistant.registry.state_registry import StateRegistry
+from syris_core.home_assistant.runtime import HomeAssistantRuntime
 
 async def main():
     log("core", "Booting System...")
 
+    event_bus = EventBus()
+
     # Init pre-req
     target_resolver = TargetResolver()
     ha = TestHomeAssistantClient()
+
     service_catalog = await ServiceCatalog.build(ha=ha)
-    executor = ControlExecutor(ha=ha, resolver=target_resolver, catalog=service_catalog)
+    state_registry = await StateRegistry.build(ha=ha)
+
+    ha_runtime = HomeAssistantRuntime(ha=ha, state_registry=state_registry, event_bus=event_bus, resync_interval_s=300)
+    ha_task = asyncio.create_task(ha_runtime.run())
+
+    executor = ControlExecutor(
+        ha=ha, 
+        resolver=target_resolver, 
+        service_catalog=service_catalog, 
+        state_registry=state_registry
+    )
 
     # Init orch
-    orch = Orchestrator(control_executor=executor)
+    orch = Orchestrator(control_executor=executor, event_bus=event_bus)
 
     # Register global event handlers
     dev_agent = DevInputAgent(orch.event_bus)
-    asyncio.create_task(dev_agent.start())
+    dev_task = asyncio.create_task(dev_agent.start())
 
     # Start background agents
     scheduler = AutomationScheduler(orch.event_bus)
     scheduler.start()
-
     scheduling_service = SchedulingService(scheduler)
     orch.set_scheduling_service(scheduling_service=scheduling_service)
 
@@ -39,7 +54,14 @@ async def main():
     log("core", "System Initialized.")
     log("core", "Entering main orchestration loop.")
 
-    await orch.start()
+    try:
+        await orch.start()
+    finally:
+        ha_runtime.stop()
+        ha_task.cancel()
+        dev_task.cancel()
+        await asyncio.gather(ha_task, dev_task, return_exceptions=True)
+        log("core", "Shutdown complete")
 
 
 if __name__ == "__main__":
