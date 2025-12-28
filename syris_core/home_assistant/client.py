@@ -1,4 +1,5 @@
-import os
+import json
+import websockets
 import requests
 from typing import Any, Awaitable, Callable
 from pydantic import TypeAdapter
@@ -6,60 +7,7 @@ from pydantic import TypeAdapter
 from syris_core.config import HA_TOKEN as TOKEN, HA_URL
 from syris_core.types.home_assistant import EntityState, EntityContext, ServiceSpec
 from syris_core.home_assistant.interface import HomeAssistantInterface
-
-TEST_LIGHT: EntityState = EntityState(
-    entity_id="light.entrance_color_white_lights",
-    state="on",
-    attributes={
-        "supported_color_modes": ["hs", "white"],
-        "color_mode": "hs",
-        "brightness": 180,
-        "hs_color": [345, 75],
-        "rgb_color": [255, 64, 112],
-        "xy_color": [0.588, 0.274],
-        "friendly_name": "Entrance Color + White Lights",
-        "supported_features": 0,
-    },
-    last_changed=None,
-    last_reported=None,
-    last_updated=None,
-    context=EntityContext(
-        id="01KD48SJN9Z6D3YHSNCFYNP034", parent_id=None, user_id=None
-    ),
-)
-
-TEST_SERVICE = {
-    "domain": "persistent_notification",
-    "services": {
-        "create": {
-            "fields": {
-                "message": {
-                    "required": True,
-                    "example": "Please check your configuration.yaml.",
-                    "selector": {"text": {"multiline": False, "multiple": False}},
-                },
-                "title": {
-                    "example": "Test notification",
-                    "selector": {"text": {"multiline": False, "multiple": False}},
-                },
-                "notification_id": {
-                    "example": 1234,
-                    "selector": {"text": {"multiline": False, "multiple": False}},
-                },
-            }
-        },
-        "dismiss": {
-            "fields": {
-                "notification_id": {
-                    "required": True,
-                    "example": 1234,
-                    "selector": {"text": {"multiline": False, "multiple": False}},
-                }
-            }
-        },
-        "dismiss_all": {"fields": {}},
-    },
-}
+from syris_core.util.logger import log
 
 HEADERS = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 
@@ -97,4 +45,31 @@ class TestHomeAssistantClient(HomeAssistantInterface):
     async def subscribe_state_changes(
         self, callback: Callable[[EntityState], Awaitable[None]]
     ) -> None:
-        return None
+        ws_url = HA_URL.replace("http://", "ws://").replace("https://", "wss://") + "/api/websocket"
+        async with websockets.connect(ws_url) as ws:
+            # receive auth req
+            await ws.recv()
+
+            await ws.send(json.dumps({"type": "auth", "access_token": TOKEN}))
+            auth_resp = json.loads(await ws.recv())
+            if auth_resp.get("type") != "auth_ok":
+                raise RuntimeError("WS Auth Failed")
+
+            await ws.send(json.dumps({
+                "id": 1,
+                "type": "subscribe_events",
+                "event_type": "state_changed"
+            }))
+            await ws.recv()
+
+            while True:
+                msg = json.loads(await ws.recv())
+
+                if msg.get("type") != "event":
+                    continue
+                event = msg.get("event", {})
+                new_state = event.get("data", {}).get("new_state")
+                if not new_state:
+                    continue
+                entity = EntityState.model_validate(new_state)
+                await callback(entity)

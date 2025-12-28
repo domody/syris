@@ -4,6 +4,7 @@ from collections import Counter
 from syris_core.home_assistant.interface import HomeAssistantInterface
 from syris_core.home_assistant.target_resolver import TargetResolver
 from syris_core.home_assistant.registry.service_catalog import ServiceCatalog
+from syris_core.home_assistant.registry.state_registry import StateRegistry
 from syris_core.types.llm import ControlAction, QueryAction, Action
 from syris_core.types.home_assistant import EntityView, QueryResult, ControlResult, EntityState
 from syris_core.home_assistant.service_map import map_operation
@@ -14,11 +15,13 @@ class ControlExecutor:
         self,
         ha: HomeAssistantInterface,
         resolver: TargetResolver,
-        catalog: ServiceCatalog,
+        service_catalog: ServiceCatalog,
+        state_registry: StateRegistry
     ):
         self.ha = ha
         self.resolver = resolver
-        self.catalog = catalog
+        self.service_catalog = service_catalog
+        self.state_registry = state_registry
 
     async def execute_action(self, action: Action) -> Any:
         if isinstance(action, ControlAction):
@@ -34,9 +37,11 @@ class ControlExecutor:
         service = map_operation(domain, action.operation)
 
         # Validate service exists in HA
-        self.catalog.require(domain, service)
+        self.service_catalog.require(domain, service)
         # tbd check for response key in json. If none -> dont send return response, If response: optional True or False, do send for return
-        entities = await self.ha.list_entities()  # tb cached
+
+        # entities = await self.ha.list_entities()  # tb cached
+        entities = self.state_registry.all()
         entity_ids = self.resolver.resolve(
             target=action.target, domain=domain, entities=entities
         )
@@ -61,7 +66,7 @@ class ControlExecutor:
             action.domain.value if hasattr(action.domain, "value") else action.domain
         )
 
-        entities = await self.ha.list_entities()  # tb cached
+        entities = self.state_registry.all()
         entity_ids = self.resolver.resolve(
             target=action.target, domain=domain, entities=entities
         )
@@ -69,7 +74,7 @@ class ControlExecutor:
         if not entity_ids:
             raise ValueError("No matching entities for target")
 
-        selected = [e for e in entities if e.entity_id in set(entity_ids)]
+        selected = self.state_registry.snapshot(entity_ids=entity_ids)
 
         counts = Counter([e.state for e in selected])
         views = [self._entitiy_view(domain=domain, e=e) for e in selected]

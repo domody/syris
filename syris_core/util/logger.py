@@ -43,6 +43,7 @@ LogSource = Literal[
     "control",
     "event_bus",
     "test",
+    "ha"
 ]
 
 # Internal rename mapping

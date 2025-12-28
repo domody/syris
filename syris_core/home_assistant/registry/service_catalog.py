@@ -14,7 +14,6 @@ class ServiceCatalog:
     @classmethod
     async def build(cls, ha: HomeAssistantInterface) -> "ServiceCatalog":
         raw = await ha.list_services()
-        # print(raw)
 
         services: Dict[ServiceKey, ServiceSpec] = {}
 
