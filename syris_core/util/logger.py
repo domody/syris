@@ -39,6 +39,7 @@ LogSource = Literal[
     "error",
     "orchestrator",
     "subscriber",
+    "rules",
     "scheduler",
     "control",
     "event_bus",

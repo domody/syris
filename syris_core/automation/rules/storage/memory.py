@@ -1,0 +1,26 @@
+from typing import List
+from syris_core.automation.rules.models.rule import Rule
+from syris_core.automation.rules.models.trigger import DeviceTrigger
+from syris_core.types.llm import ControlAction, TargetSpec, ControlDomain, ControlOperation
+
+def load_rules() -> List[Rule]:
+    return [
+        Rule(
+            id="demo_toggle_lights_on_boolean",
+            name="Demo: toggle lights when boolean turns on",
+            trigger=DeviceTrigger(
+                entity_id="input_boolean.demo_rule_trigger",
+                to_state="on",
+            ),
+            actions=[
+                ControlAction(
+                    kind="service_call",
+                    domain=ControlDomain.LIGHT,
+                    operation=ControlOperation.POWER_TOGGLE,
+                    target=TargetSpec(scope="home", selector="all"),
+                    data={},
+                    requires_confirmation=False,
+                )
+            ],
+        ),
+    ]

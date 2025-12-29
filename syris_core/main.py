@@ -12,13 +12,17 @@ from syris_core.home_assistant.target_resolver import TargetResolver
 from syris_core.home_assistant.registry.service_catalog import ServiceCatalog
 from syris_core.home_assistant.registry.state_registry import StateRegistry
 from syris_core.home_assistant.runtime import HomeAssistantRuntime
+from syris_core.automation.rules.storage.memory import load_rules
+from syris_core.automation.rules.registry import RuleRegistry
+from syris_core.automation.rules.engine import RuleEngine
+from syris_core.automation.rules.runtime import RulesRuntime
 
 async def main():
     log("core", "Booting System...")
 
     event_bus = EventBus()
 
-    # Init pre-req
+    # Home Assistant
     target_resolver = TargetResolver()
     ha = TestHomeAssistantClient()
 
@@ -34,6 +38,13 @@ async def main():
         service_catalog=service_catalog, 
         state_registry=state_registry
     )
+
+    # Rule-based automations
+    rules = load_rules()
+    rules_registry = RuleRegistry.build(rules=rules)
+    rules_engine = RuleEngine(registry=rules_registry, control_executor=executor)
+    rules_runtime = RulesRuntime(event_bus=event_bus, engine=rules_engine)
+    rules_runtime.start()
 
     # Init orch
     orch = Orchestrator(control_executor=executor, event_bus=event_bus)

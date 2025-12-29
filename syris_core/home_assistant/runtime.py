@@ -22,7 +22,7 @@ class HomeAssistantRuntime:
     def stop(self) -> None:
         self._stop.set()
 
-    async def _publish_device_event(self, state:EntityState) -> None:
+    async def _publish_device_event(self, state: EntityState) -> None:
         payload = {
             "entity_id": state.entity_id,
             "domain": state.domain,
@@ -78,6 +78,7 @@ class HomeAssistantRuntime:
                 backoff = min(max_backoff, backoff * 2)
             
         log("ha", "Websocket loop stopped")
+
     async def run(self) -> None:
         self._stop.clear()
         log("ha", "HomeAssistantRuntime starting")
