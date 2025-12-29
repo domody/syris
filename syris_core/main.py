@@ -2,8 +2,8 @@ import asyncio
 from syris_core.events.bus import EventBus
 from syris_core.core.orchestrator import Orchestrator
 from syris_core.types.home_assistant import EntityState
-from syris_core.automation.scheduler import AutomationScheduler
-from syris_core.automation.service import SchedulingService
+from syris_core.automation.scheduling.scheduler import AutomationScheduler
+from syris_core.automation.scheduling.service import SchedulingService
 from syris_core.util.logger import log
 from syris_core.tools.agents.dev_input_agent import DevInputAgent
 from syris_core.home_assistant.client import TestHomeAssistantClient

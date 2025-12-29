@@ -1,4 +1,4 @@
-from syris_core.automation.scheduler import AutomationScheduler
+from syris_core.automation.scheduling.scheduler import AutomationScheduler
 from syris_core.types.task import (
     Automation,
     AlarmAutomation,

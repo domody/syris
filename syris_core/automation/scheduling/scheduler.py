@@ -2,7 +2,7 @@ import time
 import asyncio
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from syris_core.automation.automations import AUTOMATIONS
+from syris_core.automation.scheduling.builtins import AUTOMATIONS
 from syris_core.types.events import Event, EventType
 from syris_core.types.task import Automation
 from syris_core.events.bus import EventBus

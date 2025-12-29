@@ -32,7 +32,7 @@ from syris_core.types.llm import (
     TargetSpec,
 )
 from syris_core.types.home_assistant import QueryResult, ControlResult
-from syris_core.automation.service import SchedulingService
+from syris_core.automation.scheduling.service import SchedulingService
 from syris_core.types.memory import MemorySnapshot
 from syris_core.events.bus import EventBus
 from syris_core.memory.working_memory import WorkingMemory
