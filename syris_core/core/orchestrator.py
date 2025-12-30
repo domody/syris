@@ -59,21 +59,22 @@ class Orchestrator:
         plan_prompt = open(PROMPTS_DIR / self.config.planning_prompt_file).read()
         response_prompt = open(PROMPTS_DIR / self.config.system_prompt_file).read()
 
-        provider = LLMProvider(model_name=self.config.model_name)
+        planner_provider = LLMProvider(model_name=self.config.model_name)
+        router_provider  = LLMProvider(model_name="qwen2.5:7b-instruct")
+
+        tool_list = TOOL_PROMPT_LIST.strip()
+
         self.intent_parser = IntentParser(
-            provider=provider,
-            system_prompt=intent_prompt.replace(
-                "{TOOL_PROMPT_LIST}", TOOL_PROMPT_LIST.strip()
-            ),
+            provider=router_provider,
+            system_prompt=intent_prompt.replace("{TOOL_PROMPT_LIST}", tool_list),
         )
         self.planner = Planner(
-            provider=provider,
-            system_prompt=plan_prompt.replace(
-                "{TOOL_PROMPT_LIST}", TOOL_PROMPT_LIST.strip()
-            ),
+            provider=planner_provider,
+            system_prompt=plan_prompt.replace("{TOOL_PROMPT_LIST}", tool_list),
         )
         self.response_composer = ResponseComposer(
-            provider=provider, system_prompt=response_prompt
+            provider=planner_provider,
+            system_prompt=response_prompt,
         )
 
         # Event queue

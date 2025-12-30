@@ -1,8 +1,8 @@
 from enum import Enum
-from typing import Optional, Dict, Any, Literal, Union, Annotated, List
+from typing import Optional, Dict, Any, Literal, Union, Annotated, List, Sequence, Mapping
 from datetime import datetime
 from pydantic import BaseModel, RootModel, Field
-
+from ollama import Options, Tool
 
 class IntentType(str, Enum):
     CHAT = "chat"  # normal conversation, greetings, small talk
@@ -211,5 +211,7 @@ class LLMCallOptions(BaseModel):
     system_prompt: str
     memory: Optional[list[dict[str, Any]]] = None
     format: Dict[str, Any] | Literal["", "json"] | None = None
-    think: Literal["low", "medium", "high"] = "low"
+    think: Literal[None, "low", "medium", "high"] = "low"
     instructions: Optional[str] = None
+    tools: Optional[Sequence[Mapping[str, Any]]] = None
+    options: Optional[Mapping[str, Any] | Options] = None

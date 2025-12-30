@@ -33,17 +33,23 @@ class IntentParser:
                 memory=snap.messages,
                 format=Intent.model_json_schema(),
                 instructions=additional_instructions,
+                think=None,
+                options={
+                    "temperature": 0
+                },
+                tools=TOOL_MANIFEST
             )
         )
 
         if response.message.tool_calls:
+            log("llm", "[IntentParser] Tool call flagged.")
             tool_calls = response.message.tool_calls
 
             intent = Intent(
                 ToolIntent(
                     type=IntentType.TOOL,
                     subtype=[tc.function.name for tc in tool_calls],
-                    confidence=1.0,
+                    confidence=0.95,
                     arguments=ToolArgs(
                         arguments={
                             tc.function.name: dict(tc.function.arguments)
@@ -52,6 +58,8 @@ class IntentParser:
                     ),
                 )
             )
+            return intent
+        
         raw: str = response["message"]["content"]
 
         try:

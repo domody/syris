@@ -87,9 +87,12 @@ _lora_write_lock = threading.Lock()
 
 
 def log_lora_data(message: str):
+    write_file = False
+    
     file_line = f"{message}\n"
     file_path = os.path.join(LOG_DIR, "lora_data.log")
 
-    with _lora_write_lock:
-        with open(file_path, "a", encoding="utf-8") as f:
-            f.write(file_line)
+    if write_file:
+        with _lora_write_lock:
+            with open(file_path, "a", encoding="utf-8") as f:
+                f.write(file_line)

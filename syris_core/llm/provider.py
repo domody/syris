@@ -25,8 +25,11 @@ class LLMProvider:
         response = await self.client.chat(
             model=self.model_name,
             messages=messages,
+            tools=call.tools,
             format=call.format,
             think=call.think,
+            options=call.options,
+            keep_alive="10m",
         )
 
         log("llm", f"[Provider] Thinking: {response.message.thinking}")
