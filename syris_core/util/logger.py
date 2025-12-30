@@ -44,7 +44,7 @@ LogSource = Literal[
     "control",
     "event_bus",
     "test",
-    "ha"
+    "ha",
 ]
 
 # Internal rename mapping
@@ -85,10 +85,11 @@ def log(source: LogSource, message: str, level: str = "info", write_file=True):
 
 _lora_write_lock = threading.Lock()
 
+
 def log_lora_data(message: str):
-    file_line = message
+    file_line = f"{message}\n"
     file_path = os.path.join(LOG_DIR, "lora_data.log")
 
     with _lora_write_lock:
-        with open(file_path, "a", encoding="utf-8") as f: 
+        with open(file_path, "a", encoding="utf-8") as f:
             f.write(file_line)

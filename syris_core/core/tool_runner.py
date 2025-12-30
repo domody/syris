@@ -27,7 +27,9 @@ class ToolRunner:
             if not tool_name:
                 continue
             tasks.append(
-                asyncio.create_task(self._run_one(tool_name=tool_name, args=args.arguments))
+                asyncio.create_task(
+                    self._run_one(tool_name=tool_name, args=args.arguments)
+                )
             )
 
         done: list[ToolCallResult] = await asyncio.gather(*tasks)
@@ -56,7 +58,6 @@ class ToolRunner:
             tool_args = {}
 
         async with self._sem:
-
             try:
                 if inspect.iscoroutinefunction(func):
                     result = await func(**tool_args)

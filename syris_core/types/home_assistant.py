@@ -62,7 +62,8 @@ class ControlResult(BaseModel):
     target: TargetSpec
     entity_ids: list[str]
     success: bool = True
-    
+
+
 class QueryResult(BaseModel):
     kind: Literal["ha.query_result"] = "ha.query_result"
     domain: str

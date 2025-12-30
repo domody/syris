@@ -4,6 +4,7 @@ from typing import Dict, Iterable, List, Optional
 from syris_core.types.home_assistant import EntityState
 from syris_core.home_assistant.interface import HomeAssistantInterface
 
+
 @dataclass
 class StateRegistry:
     _states: Dict[str, EntityState]
@@ -14,12 +15,16 @@ class StateRegistry:
 
         states = {}
         for item in raw:
-            e = item if isinstance(item, EntityState) else EntityState.model_validate(item)
+            e = (
+                item
+                if isinstance(item, EntityState)
+                else EntityState.model_validate(item)
+            )
             states[e.entity_id] = e
-        
-        return cls(_states = states)
-    
-    def get(self, entity_id: str) -> Optional[EntityState]: 
+
+        return cls(_states=states)
+
+    def get(self, entity_id: str) -> Optional[EntityState]:
         return self._states.get(entity_id)
 
     def all(self) -> List[EntityState]:

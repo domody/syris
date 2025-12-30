@@ -101,11 +101,13 @@ class TargetSpec(BaseModel):
     name: Optional[str] = None
     entity_ids: Optional[List[str]] = None
 
+
 class StateQueryKind(str, Enum):
-    STATE = "state"          # on/off/unavailable + main attributes
+    STATE = "state"  # on/off/unavailable + main attributes
     BRIGHTNESS = "brightness"
     POSITION = "position"
     TEMPERATURE = "temperature"
+
 
 class QueryAction(BaseModel):
     kind: Literal["state_query"]
@@ -116,6 +118,7 @@ class QueryAction(BaseModel):
 
     # summarize: bool = True
 
+
 class ControlAction(BaseModel):
     kind: Literal["service_call"]
     domain: ControlDomain
@@ -124,7 +127,9 @@ class ControlAction(BaseModel):
     data: Dict[str, Any] = Field(default_factory=dict)
     requires_confirmation: bool = False
 
+
 Action = Annotated[Union[ControlAction, QueryAction], Field(discriminator="kind")]
+
 
 class ControlArgs(BaseModel):
     actions: List[Action]

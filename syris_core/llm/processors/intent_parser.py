@@ -3,7 +3,14 @@ import datetime
 from zoneinfo import ZoneInfo
 
 from syris_core.llm.provider import LLMProvider
-from syris_core.types.llm import Intent, IntentType, BaseIntent, ToolIntent, ToolArgs, LLMCallOptions
+from syris_core.types.llm import (
+    Intent,
+    IntentType,
+    BaseIntent,
+    ToolIntent,
+    ToolArgs,
+    LLMCallOptions,
+)
 from syris_core.types.memory import MemorySnapshot
 from syris_core.tools.registry import TOOL_MANIFEST
 from syris_core.util.logger import log, log_lora_data
@@ -42,17 +49,17 @@ class IntentParser:
                             tc.function.name: dict(tc.function.arguments)
                             for tc in tool_calls
                         }
-                    )
+                    ),
                 )
             )
         raw: str = response["message"]["content"]
-        
+
         try:
             data = json.loads(raw)
 
             lora_data = [
-                {"role":"user","content":text},
-                {"role":"assistant","content":data}
+                {"role": "user", "content": text},
+                {"role": "assistant", "content": data},
             ]
             log_lora_data(message=f"{lora_data}")
         except Exception:

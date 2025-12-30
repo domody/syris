@@ -17,6 +17,7 @@ from syris_core.automation.rules.registry import RuleRegistry
 from syris_core.automation.rules.engine import RuleEngine
 from syris_core.automation.rules.runtime import RulesRuntime
 
+
 async def main():
     log("core", "Booting System...")
 
@@ -29,14 +30,16 @@ async def main():
     service_catalog = await ServiceCatalog.build(ha=ha)
     state_registry = await StateRegistry.build(ha=ha)
 
-    ha_runtime = HomeAssistantRuntime(ha=ha, state_registry=state_registry, event_bus=event_bus, resync_interval_s=300)
+    ha_runtime = HomeAssistantRuntime(
+        ha=ha, state_registry=state_registry, event_bus=event_bus, resync_interval_s=300
+    )
     ha_task = asyncio.create_task(ha_runtime.run())
 
     executor = ControlExecutor(
-        ha=ha, 
-        resolver=target_resolver, 
-        service_catalog=service_catalog, 
-        state_registry=state_registry
+        ha=ha,
+        resolver=target_resolver,
+        service_catalog=service_catalog,
+        state_registry=state_registry,
     )
 
     # Rule-based automations

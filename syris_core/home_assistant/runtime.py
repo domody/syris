@@ -10,40 +10,52 @@ from syris_core.home_assistant.interface import HomeAssistantInterface
 from syris_core.home_assistant.registry.state_registry import StateRegistry
 from syris_core.util.logger import log
 
+
 @dataclass
 class HomeAssistantRuntime:
     ha: HomeAssistantInterface
     state_registry: StateRegistry
     event_bus: EventBus
-    resync_interval_s: int = 300 
-    
+    resync_interval_s: int = 300
+
     _stop: asyncio.Event = asyncio.Event()
 
     def stop(self) -> None:
         self._stop.set()
 
-    async def _publish_device_event(self, state: EntityState) -> None:
+    async def _publish_device_event(
+        self, old: Optional[EntityState], new: EntityState
+    ) -> None:
         payload = {
-            "entity_id": state.entity_id,
-            "domain": state.domain,
-            "state": state.state,
-            "name": state.friendly_name,
+            "entity_id": new.entity_id,
+            "domain": new.domain,
+            "new_state": new.state,
+            "old_state": old.state if old else None,
+            "name": new.friendly_name,
+            "old_attributes": old.attributes if old else None,
+            "new_attributes": new.attributes,
         }
-        await self.event_bus.publish(Event(
-            type=EventType.DEVICE,
-            source="home_assistant",
-            payload=payload,
-            timestamp=time.time(),
-        ))
+        await self.event_bus.publish(
+            Event(
+                type=EventType.DEVICE,
+                source="home_assistant",
+                payload=payload,
+                timestamp=time.time(),
+            )
+        )
 
-    async def _on_state_change(self, state: EntityState) -> None:
-        self.state_registry.upsert(state=state)
-        await self._publish_device_event(state=state)
-        
+    async def _on_state_change(
+        self, old: Optional[EntityState], new: EntityState
+    ) -> None:
+        self.state_registry.upsert(state=new)
+        await self._publish_device_event(old=old, new=new)
+
     async def _periodic_resync(self) -> None:
         while not self._stop.is_set():
-            try: 
-                await asyncio.wait_for(self._stop.wait(), timeout=self.resync_interval_s)
+            try:
+                await asyncio.wait_for(
+                    self._stop.wait(), timeout=self.resync_interval_s
+                )
                 break
             except asyncio.TimeoutError:
                 pass
@@ -64,7 +76,7 @@ class HomeAssistantRuntime:
             try:
                 log("ha", "Connecting websocket / subscribing to state changes...")
                 await self.ha.subscribe_state_changes(self._on_state_change)
-            
+
                 log("ha", "Websocket ended; Reconnecting soon...")
             except asyncio.CancelledError:
                 raise
@@ -76,14 +88,14 @@ class HomeAssistantRuntime:
                 break
             except asyncio.TimeoutError:
                 backoff = min(max_backoff, backoff * 2)
-            
+
         log("ha", "Websocket loop stopped")
 
     async def run(self) -> None:
         self._stop.clear()
         log("ha", "HomeAssistantRuntime starting")
 
-        try: 
+        try:
             async with asyncio.TaskGroup() as tg:
                 tg.create_task(self._ws_loop())
                 tg.create_task(self._periodic_resync())
@@ -95,6 +107,3 @@ class HomeAssistantRuntime:
             raise
         finally:
             log("ha", "HomeAssistantRuntime stopped")
-
-        
-

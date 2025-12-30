@@ -6,6 +6,7 @@ from syris_core.types.events import Event, EventType
 from syris_core.automation.rules.engine import RuleEngine
 from syris_core.util.logger import log
 
+
 @dataclass
 class RulesRuntime:
     event_bus: EventBus

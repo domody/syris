@@ -10,66 +10,69 @@ from syris_core.home_assistant.executor import ControlExecutor
 from syris_core.types.llm import ControlAction
 from syris_core.util.logger import log
 
+
 @dataclass
 class RuleEngine:
     registry: RuleRegistry
     control_executor: ControlExecutor
 
-    # _last_run: Dict[str, float] = Field(default_factory=Dict)
     _last_run: Dict[str, float] = field(default_factory=dict)
 
     def _event_entity_id(self, event: Event) -> Optional[str]:
         return event.payload.get("entity_id")
 
-    def _event_state(self, event: Event) -> Optional[str]:
-        return event.payload.get("state")
+    def _new_event_state(self, event: Event) -> Optional[str]:
+        return event.payload.get("new_state")
+
+    def _old_event_state(self, event: Event) -> Optional[str]:
+        return event.payload.get("old_state")
 
     def _matches(self, rule: Rule, event: Event) -> bool:
         if event.type != EventType.DEVICE:
             return False
-        
+
         entity_id = self._event_entity_id(event=event)
         if entity_id != rule.trigger.entity_id:
             return False
-        
-        state = self._event_state(event=event)
-        if rule.trigger.require_state and state is None:
+
+        new_state = self._new_event_state(event=event)
+        if rule.trigger.require_state and new_state is None:
             return False
-        
-        if rule.trigger.to_state is not None and state != rule.trigger.to_state:
+
+        if rule.trigger.to_state is not None and new_state != rule.trigger.to_state:
             return False
-        
-        # tbd old state checks; needs to be added the event payload first
+
+        if rule.trigger.from_state is not None:
+            old_state = self._old_event_state(event=event)
+            if old_state != rule.trigger.from_state:
+                return False
 
         return True
-    
+
     def _cooldown_ok(self, rule: Rule) -> bool:
         cd = rule.policy.cooldown_s
         if not cd:
             return True
-        
+
         last = self._last_run.get(rule.id)
         if last is None:
             return True
-        
+
         return (time.time() - last) >= cd
-    
+
     async def handle_event(self, event: Event) -> None:
         if event.type != EventType.DEVICE:
             return
-        
+
         entity_id = self._event_entity_id(event)
-        print(entity_id)
         if not entity_id:
             return
 
         candidates = self.registry.candidates_for_entity(entity_id)
-        print(candidates)
         if not candidates:
             return
-        
+
         for rule in candidates:
-            print(rule)
             if not rule.policy.enabled:
                 continue
 

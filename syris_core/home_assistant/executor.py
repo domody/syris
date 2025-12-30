@@ -6,9 +6,15 @@ from syris_core.home_assistant.target_resolver import TargetResolver
 from syris_core.home_assistant.registry.service_catalog import ServiceCatalog
 from syris_core.home_assistant.registry.state_registry import StateRegistry
 from syris_core.types.llm import ControlAction, QueryAction, Action
-from syris_core.types.home_assistant import EntityView, QueryResult, ControlResult, EntityState
+from syris_core.types.home_assistant import (
+    EntityView,
+    QueryResult,
+    ControlResult,
+    EntityState,
+)
 from syris_core.home_assistant.service_map import map_operation
 from syris_core.util.logger import log
+
 
 class ControlExecutor:
     def __init__(
@@ -16,7 +22,7 @@ class ControlExecutor:
         ha: HomeAssistantInterface,
         resolver: TargetResolver,
         service_catalog: ServiceCatalog,
-        state_registry: StateRegistry
+        state_registry: StateRegistry,
     ):
         self.ha = ha
         self.resolver = resolver
@@ -50,16 +56,19 @@ class ControlExecutor:
 
         payload = dict(action.data)
         payload["entity_id"] = entity_ids
-        log("control", f"Calling HA Service with domain: {domain}, service: {service}, payload: {payload}")
+        log(
+            "control",
+            f"Calling HA Service with domain: {domain}, service: {service}, payload: {payload}",
+        )
         await self.ha.call_service(domain=domain, service=service, data=payload)
-        
+
         return ControlResult(
             domain=domain,
             operation=service,
             target=action.target,
             entity_ids=entity_ids,
-            success=True
-        ) 
+            success=True,
+        )
 
     async def execute_query_action(self, action: QueryAction):
         domain = (
@@ -83,10 +92,7 @@ class ControlExecutor:
             domain=domain,
             query=getattr(action, "query", "state"),
             target=action.target,
-            summary={
-                "total": len(selected),
-                "counts": dict(counts)
-            },
+            summary={"total": len(selected), "counts": dict(counts)},
             entities=views,
         )
 
@@ -98,7 +104,7 @@ class ControlExecutor:
                 attrs["brightness"] = e.attributes["brightness"]
             if "color_mode" in e.attributes:
                 attrs["color_mode"] = e.attributes["color_mode"]
-                
+
         elif domain == "cover":
             if "current_position" in e.attributes:
                 attrs["current_position"] = e.attributes["current_position"]
@@ -108,12 +114,12 @@ class ControlExecutor:
                 if k in e.attributes:
                     attrs[k] = e.attributes[k]
 
-        #  switch / media player ... 
+        #  switch / media player ...
 
         return EntityView(
-            entity_id= e.entity_id,
-            name= e.friendly_name,
-            domain= domain,
-            state= e.state,
-            attributes= attrs,
+            entity_id=e.entity_id,
+            name=e.friendly_name,
+            domain=domain,
+            state=e.state,
+            attributes=attrs,
         )

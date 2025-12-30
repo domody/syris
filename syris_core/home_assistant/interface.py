@@ -1,4 +1,4 @@
-from typing import Protocol, Any, Callable, Awaitable
+from typing import Protocol, Any, Callable, Awaitable, Optional
 from syris_core.types.home_assistant import EntityState
 
 
@@ -12,5 +12,5 @@ class HomeAssistantInterface(Protocol):
     async def call_service(self, *, domain: str, service: str, data: dict) -> Any: ...
 
     async def subscribe_state_changes(
-        self, callback: Callable[[EntityState], Awaitable[None]]
+        self, callback: Callable[[Optional[EntityState], EntityState], Awaitable[None]]
     ) -> None: ...

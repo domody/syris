@@ -365,7 +365,7 @@ class Orchestrator:
         )
 
         intent_obj = assert_intent_type(intent=intent, expected_type=ControlIntent)
-        
+
         extra_messages = []
         had_control = False
         had_query = False
@@ -374,48 +374,50 @@ class Orchestrator:
 
         for action in intent_obj.arguments.actions:
             data = await self.control_executor.execute_action(action=action)
-            
+
             if isinstance(action, QueryAction):
                 had_query = True
                 assert isinstance(data, QueryResult)
-                extra_messages.append({
-                    "role": "tool",
-                    "tool_name": "home_assistant_query",
-                    "content": data.model_dump_json()
-                })
+                extra_messages.append(
+                    {
+                        "role": "tool",
+                        "tool_name": "home_assistant_query",
+                        "content": data.model_dump_json(),
+                    }
+                )
                 self.working_memory.add(
-                    role = "tool",
+                    role="tool",
                     tool_name="home_assistant_query",
-                    content=data.model_dump_json()
+                    content=data.model_dump_json(),
                 )
 
             elif isinstance(action, ControlAction):
                 had_control = True
                 assert isinstance(data, ControlResult)
                 control_results.append(data)
-                extra_messages.append({
-                    "role": "tool",
-                    "tool_name": "home_assistant_control",
-                    "content": data.model_dump_json(),
-                })
+                extra_messages.append(
+                    {
+                        "role": "tool",
+                        "tool_name": "home_assistant_control",
+                        "content": data.model_dump_json(),
+                    }
+                )
                 self.working_memory.add(
-                    role = "tool",
+                    role="tool",
                     tool_name="home_assistant_control",
-                    content=data.model_dump_json()
+                    content=data.model_dump_json(),
                 )
 
         if had_control and not had_query:
             return await self.response_composer.compose_optimistic(
-                snap=snap,
-                extra_messages=extra_messages
+                snap=snap, extra_messages=extra_messages
             )
 
-            
         if had_query and not had_control:
             return await self.response_composer.compose(
-                snap = snap,
+                snap=snap,
                 extra_messages=extra_messages,
-                instructions=QUERY_INSTRUCTIONS
+                instructions=QUERY_INSTRUCTIONS,
             )
 
         return await self.response_composer.compose(
