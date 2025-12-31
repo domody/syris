@@ -145,7 +145,7 @@ class Orchestrator:
         return await handler(event)
 
     async def _handle_unknown_event(self, event: Event):
-        await self._emit_response(f"Unknown Event: {event}")
+        await self._emit_response(f"Unknown Event")
 
     def set_scheduling_service(self, scheduling_service: SchedulingService):
         self.scheduling_service = scheduling_service
@@ -343,7 +343,7 @@ class Orchestrator:
 
         scheduler = self.require_scheduling_service()
         await scheduler.add_automation(automation=automation)
-        # await self._emit_response("Yes sir.")
+
         return "Yes sir."
 
     async def _handle_control(

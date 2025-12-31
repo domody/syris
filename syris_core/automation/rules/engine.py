@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional, Any
 from pydantic import Field
 
+from syris_core.events.bus import EventBus
 from syris_core.types.events import Event, EventType
 from syris_core.automation.rules.registry import RuleRegistry
 from syris_core.automation.rules.models.rule import Rule
@@ -15,8 +16,20 @@ from syris_core.util.logger import log
 class RuleEngine:
     registry: RuleRegistry
     control_executor: ControlExecutor
+    event_bus: EventBus
 
     _last_run: Dict[str, float] = field(default_factory=dict)
+
+    async def _emit(self, kind: str, payload: dict):
+        await self.event_bus.publish(Event(
+            type=EventType.TASK,
+            source="rules_engine",
+            payload={
+                "kind": kind,
+                **payload
+            },
+            timestamp=time.time()
+        ))
 
     def _event_entity_id(self, event: Event) -> Optional[str]:
         return event.payload.get("entity_id")
@@ -73,18 +86,23 @@ class RuleEngine:
             return
 
         for rule in candidates:
-            if not rule.policy.enabled:
-                continue
+            try:
+                if not rule.policy.enabled:
+                    continue
 
-            if not self._matches(rule, event):
-                continue
+                if not self._matches(rule, event):
+                    continue
 
-            if not self._cooldown_ok(rule):
-                continue
+                if not self._cooldown_ok(rule):
+                    continue
 
-            log("rules", f"Rule matched: {rule.id}")
-            self._last_run[rule.id] = time.time()
+                log("rules", f"Rule matched: {rule.id}")
+                self._last_run[rule.id] = time.time()
 
-            for action in rule.actions:
-                if isinstance(action, ControlAction):
-                    await self.control_executor.execute_action(action)
+                for action in rule.actions:
+                    if isinstance(action, ControlAction):
+                        await self.control_executor.execute_action(action)
+
+                await self._emit("automation.rule_completed", {"rule_id": rule.id, "status": "success"})
+            except Exception as e:
+                await self._emit("automation.rule_completed", {"rule_id": rule.id, "status": "failed", "error": str(e)})

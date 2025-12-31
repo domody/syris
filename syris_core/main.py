@@ -45,7 +45,7 @@ async def main():
     # Rule-based automations
     rules = load_rules()
     rules_registry = RuleRegistry.build(rules=rules)
-    rules_engine = RuleEngine(registry=rules_registry, control_executor=executor)
+    rules_engine = RuleEngine(registry=rules_registry, control_executor=executor, event_bus=event_bus)
     rules_runtime = RulesRuntime(event_bus=event_bus, engine=rules_engine)
     rules_runtime.start()
 

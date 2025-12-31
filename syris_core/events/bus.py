@@ -1,7 +1,7 @@
 import asyncio
 from typing import Callable, Dict, List, Coroutine, Any
 from syris_core.types.events import Event, EventType
-
+from syris_core.util.logger import log
 
 class EventBus:
     def __init__(self):
@@ -15,8 +15,10 @@ class EventBus:
     # Publish a new event into the system
     async def publish(self, event: Event):
         for callback in self._subscribers.get(event.type, []):
-            callback(event)
-
+            try:
+                callback(event)
+            except Exception as e:
+                log("event_bus", f"Subscriber error for {event.type}: {e}")
         await self._queue.put(event)
 
     async def next_event(self) -> Event:
