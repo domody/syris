@@ -16,6 +16,7 @@ from syris_core.automation.rules.storage.memory import load_rules
 from syris_core.automation.rules.registry import RuleRegistry
 from syris_core.automation.rules.engine import RuleEngine
 from syris_core.automation.rules.runtime import RulesRuntime
+from syris_core.notifications.notifier import NotifierAgent
 
 
 async def main():
@@ -49,6 +50,10 @@ async def main():
     rules_runtime = RulesRuntime(event_bus=event_bus, engine=rules_engine)
     rules_runtime.start()
 
+    # Notification System
+    notifier = NotifierAgent(event_bus=event_bus)
+    notifier.start()
+    
     # Init orch
     orch = Orchestrator(control_executor=executor, event_bus=event_bus)
 

@@ -10,6 +10,7 @@ class EventType(str, Enum):
     SCHEDULE = "schedule"  # Timers, alarms, reminders firing
     TOOL = "tool"  # Tool invocation and completion
     DEVICE = "device"  # Home automation / IoT updates
+    NOTIFY = "notify"  # Notifications to be outputed
     ERROR = "error"  # Failure events anywhere
 
 

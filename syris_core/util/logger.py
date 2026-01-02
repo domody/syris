@@ -45,6 +45,7 @@ LogSource = Literal[
     "event_bus",
     "test",
     "ha",
+    "notifier"
 ]
 
 # Internal rename mapping
