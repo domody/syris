@@ -12,6 +12,8 @@ class EventType(str, Enum):
     DEVICE = "device"  # Home automation / IoT updates
     NOTIFY = "notify"  # Notifications to be outputed
     ERROR = "error"  # Failure events anywhere
+    ASSISTANT = "assistant"
+    LOG = "log"
 
 
 class Event(BaseModel):
