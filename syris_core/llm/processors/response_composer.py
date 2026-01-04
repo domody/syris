@@ -34,15 +34,15 @@ class ResponseComposer:
             trace_id=request_id,
             intent=intent 
         )
-        context_instructions = """You will receive an AssistantContext JSON blob.
-AssistantContext is the source of truth for what happened.
-Never claim an action is complete unless execution.truth_level == "confirmed".
-If truth_level == "sent", say the command was sent / in progress.
-If truth_level == "failed", explain failure briefly and suggest a next step.
-"""
+#         context_instructions = """You will receive an AssistantContext JSON blob.
+# AssistantContext is the source of truth for what happened.
+# Never claim an action is complete unless execution.truth_level == "confirmed".
+# If truth_level == "sent", say the command was sent / in progress.
+# If truth_level == "failed", explain failure briefly and suggest a next step.
+# """
         base = override_prompt or self.system_prompt
-        contextualised_base = f"{base}\n{context_instructions}"
-        final = contextualised_base if not instructions else f"{contextualised_base}\n\n{instructions}"
+        # contextualised_base = f"{base}\n{context_instructions}"
+        final = base if not instructions else f"{base}\n\n{instructions}"
 
         log("llm", f"[ResponseComposer] AssistantContext: {context}")
         response = await self.provider.complete(

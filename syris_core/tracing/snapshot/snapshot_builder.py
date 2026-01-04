@@ -52,10 +52,18 @@ class SnapshotBuilder:
             )
         
             return context
-    
+        
+        if trace_summary.outcome == "failure":
+            truth_level = "failed"
+        elif trace_summary.outcome == "partial":
+            truth_level = "partial"
+        else:
+            # success-ish
+            truth_level = "confirmed" if all(step.verified_by_device_event for step in trace_summary.steps) else "sent"
+
         context.execution = Execution(
             outcome=trace_summary.outcome,
-            truth_level="confirmed",
+            truth_level=truth_level,
             steps=trace_summary.steps,
             observed=trace_summary.observed
         )
