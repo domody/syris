@@ -48,6 +48,7 @@ from syris_core.home_assistant.executor import ControlExecutor
 from syris_core.tracing.context.request_context import TRACE_CTX, TraceContext
 from syris_core.tracing.collector.trace_collector import TraceCollector
 from syris_core.tracing.snapshot.snapshot_builder import SnapshotBuilder
+from ..transport.models.requests import UserRequest
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "llm" / "prompts"
 
@@ -134,6 +135,35 @@ class Orchestrator:
 
             task.add_done_callback(_done)
 
+    async def submit_request(self, req: UserRequest) -> str:
+        payload = {}
+
+        if req.text is not None:
+            payload = {"text": req.text}
+        else:
+            payload = {
+                "command": {
+                    "action": req.action,
+                    "entity_id": req.entity_id,
+                    "args": req.args,
+                }
+            }
+
+
+        event = Event(
+            type=EventType.INPUT,
+            user_id=req.user_id or "dev",
+            source=req.source if req.session_id is None else f"{req.source}:{req.session_id}",
+            payload=payload,
+            timestamp=time.time(),
+        )
+        event.request_id = req.request_id
+        if req.trace_id:
+            event.trace_id = req.trace_id
+        
+        await self.event_bus.publish(event)
+        return req.request_id
+    
     async def _handle_event_with_limits(self, event: Event):
         token = TRACE_CTX.set(TraceContext(
             trace_id=event.trace_id,
@@ -160,7 +190,8 @@ class Orchestrator:
         return await handler(event)
 
     async def _handle_unknown_event(self, event: Event):
-        await self._emit_response(f"Unknown Event")
+        # await self._emit_response(f"Unknown Event")
+        pass
 
     def set_scheduling_service(self, scheduling_service: SchedulingService):
         self.scheduling_service = scheduling_service
@@ -173,6 +204,14 @@ class Orchestrator:
     # Emit response
     async def _emit_response(self, text: str):
         log("core", f"{text}")
+        await self.event_bus.publish(Event(
+            type=EventType.ASSISTANT,
+            source="orchestrator",
+            payload={
+                "text": text
+            },
+            timestamp=time.time()
+        ))
 
     # Handle input events
     async def _handle_input(self, event: Event):
@@ -183,44 +222,44 @@ class Orchestrator:
 
         snap = self.working_memory.snapshot(scopes=["chat"])
 
-        # intent = await self.intent_parser.parse(user_text, snap)
+        intent = await self.intent_parser.parse(user_text, snap)
 
-        intent = Intent(
-            ControlIntent(
-                type=IntentType.CONTROL,
-                subtype="ha.service_call_plan",
-                confidence=0.85,
-                arguments=ControlArgs(
-                    actions=[
-                        ControlAction(
-                            kind="ha.call_service",
-                            domain=ControlDomain.LIGHT,
-                            operation=ControlOperation.POWER_TOGGLE,
-                            target=TargetSpec(
-                                scope="home",
-                                selector="all",
-                                area=None,
-                                name=None,
-                                entity_ids=[],
-                            ),
-                            data={},
-                            requires_confirmation=False,
-                        )
-                        # QueryAction(
-                        #     kind="ha.state_query",
-                        #     domain=ControlDomain.LIGHT,
-                        #     target=TargetSpec(
-                        #         scope="home",
-                        #         selector="all",
-                        #         area=None,
-                        #         name=None,
-                        #         entity_ids=[],
-                        #     ),
-                        # )
-                    ]
-                ),
-            )
-        )
+        # intent = Intent(
+        #     ControlIntent(
+        #         type=IntentType.CONTROL,
+        #         subtype="ha.service_call_plan",
+        #         confidence=0.85,
+        #         arguments=ControlArgs(
+        #             actions=[
+        #                 ControlAction(
+        #                     kind="ha.call_service",
+        #                     domain=ControlDomain.LIGHT,
+        #                     operation=ControlOperation.POWER_TOGGLE,
+        #                     target=TargetSpec(
+        #                         scope="home",
+        #                         selector="all",
+        #                         area=None,
+        #                         name=None,
+        #                         entity_ids=[],
+        #                     ),
+        #                     data={},
+        #                     requires_confirmation=False,
+        #                 )
+        #                 # QueryAction(
+        #                 #     kind="ha.state_query",
+        #                 #     domain=ControlDomain.LIGHT,
+        #                 #     target=TargetSpec(
+        #                 #         scope="home",
+        #                 #         selector="all",
+        #                 #         area=None,
+        #                 #         name=None,
+        #                 #         entity_ids=[],
+        #                 #     ),
+        #                 # )
+        #             ]
+        #         ),
+        #     )
+        # )
 
         reply = await self._route_intent(event=event, intent=intent, user_text=user_text, snap=snap)
 

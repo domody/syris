@@ -23,6 +23,8 @@ from syris_core.tracing.integrations.status import IntegrationStatus
 from syris_core.tracing.integrations.supervisor import IntegrationSupervisor
 from syris_core.tracing.capabilities.registry import CapabilityRegistry
 from syris_core.tracing.snapshot.snapshot_builder import SnapshotBuilder
+from syris_core.transport.ws.app import create_app
+from syris_core.transport.ws.server import run_ws_server
 
 async def main():
     log("core", "Booting System...")
@@ -86,6 +88,10 @@ async def main():
     # Init orch
     orch = Orchestrator(control_executor=executor, event_bus=event_bus, snapshot_builder=snapshot_builder)
 
+    # Start WS server
+    ws_app = create_app(orchestrator=orch, event_bus=event_bus)
+    ws_task = asyncio.create_task(run_ws_server(ws_app, host="0.0.0.0", port=42315), name="ws_server")
+
     # Register global event handlers
     dev_agent = DevInputAgent(orch.event_bus)
     dev_task = asyncio.create_task(dev_agent.start())
@@ -108,7 +114,8 @@ async def main():
         ha_runtime.stop()
         ha_task.cancel()
         dev_task.cancel()
-        await asyncio.gather(ha_task, dev_task, return_exceptions=True)
+        ws_task.cancel()
+        await asyncio.gather(ha_task, dev_task, ws_task, return_exceptions=True)
         log("core", "Shutdown complete")
 
 
