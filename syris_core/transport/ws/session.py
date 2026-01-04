@@ -64,7 +64,7 @@ class Session:
     async def send_welcome(self) -> None:
         msg = S_Welcome(
             session_id=SessionId(self.session_id),
-            server_time_ms=now_ms(),
+            server_ts_ms=now_ms(),
             cap=["events", "commands"],  # add "voice" later
         ).model_dump()
         await self._enqueue(msg)
@@ -74,11 +74,11 @@ class Session:
             return
         items = history.query_recent(limit=self.options.recent_limit)
         for ev in items:
-            await self._enqueue(S_Event(event=ev).model_dump())
+            await self._enqueue(S_Event(server_ts_ms=now_ms(), event=ev).model_dump())
 
     async def try_send_event(self, event: TransportEvent) -> bool:
         # Called by hub.publish() frequently; must be fast.
-        payload = S_Event(event=event).model_dump()
+        payload = S_Event(server_ts_ms=now_ms(), event=event).model_dump()
         return await self._try_enqueue(payload)
     
     async def _recv_loop(self) -> None:
@@ -110,12 +110,12 @@ class Session:
         if now - self._last_dropped_notify_ms > 1000:
             self._last_dropped_notify_ms = now
             await self._try_enqueue(
-                S_Dropped(count=self._dropped_count, reason="client_slow").model_dump()
+                S_Dropped(server_ts_ms=now_ms(), count=self._dropped_count, reason="client_slow").model_dump()
             )
             self._dropped_count = 0
 
     async def send_error(self, code: str, message: str, *, request_id: Optional[str] = None) -> None:
-        await self._try_enqueue(S_Error(code=code, message=message, request_id=RequestId(request_id or "missing_request_id")).model_dump())
+        await self._try_enqueue(S_Error(server_ts_ms=now_ms(), code=code, message=message, request_id=RequestId(request_id or "missing_request_id")).model_dump())
 
     async def send_pong(self, nonce: Optional[str]) -> None:
-        await self._try_enqueue(S_Pong(nonce=nonce, server_time_ms=now_ms()).model_dump())
+        await self._try_enqueue(S_Pong(server_ts_ms=now_ms(), nonce=nonce, server_time_ms=now_ms()).model_dump())
