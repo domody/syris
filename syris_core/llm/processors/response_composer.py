@@ -5,12 +5,13 @@ from syris_core.llm.provider import LLMProvider
 from syris_core.types.llm import Intent, PlanExecutionResult, LLMCallOptions
 from syris_core.types.memory import MemorySnapshot
 from syris_core.util.logger import log
-
+from syris_core.tracing.snapshot.snapshot_builder import SnapshotBuilder
 
 class ResponseComposer:
-    def __init__(self, provider: LLMProvider, system_prompt: str):
+    def __init__(self, provider: LLMProvider, system_prompt: str, snapshot_builder: SnapshotBuilder):
         self.provider = provider
         self.system_prompt = system_prompt
+        self.snapshout_builder = snapshot_builder
 
     async def compose(
         self,
@@ -19,15 +20,33 @@ class ResponseComposer:
         override_prompt: str | None = None,
         instructions: str | None = None,
         extra_messages: Optional[list[dict[str, Any]]] = None,
+        intent: Intent,
+        request_id: str,
     ):
-        base = override_prompt or self.system_prompt
-        final = base if not instructions else f"{base}\n\n{instructions}"
 
         messages = [*snap.messages, *(extra_messages or [])] if snap else []
         # log("llm", f"[ResponseComposer] Generating reply (status={status}) (prompt={prompt})")
 
+        # build assistant context
+        await self.snapshout_builder.trace_collector.wait_all_verified(request_id)
+        context = self.snapshout_builder.build(
+            request_id=request_id,
+            trace_id=request_id,
+            intent=intent 
+        )
+        context_instructions = """You will receive an AssistantContext JSON blob.
+AssistantContext is the source of truth for what happened.
+Never claim an action is complete unless execution.truth_level == "confirmed".
+If truth_level == "sent", say the command was sent / in progress.
+If truth_level == "failed", explain failure briefly and suggest a next step.
+"""
+        base = override_prompt or self.system_prompt
+        contextualised_base = f"{base}\n{context_instructions}"
+        final = contextualised_base if not instructions else f"{contextualised_base}\n\n{instructions}"
+
+        log("llm", f"[ResponseComposer] AssistantContext: {context}")
         response = await self.provider.complete(
-            LLMCallOptions(system_prompt=final, memory=messages)
+            LLMCallOptions(system_prompt=final, memory=messages, instructions=json.dumps({"assistant_context": context.model_dump_json()}))
         )
         return response["message"]["content"].strip()
 
@@ -35,6 +54,8 @@ class ResponseComposer:
 
     async def compose_optimistic(
         self,
+        intent: Intent,
+        request_id: str,
         snap: MemorySnapshot | None,
         override_prompt: str | None = None,
         extra_messages: Optional[list[dict[str, Any]]] = None,
@@ -46,10 +67,12 @@ class ResponseComposer:
             instructions=optimistic_instructions,
             override_prompt=override_prompt,
             extra_messages=extra_messages,
+            intent=intent,
+            request_id=request_id
         )
 
     async def compose_plan_summary(
-        self, result: PlanExecutionResult, snap: MemorySnapshot | None
+        self, result: PlanExecutionResult, snap: MemorySnapshot | None, intent: Intent, request_id: str,
     ):
         assert result.end_time
 
@@ -131,4 +154,4 @@ Exception (if any):
 
 """
 
-        return await self.compose(snap=snap, override_prompt=plan_summary_prompt)
+        return await self.compose(snap=snap, override_prompt=plan_summary_prompt, intent=intent, request_id=request_id)

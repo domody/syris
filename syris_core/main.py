@@ -6,7 +6,7 @@ from syris_core.automation.scheduling.scheduler import AutomationScheduler
 from syris_core.automation.scheduling.service import SchedulingService
 from syris_core.util.logger import log
 from syris_core.tools.agents.dev_input_agent import DevInputAgent
-from syris_core.home_assistant.client import TestHomeAssistantClient
+from syris_core.home_assistant.client import HomeAssistantWSClient
 from syris_core.home_assistant.executor import ControlExecutor
 from syris_core.home_assistant.target_resolver import TargetResolver
 from syris_core.home_assistant.registry.service_catalog import ServiceCatalog
@@ -17,16 +17,33 @@ from syris_core.automation.rules.registry import RuleRegistry
 from syris_core.automation.rules.engine import RuleEngine
 from syris_core.automation.rules.runtime import RulesRuntime
 from syris_core.notifications.notifier import NotifierAgent
-
-
+from syris_core.tracing.correlator.correlator import PendingActionCorrelator
+from syris_core.tracing.collector.trace_collector import TraceCollector
+from syris_core.tracing.integrations.status import IntegrationStatus
+from syris_core.tracing.capabilities.registry import CapabilityRegistry
+from syris_core.tracing.snapshot.snapshot_builder import SnapshotBuilder
 async def main():
     log("core", "Booting System...")
 
     event_bus = EventBus()
 
+    # Awareness
+    trace_collector = TraceCollector(event_bus=event_bus)
+    trace_collector.start()
+    action_correlator = PendingActionCorrelator(event_bus=event_bus)
+    action_correlator.start()
+    integration_status = IntegrationStatus(event_bus=event_bus)
+    capability_registry = CapabilityRegistry()
+    capability_registry.build()
+    snapshot_builder = SnapshotBuilder(
+        trace_collector=trace_collector,
+        capability_registry=capability_registry,
+        integration_status=integration_status
+    )
+
     # Home Assistant
     target_resolver = TargetResolver()
-    ha = TestHomeAssistantClient()
+    ha = HomeAssistantWSClient(event_bus=event_bus)
 
     service_catalog = await ServiceCatalog.build(ha=ha)
     state_registry = await StateRegistry.build(ha=ha)
@@ -41,6 +58,7 @@ async def main():
         resolver=target_resolver,
         service_catalog=service_catalog,
         state_registry=state_registry,
+        event_bus=event_bus,
     )
 
     # Rule-based automations
@@ -55,7 +73,7 @@ async def main():
     notifier.start()
     
     # Init orch
-    orch = Orchestrator(control_executor=executor, event_bus=event_bus)
+    orch = Orchestrator(control_executor=executor, event_bus=event_bus, snapshot_builder=snapshot_builder)
 
     # Register global event handlers
     dev_agent = DevInputAgent(orch.event_bus)

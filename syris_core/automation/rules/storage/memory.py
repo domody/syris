@@ -21,7 +21,7 @@ def load_rules() -> List[Rule]:
             ),
             actions=[
                 ControlAction(
-                    kind="service_call",
+                    kind="ha.call_service",
                     domain=ControlDomain.LIGHT,
                     operation=ControlOperation.POWER_TOGGLE,
                     target=TargetSpec(scope="home", selector="all"),

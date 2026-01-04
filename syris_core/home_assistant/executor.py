@@ -1,3 +1,4 @@
+import time
 from typing import Any
 from collections import Counter
 
@@ -14,7 +15,24 @@ from syris_core.types.home_assistant import (
 )
 from syris_core.home_assistant.service_map import map_operation
 from syris_core.util.logger import log
+from syris_core.events.bus import EventBus
+from syris_core.types.events import Event, EventType
 
+def infer_expected_to_state(domain: str, service: str) -> str | None:
+    # lights/switches
+    if service in ("turn_on",):
+        return "on"
+    if service in ("turn_off",):
+        return "off"
+
+    # covers
+    if service == "open_cover":
+        return "open"
+    if service == "close_cover":
+        return "closed"
+
+    # toggle / set_temperature / set_position etc are ambiguous here
+    return None
 
 class ControlExecutor:
     def __init__(
@@ -23,11 +41,13 @@ class ControlExecutor:
         resolver: TargetResolver,
         service_catalog: ServiceCatalog,
         state_registry: StateRegistry,
+        event_bus: EventBus
     ):
         self.ha = ha
         self.resolver = resolver
         self.service_catalog = service_catalog
         self.state_registry = state_registry
+        self.event_bus = event_bus
 
     async def execute_action(self, action: Action) -> Any:
         if isinstance(action, ControlAction):
@@ -46,7 +66,6 @@ class ControlExecutor:
         self.service_catalog.require(domain, service)
         # tbd check for response key in json. If none -> dont send return response, If response: optional True or False, do send for return
 
-        # entities = await self.ha.list_entities()  # tb cached
         entities = self.state_registry.all()
         entity_ids = self.resolver.resolve(
             target=action.target, domain=domain, entities=entities
@@ -54,21 +73,77 @@ class ControlExecutor:
         if not entity_ids:
             raise ValueError("No matching entities for target")
 
+        expected_to = infer_expected_to_state(domain, service)
+        expected: dict[str, dict[str, str | None]] = {}
+
+        for eid in entity_ids:
+            st = self.state_registry.get(eid)
+            expected[eid] = {
+                "from_state": st.state if st else None,
+                "to_state": expected_to,
+            }
+            
         payload = dict(action.data)
         payload["entity_id"] = entity_ids
         log(
             "control",
             f"Calling HA Service with domain: {domain}, service: {service}, payload: {payload}",
         )
-        await self.ha.call_service(domain=domain, service=service, data=payload)
 
-        return ControlResult(
-            domain=domain,
-            operation=service,
-            target=action.target,
-            entity_ids=entity_ids,
-            success=True,
+        # publish tool events
+        tool_payload = {
+            "kind": "ha.call_service",
+            "phase": "start",
+            "domain": domain,
+            "service": service,
+            "entity_ids": entity_ids,
+            "expected": expected,
+        }
+        # start event
+        start_event =Event(
+            type=EventType.TOOL,
+            source="control_executor",
+            payload=tool_payload,
+            timestamp=time.time()
         )
+
+        await self.event_bus.publish(start_event)
+        try:
+            await self.ha.call_service(domain=domain, service=service, data=payload)
+            await self.event_bus.publish(Event(
+                type=EventType.TOOL, 
+                source="control_executor",
+                payload={**tool_payload, "phase": "success"}, 
+                parent_event_id=start_event.event_id,
+                timestamp=time.time()
+            ))
+            return ControlResult(
+                domain=domain,
+                operation=service,
+                target=action.target,
+                entity_ids=entity_ids,
+                success=True,
+            )
+
+        except Exception as e:
+            await self.event_bus.publish(Event(
+                type=EventType.TOOL, 
+                source="control_executor",
+                payload={**tool_payload, "phase": "failure", "error": {
+                    "type": type(e).__name__,
+                    "message": str(e),
+                    "retryable": True
+                }}, 
+                parent_event_id=start_event.event_id,
+                timestamp=time.time()
+            ))
+            return ControlResult(
+                domain=domain,
+                operation=service,
+                target=action.target,
+                entity_ids=entity_ids,
+                success=False,
+            )
 
     async def execute_query_action(self, action: QueryAction):
         domain = (

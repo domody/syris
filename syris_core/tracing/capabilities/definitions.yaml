@@ -1,0 +1,52 @@
+- id: home.control_device
+  description: Control HA entities (lights, switches, etc.)
+  intent_types: ["control"]
+  confirmable: true
+  default_confirm_wait_ms: 500
+  attributes:
+    entity_domains: ["light","switch","fan","climate","media_player"]
+  tools:
+    - kind: ha.call_service
+  policy:
+    truth_requires_confirmation: true
+    user_confirm_required: false
+
+- id: home.unlock
+  description: Unlock doors
+  intent_types: ["control"]
+  confirmable: true
+  default_confirm_wait_ms: 800
+  tools:
+    - kind: ha.call_service
+      options:
+        domain: lock
+        service: unlock
+  policy:
+    user_confirm_required: true
+
+- id: home.query_device_state
+  description: Read HA entity state
+  intent_types: ["control"]
+  confirmable: false
+  attributes:
+    entity_domains: ["light","switch","fan","climate","media_player"]
+  tools:
+    - kind: ha.state_query
+
+- id: schedule.set_timer
+  description: Set a timer
+  intent_types: ["schedule"]
+  confirmable: true
+  attributes:
+    schedule_kinds: "timer"
+  tools:
+    - kind: schedule.set
+
+- id: schedule.set_alarm
+  description: Set an alarm
+  intent_types: ["schedule"]
+  confirmable: true
+  attributes:
+    schedule_kinds: "alarm"
+  tools:
+    - kind: schedule.set

@@ -44,6 +44,20 @@ class HomeAssistantRuntime:
             )
         )
 
+    async def _publish_health(self, patch: dict) -> None:
+        await self.event_bus.publish(
+            Event(
+                type=EventType.SYSTEM,
+                source="home_assistant",
+                payload={
+                    "kind": "integration.health",
+                    "integration_id": "home_assistant",
+                    "patch": patch,
+                },
+                timestamp=time.time(),
+            )
+        )
+
     async def _on_state_change(
         self, old: Optional[EntityState], new: EntityState
     ) -> None:
@@ -74,13 +88,30 @@ class HomeAssistantRuntime:
 
         while not self._stop.is_set():
             try:
+                await self._publish_health({
+                    "connected": False,
+                    "ws_alive": False,
+                    "details": {"phase": "connecting"},
+                })
+                            
                 log("ha", "Connecting websocket / subscribing to state changes...")
                 await self.ha.subscribe_state_changes(self._on_state_change)
+
+                await self._publish_health({
+                    "connected": False,
+                    "ws_alive": False,
+                    "last_error": {"code": "ws_ended", "message": None},
+                })
 
                 log("ha", "Websocket ended; Reconnecting soon...")
             except asyncio.CancelledError:
                 raise
             except Exception as e:
+                await self._publish_health({
+                    "connected": False,
+                    "ws_alive": False,
+                    "last_error": {"code": "ws_error", "message": str(e)},
+                })
                 log("ha", f"Websocket error: {e}")
 
             try:

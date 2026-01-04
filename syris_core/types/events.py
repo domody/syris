@@ -15,6 +15,11 @@ class EventType(str, Enum):
 
 
 class Event(BaseModel):
+    event_id: Optional[str] = None
+    trace_id: Optional[str] = None
+    request_id: Optional[str] = None
+    parent_event_id: Optional[str] = None
+
     type: EventType
     user_id: Optional[str] = None
     source: Optional[str] = None

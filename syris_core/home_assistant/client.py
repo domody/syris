@@ -1,4 +1,5 @@
 import json
+import time
 import websockets
 import requests
 from typing import Any, Awaitable, Callable, Optional
@@ -8,11 +9,16 @@ from syris_core.config import HA_TOKEN as TOKEN, HA_URL
 from syris_core.types.home_assistant import EntityState, EntityContext, ServiceSpec
 from syris_core.home_assistant.interface import HomeAssistantInterface
 from syris_core.util.logger import log
+from syris_core.types.events import Event, EventType
+from syris_core.events.bus import EventBus
 
 HEADERS = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 
 
-class TestHomeAssistantClient(HomeAssistantInterface):
+class HomeAssistantWSClient(HomeAssistantInterface):
+    def __init__(self, event_bus: EventBus) -> None:
+        self.event_bus = event_bus
+
     async def list_entities(self) -> list[EntityState]:
         r = requests.get(f"{HA_URL}/api/states", headers=HEADERS, timeout=10)
         r.raise_for_status()
@@ -63,6 +69,24 @@ class TestHomeAssistantClient(HomeAssistantInterface):
             auth_resp = json.loads(await ws.recv())
             if auth_resp.get("type") != "auth_ok":
                 raise RuntimeError("WS Auth Failed")
+            
+            await self.event_bus.publish(
+                Event(
+                    type=EventType.SYSTEM,
+                    source="home_assistant",
+                    payload={
+                        "kind": "integration.health",
+                        "integration_id": "home_assistant",
+                        "patch": {
+                            "connected": True, 
+                            "ws_alive": True, 
+                            "last_error": None,
+                            "details": {"phase": "connected"}, 
+                        },
+                    },
+                    timestamp=time.time(),
+                )
+            )
 
             await ws.send(
                 json.dumps(

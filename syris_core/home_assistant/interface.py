@@ -1,8 +1,10 @@
 from typing import Protocol, Any, Callable, Awaitable, Optional
 from syris_core.types.home_assistant import EntityState
-
+from syris_core.events.bus import EventBus
 
 class HomeAssistantInterface(Protocol):
+    event_bus: EventBus
+    
     async def list_entities(self) -> list[EntityState]: ...
 
     async def list_services(self) -> list[Any]: ...

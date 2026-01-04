@@ -1,4 +1,5 @@
 import asyncio
+import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
@@ -30,6 +31,7 @@ from syris_core.types.llm import (
     ControlDomain,
     ControlOperation,
     TargetSpec,
+    ChatArgs
 )
 from syris_core.types.home_assistant import QueryResult, ControlResult
 from syris_core.automation.scheduling.service import SchedulingService
@@ -43,17 +45,21 @@ from syris_core.tools.registry import TOOL_REGISTRY, TOOL_PROMPT_LIST
 from syris_core.util.logger import log
 from syris_core.util.helpers import assert_intent_type
 from syris_core.home_assistant.executor import ControlExecutor
+from syris_core.tracing.context.request_context import TRACE_CTX, TraceContext
+from syris_core.tracing.collector.trace_collector import TraceCollector
+from syris_core.tracing.snapshot.snapshot_builder import SnapshotBuilder
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "llm" / "prompts"
 
 
 class Orchestrator:
-    def __init__(self, control_executor: ControlExecutor, event_bus: EventBus):
+    def __init__(self, control_executor: ControlExecutor, event_bus: EventBus, snapshot_builder: SnapshotBuilder):
         self.config = OrchestratorConfig()
 
         # Memory
         self.working_memory = WorkingMemory()
-
+        self.snapshot_builder = snapshot_builder
+        
         # LLM Layer
         intent_prompt = open(PROMPTS_DIR / self.config.intent_prompt_file).read()
         plan_prompt = open(PROMPTS_DIR / self.config.planning_prompt_file).read()
@@ -75,6 +81,7 @@ class Orchestrator:
         self.response_composer = ResponseComposer(
             provider=planner_provider,
             system_prompt=response_prompt,
+            snapshot_builder=self.snapshot_builder
         )
 
         # Event queue
@@ -128,8 +135,16 @@ class Orchestrator:
             task.add_done_callback(_done)
 
     async def _handle_event_with_limits(self, event: Event):
-        async with self._sem_events:
-            await self._handle_event_safe(event=event)
+        token = TRACE_CTX.set(TraceContext(
+            trace_id=event.trace_id,
+            request_id=event.request_id,
+        ))
+
+        try:
+            async with self._sem_events:
+                await self._handle_event_safe(event=event)
+        finally:
+            TRACE_CTX.reset(token)
 
     async def _handle_event_safe(self, event: Event):
         try:
@@ -139,7 +154,7 @@ class Orchestrator:
 
     # Handle event based on event type
     async def handle_event(self, event: Event):
-        log("orchestrator", f"Handling event: {event.type} -> {event.payload}")
+        log("orchestrator", f"Handling event: {event.type} -> {event}")
 
         handler = self._event_handlers.get(event.type, self._handle_unknown_event)
         return await handler(event)
@@ -168,44 +183,46 @@ class Orchestrator:
 
         snap = self.working_memory.snapshot(scopes=["chat"])
 
-        intent = await self.intent_parser.parse(user_text, snap)
+        # intent = await self.intent_parser.parse(user_text, snap)
 
-        # intent = Intent(
-        #     ControlIntent(
-        #         type=IntentType.CONTROL,
-        #         subtype="ha.service_call_plan",
-        #         confidence=0.85,
-        #         arguments=ControlArgs(
-        #             actions=[
-        #                 # ControlAction(
-        #                 #     domain=ControlDomain.LIGHT,
-        #                 #     operation=ControlOperation.POWER_TOGGLE,
-        #                 #     target=TargetSpec(
-        #                 #         scope="home",
-        #                 #         selector="all",
-        #                 #         area=None,
-        #                 #         name=None,
-        #                 #         entity_ids=[],
-        #                 #     ),
-        #                 #     data={},
-        #                 #     requires_confirmation=False,
-        #                 # )
-        #                 QueryAction(
-        #                     domain=ControlDomain.LIGHT,
-        #                     target=TargetSpec(
-        #                         scope="home",
-        #                         selector="all",
-        #                         area=None,
-        #                         name=None,
-        #                         entity_ids=[],
-        #                     ),
-        #                 )
-        #             ]
-        #         ),
-        #     )
-        # )
+        intent = Intent(
+            ControlIntent(
+                type=IntentType.CONTROL,
+                subtype="ha.service_call_plan",
+                confidence=0.85,
+                arguments=ControlArgs(
+                    actions=[
+                        ControlAction(
+                            kind="ha.call_service",
+                            domain=ControlDomain.LIGHT,
+                            operation=ControlOperation.POWER_TOGGLE,
+                            target=TargetSpec(
+                                scope="home",
+                                selector="all",
+                                area=None,
+                                name=None,
+                                entity_ids=[],
+                            ),
+                            data={},
+                            requires_confirmation=False,
+                        )
+                        # QueryAction(
+                        #     kind="ha.state_query",
+                        #     domain=ControlDomain.LIGHT,
+                        #     target=TargetSpec(
+                        #         scope="home",
+                        #         selector="all",
+                        #         area=None,
+                        #         name=None,
+                        #         entity_ids=[],
+                        #     ),
+                        # )
+                    ]
+                ),
+            )
+        )
 
-        reply = await self._route_intent(intent=intent, user_text=user_text, snap=snap)
+        reply = await self._route_intent(event=event, intent=intent, user_text=user_text, snap=snap)
 
         if reply is not None:
             self.working_memory.add(role="assistant", content=reply)
@@ -225,7 +242,16 @@ class Orchestrator:
 
             # generate plan summary with no memory as automated plans should be independnt of recent working memory
             response = await self.response_composer.compose_plan_summary(
-                snap=None, result=result
+                snap=None, result=result,
+                intent=Intent(ChatIntent(
+                    type=IntentType.CHAT,
+                    subtype=None,
+                    confidence=0.8,
+                    arguments=ChatArgs(
+                        text="Generate a plan summary"
+                    )
+                )),
+                request_id=event.request_id or event.event_id or ""
             )
 
             self.working_memory.add(
@@ -252,20 +278,21 @@ class Orchestrator:
 
     # Route to correct handler based on intent type
     async def _route_intent(
-        self, intent: Intent, user_text: str, snap: MemorySnapshot
+        self, event: Event, intent: Intent, user_text: str, snap: MemorySnapshot
     ) -> str | None:
         handler = self._intent_handlers.get(
             intent.root.type, self._handle_unknown_intent
         )
-        return await handler(intent, user_text, snap)
+        return await handler(event, intent, user_text, snap)
 
     def _handle_unknown_intent(self):
         return "Apologies, that intent type is not set up for routing yet."
 
-    async def _handle_chat(self, intent: Intent, user_text: str, snap: MemorySnapshot):
-        return await self.response_composer.compose(snap=snap)
+    async def _handle_chat(self, event: Event, intent: Intent, user_text: str, snap: MemorySnapshot):
+        if event.request_id:
+            return await self.response_composer.compose(snap=snap, intent=intent, request_id=event.request_id)
 
-    async def _handle_tool(self, intent: Intent, user_text, snap: MemorySnapshot):
+    async def _handle_tool(self, event: Event, intent: Intent, user_text, snap: MemorySnapshot):
         intent_obj = assert_intent_type(intent=intent, expected_type=ToolIntent)
 
         tool_names = intent_obj.subtype
@@ -278,9 +305,18 @@ class Orchestrator:
         _, tool_messages = await self.tool_runner.run_tools(
             tool_names=tool_names, args=intent_obj.arguments
         )
+        
+        await self.event_bus.publish(Event(
+            type=EventType.TOOL,
+            source="orchestrator",
+            payload={
+                "tool_name": "test"
+            },
+            timestamp=time.time()
+        ))
 
         reply = await self.response_composer.compose(
-            snap=snap, extra_messages=tool_messages
+            snap=snap, extra_messages=tool_messages, intent=intent, request_id=event.request_id or ""
         )
 
         # persist tool messages
@@ -291,17 +327,17 @@ class Orchestrator:
 
         return reply
 
-    async def _handle_plan(self, intent: Intent, user_text, snap: MemorySnapshot):
-        optimistic = await self.response_composer.compose_optimistic(snap=snap)
+    async def _handle_plan(self, event: Event, intent: Intent, user_text, snap: MemorySnapshot):
+        optimistic = await self.response_composer.compose_optimistic(snap=snap, intent=intent, request_id=event.request_id or "")
         await self._emit_response(optimistic)
 
         asyncio.create_task(
-            self._execute_plan_async(intent=intent, user_text=user_text, snap=snap)
+            self._execute_plan_async(event=event, intent=intent, user_text=user_text, snap=snap)
         )
         return None
 
     async def _execute_plan_async(
-        self, intent: Intent, user_text: str, snap: MemorySnapshot
+        self, event: Event, intent: Intent, user_text: str, snap: MemorySnapshot
     ):
         plan = await self.planner.generate()
 
@@ -312,14 +348,14 @@ class Orchestrator:
         assert not result.status == "in_progress"
 
         response = await self.response_composer.compose_plan_summary(
-            result=result, snap=snap
+            result=result, snap=snap, intent=intent, request_id=event.request_id or ""
         )
 
         self.working_memory.add(role="assistant", content=response)
         await self._emit_response(response)
 
     async def _handle_schedule(
-        self, intent: Intent, user_text: str, snap: MemorySnapshot
+        self, event: Event, intent: Intent, user_text: str, snap: MemorySnapshot
     ):
         intent_obj = assert_intent_type(intent=intent, expected_type=ScheduleIntent)
 
@@ -339,15 +375,20 @@ class Orchestrator:
         trigger = build_trigger(args=args, now=now, tz=tz)
         automation = build_automation(args=args, trigger=trigger)
 
-        log("core", f"{automation}")
+        log("core", f"[AUTOMATION] {automation}")
 
         scheduler = self.require_scheduling_service()
         await scheduler.add_automation(automation=automation)
+        self.working_memory.add(
+            role="tool",
+            tool_name="schedule_event",
+            content="success"
+        )
 
         return "Yes sir."
 
     async def _handle_control(
-        self, intent: Intent, user_text: str, snap: MemorySnapshot
+        self, event: Event, intent: Intent, user_text: str, snap: MemorySnapshot
     ):
         QUERY_INSTRUCTIONS = (
             "Use ONLY the tool result to answer. Do not invent entities or states."
@@ -410,19 +451,19 @@ class Orchestrator:
                 )
 
         if had_control and not had_query:
-            return await self.response_composer.compose_optimistic(
-                snap=snap, extra_messages=extra_messages
+            return await self.response_composer.compose(
+                snap=snap, extra_messages=extra_messages, intent=intent, request_id=event.request_id or ""
             )
 
         if had_query and not had_control:
             return await self.response_composer.compose(
                 snap=snap,
                 extra_messages=extra_messages,
-                instructions=QUERY_INSTRUCTIONS,
+                instructions=QUERY_INSTRUCTIONS, intent=intent, request_id=event.request_id or ""
             )
 
         return await self.response_composer.compose(
             snap=snap,
             extra_messages=extra_messages,
-            instructions=MIXED_INSTRUCTIONS,
+            instructions=MIXED_INSTRUCTIONS, intent=intent, request_id=event.request_id or ""
         )

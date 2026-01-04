@@ -110,7 +110,7 @@ class StateQueryKind(str, Enum):
 
 
 class QueryAction(BaseModel):
-    kind: Literal["state_query"]
+    kind: Literal["ha.state_query"]
     domain: ControlDomain
     target: TargetSpec
 
@@ -120,7 +120,7 @@ class QueryAction(BaseModel):
 
 
 class ControlAction(BaseModel):
-    kind: Literal["service_call"]
+    kind: Literal["ha.call_service"]
     domain: ControlDomain
     operation: ControlOperation
     target: TargetSpec
