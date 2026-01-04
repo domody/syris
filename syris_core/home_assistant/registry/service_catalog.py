@@ -10,20 +10,22 @@ ServiceKey = Tuple[str, str]
 @dataclass
 class ServiceCatalog:
     _services: Dict[ServiceKey, ServiceSpec]
+    ready: bool = False
 
     @classmethod
-    async def build(cls, ha: HomeAssistantInterface) -> "ServiceCatalog":
+    def empty(cls) -> "ServiceCatalog":
+        return cls(_services={})
+
+    async def refresh(self, ha: HomeAssistantInterface) -> None:
         raw = await ha.list_services()
-
         services: Dict[ServiceKey, ServiceSpec] = {}
-
         for item in raw:
             ds = DomainServices.model_validate(item)
             for svc_name, svc_spec in ds.services.items():
                 services[(ds.domain, svc_name)] = svc_spec
-
-        return cls(_services=services)
-
+        self._services = services
+        self.ready = True
+        
     def has(self, domain: str, service: str) -> bool:
         return (domain, service) in self._services
 

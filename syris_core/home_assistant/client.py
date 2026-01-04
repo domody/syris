@@ -1,6 +1,7 @@
 import json
 import time
 import websockets
+import asyncio
 import requests
 from typing import Any, Awaitable, Callable, Optional
 from pydantic import TypeAdapter
@@ -14,45 +15,38 @@ from syris_core.events.bus import EventBus
 
 HEADERS = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 
+async def _req_json(method: str, url: str, **kwargs):
+    def _do():
+        r = requests.request(method, url, **kwargs)
+        r.raise_for_status()
+        return r.json()
+    return await asyncio.to_thread(_do)
 
 class HomeAssistantWSClient(HomeAssistantInterface):
     def __init__(self, event_bus: EventBus) -> None:
         self.event_bus = event_bus
 
     async def list_entities(self) -> list[EntityState]:
-        r = requests.get(f"{HA_URL}/api/states", headers=HEADERS, timeout=10)
-        r.raise_for_status()
-
-        data: Any = r.json()
+        data: Any = await _req_json("GET", f"{HA_URL}/api/states", headers=HEADERS, timeout=10)
 
         adapter = TypeAdapter(list[EntityState])
 
         return adapter.validate_python(data)
 
     async def list_services(self) -> list[Any]:
-        r = requests.get(f"{HA_URL}/api/services", headers=HEADERS, timeout=10)
-        r.raise_for_status()
-
-        return r.json()
-
+        return await _req_json("GET", f"{HA_URL}/api/services", headers=HEADERS, timeout=10)
+    
     async def get_state(self, entity_id: str) -> EntityState:
-        r = requests.get(
-            f"{HA_URL}/api/states/{entity_id}", headers=HEADERS, timeout=10
-        )
-        r.raise_for_status()
-
-        return r.json()
+        return await _req_json("GET", f"{HA_URL}/api/states/{entity_id}", headers=HEADERS, timeout=10)
 
     async def call_service(self, domain: str, service: str, data: dict) -> Any:
-        r = requests.post(
+        return await _req_json(
+            "POST",
             f"{HA_URL}/api/services/{domain}/{service}",
             headers=HEADERS,
             json=data,
             timeout=10,
         )
-        r.raise_for_status()
-
-        return r.json()
 
     async def subscribe_state_changes(
         self, callback: Callable[[Optional[EntityState], EntityState], Awaitable[None]]

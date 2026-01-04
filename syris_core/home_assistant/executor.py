@@ -17,6 +17,7 @@ from syris_core.home_assistant.service_map import map_operation
 from syris_core.util.logger import log
 from syris_core.events.bus import EventBus
 from syris_core.types.events import Event, EventType
+from syris_core.tracing.integrations.status import IntegrationStatus
 
 def infer_expected_to_state(domain: str, service: str) -> str | None:
     # lights/switches
@@ -41,13 +42,15 @@ class ControlExecutor:
         resolver: TargetResolver,
         service_catalog: ServiceCatalog,
         state_registry: StateRegistry,
-        event_bus: EventBus
+        event_bus: EventBus,
+        integration_status: IntegrationStatus
     ):
         self.ha = ha
         self.resolver = resolver
         self.service_catalog = service_catalog
         self.state_registry = state_registry
         self.event_bus = event_bus
+        self.integration_status = integration_status
 
     async def execute_action(self, action: Action) -> Any:
         if isinstance(action, ControlAction):
@@ -62,54 +65,109 @@ class ControlExecutor:
         )
         service = map_operation(domain, action.operation)
 
-        # Validate service exists in HA
-        self.service_catalog.require(domain, service)
-        # tbd check for response key in json. If none -> dont send return response, If response: optional True or False, do send for return
+        tool_payload_base = {
+            "kind": "ha.call_service",
+            "domain": domain,
+            "service": service
+        }
 
+        # start event so trace always has a step
+        start_event = Event(
+            type=EventType.TOOL,
+            source="control_executor",
+            payload={**tool_payload_base, "phase": "start"},
+            timestamp=time.time(),
+        )
+        await self.event_bus.publish(start_event)
+
+        async def fail(error_type: str, message: str, retryable: bool = True, extra: dict | None = None):
+            await self.event_bus.publish(Event(
+                type=EventType.TOOL,
+                source="control_executor",
+                parent_event_id=start_event.event_id,
+                payload={
+                    **tool_payload_base,
+                    "phase": "failure",
+                    "error": {"type": error_type, "message": message, "retryable": retryable},
+                    **(extra or {})
+                },
+                timestamp=time.time()
+            ))
+            return ControlResult(
+                domain=domain,
+                operation=service,
+                target=action.target,
+                entity_ids=[],
+                success=False,
+            )
+
+        # preflights
+        # integration health
+        ok, reason = self.integration_status.check("home_assistant.connected")
+        if not ok: 
+            return await fail(
+                "integration_unavailable",
+                f"Home Assistant is not connected ({reason})",
+                retryable=True
+            )
+
+        # caches ready
+        if not self.service_catalog.ready:
+            return await fail("not_ready", "Service catalog not loaded yet.", retryable=True)
+
+        if not self.state_registry.ready:
+            return await fail("not_ready", "State registry not loaded yet.", retryable=True)
+
+        # validate service exists in HA
+        try:
+            self.service_catalog.require(domain, service) # tbd check for response key in json. If none -> dont send return response, If response: optional True or False, do send for return
+        except Exception as e:
+            return await fail(
+                "service_not_available",
+                f"Service not available: {domain}.{service} ({e})",
+                retryable=True,
+            )
+
+        # resolve targets
         entities = self.state_registry.all()
+        if not entities:
+            return await fail("empty_registry", "State registry is empty.", retryable=True)
+                    
         entity_ids = self.resolver.resolve(
             target=action.target, domain=domain, entities=entities
         )
         if not entity_ids:
-            raise ValueError("No matching entities for target")
+            return await fail(
+                "no_matching_entities",
+                "No matching entities for that target.",
+                retryable=False
+            )
+        
 
+        # build expected transitions
         expected_to = infer_expected_to_state(domain, service)
         expected: dict[str, dict[str, str | None]] = {}
-
         for eid in entity_ids:
             st = self.state_registry.get(eid)
             expected[eid] = {
                 "from_state": st.state if st else None,
                 "to_state": expected_to,
             }
-            
+        
+        # call HA
         payload = dict(action.data)
         payload["entity_id"] = entity_ids
-        log(
-            "control",
-            f"Calling HA Service with domain: {domain}, service: {service}, payload: {payload}",
-        )
-
-        # publish tool events
+        
         tool_payload = {
-            "kind": "ha.call_service",
+            **tool_payload_base,
             "phase": "start",
-            "domain": domain,
-            "service": service,
             "entity_ids": entity_ids,
             "expected": expected,
         }
-        # start event
-        start_event =Event(
-            type=EventType.TOOL,
-            source="control_executor",
-            payload=tool_payload,
-            timestamp=time.time()
-        )
 
-        await self.event_bus.publish(start_event)
         try:
             await self.ha.call_service(domain=domain, service=service, data=payload)
+
             await self.event_bus.publish(Event(
                 type=EventType.TOOL, 
                 source="control_executor",
@@ -117,6 +175,7 @@ class ControlExecutor:
                 parent_event_id=start_event.event_id,
                 timestamp=time.time()
             ))
+
             return ControlResult(
                 domain=domain,
                 operation=service,
@@ -137,6 +196,7 @@ class ControlExecutor:
                 parent_event_id=start_event.event_id,
                 timestamp=time.time()
             ))
+
             return ControlResult(
                 domain=domain,
                 operation=service,

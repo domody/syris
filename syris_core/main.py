@@ -20,8 +20,10 @@ from syris_core.notifications.notifier import NotifierAgent
 from syris_core.tracing.correlator.correlator import PendingActionCorrelator
 from syris_core.tracing.collector.trace_collector import TraceCollector
 from syris_core.tracing.integrations.status import IntegrationStatus
+from syris_core.tracing.integrations.supervisor import IntegrationSupervisor
 from syris_core.tracing.capabilities.registry import CapabilityRegistry
 from syris_core.tracing.snapshot.snapshot_builder import SnapshotBuilder
+
 async def main():
     log("core", "Booting System...")
 
@@ -45,13 +47,21 @@ async def main():
     target_resolver = TargetResolver()
     ha = HomeAssistantWSClient(event_bus=event_bus)
 
-    service_catalog = await ServiceCatalog.build(ha=ha)
-    state_registry = await StateRegistry.build(ha=ha)
+    service_catalog = ServiceCatalog.empty()
+    state_registry = StateRegistry.empty()
 
     ha_runtime = HomeAssistantRuntime(
         ha=ha, state_registry=state_registry, event_bus=event_bus, resync_interval_s=300
     )
-    ha_task = asyncio.create_task(ha_runtime.run())
+
+    ha_supervisor = IntegrationSupervisor(
+        integration_id="home_assistant",
+        event_bus=event_bus,
+        init_fn=ha_runtime.initialize,
+        run_fn=ha_runtime.run_connected
+    )
+
+    ha_task = asyncio.create_task(ha_supervisor.run())
 
     executor = ControlExecutor(
         ha=ha,
@@ -59,6 +69,7 @@ async def main():
         service_catalog=service_catalog,
         state_registry=state_registry,
         event_bus=event_bus,
+        integration_status=integration_status
     )
 
     # Rule-based automations

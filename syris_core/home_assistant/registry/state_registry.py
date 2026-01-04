@@ -8,11 +8,14 @@ from syris_core.home_assistant.interface import HomeAssistantInterface
 @dataclass
 class StateRegistry:
     _states: Dict[str, EntityState]
-
+    ready: bool = False
+    
     @classmethod
-    async def build(cls, ha: HomeAssistantInterface) -> "StateRegistry":
-        raw = await ha.list_entities()
+    def empty(cls)-> "StateRegistry":
+        return cls(_states={})
 
+    async def refresh(self, ha: HomeAssistantInterface) -> None:
+        raw = await ha.list_entities()
         states = {}
         for item in raw:
             e = (
@@ -21,8 +24,8 @@ class StateRegistry:
                 else EntityState.model_validate(item)
             )
             states[e.entity_id] = e
-
-        return cls(_states=states)
+        self._states = states
+        self.ready = True
 
     def get(self, entity_id: str) -> Optional[EntityState]:
         return self._states.get(entity_id)

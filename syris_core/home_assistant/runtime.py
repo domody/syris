@@ -23,6 +23,9 @@ class HomeAssistantRuntime:
     def stop(self) -> None:
         self._stop.set()
 
+    async def initialize(self) -> None:
+        await self.state_registry.refresh(self.ha)
+        
     async def _publish_device_event(
         self, old: Optional[EntityState], new: EntityState
     ) -> None:
@@ -75,9 +78,7 @@ class HomeAssistantRuntime:
                 pass
 
             try:
-                fresh = await StateRegistry.build(ha=self.ha)
-
-                self.state_registry._states = fresh._states
+                await self.state_registry.refresh(ha=self.ha)
                 log("ha", "State registry resynced")
             except Exception as e:
                 log("ha", f"State registry resync failed: {e}")
@@ -122,19 +123,9 @@ class HomeAssistantRuntime:
 
         log("ha", "Websocket loop stopped")
 
-    async def run(self) -> None:
+    async def run_connected(self) -> None:
         self._stop.clear()
-        log("ha", "HomeAssistantRuntime starting")
-
-        try:
-            async with asyncio.TaskGroup() as tg:
-                tg.create_task(self._ws_loop())
-                tg.create_task(self._periodic_resync())
-                tg.create_task(self._stop.wait())
-        except* asyncio.CancelledError:
-            pass
-        except* Exception as eg:
-            log("ha", f"HomeAssistantRuntime crashed: {eg}")
-            raise
-        finally:
-            log("ha", "HomeAssistantRuntime stopped")
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(self._ws_loop())
+            tg.create_task(self._periodic_resync())
+            tg.create_task(self._stop.wait())
