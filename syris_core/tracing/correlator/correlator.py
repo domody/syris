@@ -35,13 +35,11 @@ class PendingActionCorrelator:
     _by_entity: Dict[str, List[PendingAction]] = field(default_factory=dict)
 
     def start(self):
-        def on_device(e: Event): asyncio.create_task(self._handle_device(e))
-        def on_tool(e: Event): asyncio.create_task(self._handle_tool(e))
+        # def on_device(e: Event): asyncio.create_task(self._handle_device(e))
+        # def on_tool(e: Event): asyncio.create_task(self._handle_tool(e))
 
         self.event_bus.subscribe(EventType.DEVICE, self._handle_device)
         self.event_bus.subscribe(EventType.TOOL, self._handle_tool)
-        
-        print("correlator subscribed to device / task types")
 
     async def _handle_tool(self, event: Event):
         if event.payload.get("kind") != "ha.call_service":
@@ -67,7 +65,6 @@ class PendingActionCorrelator:
 
     async def _handle_device(self, event: Event):
         entity_id = event.payload.get("entity_id")
-        # print(f"By entity: {self._by_entity}")
         if not entity_id:
             return
 

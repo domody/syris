@@ -57,7 +57,7 @@ async def handle_message(msg, *, session: "Session") -> None:
             items = []
 
         await session._try_enqueue(
-            S_HistoryResult(by=msg.by.value, value=msg.value, items=items).model_dump()
+            S_HistoryResult(server_ts_ms=now_ms(), by=msg.by.value, value=msg.value, items=items).model_dump()
         )
         return
 
@@ -85,7 +85,7 @@ async def _handle_command(msg: C_Command, *, session: "Session") -> None:
             return
 
     # ACK immediately
-    await session._try_enqueue(S_Ack(request_id=RequestId(rid), ok=True, message="queued").model_dump())
+    await session._try_enqueue(S_Ack(server_ts_ms=now_ms(), request_id=RequestId(rid), ok=True, message="queued").model_dump())
 
     # Convert -> core request
     req = UserRequest(

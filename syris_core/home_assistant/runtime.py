@@ -8,6 +8,7 @@ from syris_core.types.events import Event, EventType
 from syris_core.types.home_assistant import EntityState
 from syris_core.home_assistant.interface import HomeAssistantInterface
 from syris_core.home_assistant.registry.state_registry import StateRegistry
+from syris_core.home_assistant.registry.service_catalog import ServiceCatalog
 from syris_core.util.logger import log
 
 
@@ -15,6 +16,8 @@ from syris_core.util.logger import log
 class HomeAssistantRuntime:
     ha: HomeAssistantInterface
     state_registry: StateRegistry
+    service_catalog: ServiceCatalog
+
     event_bus: EventBus
     resync_interval_s: int = 300
 
@@ -25,6 +28,7 @@ class HomeAssistantRuntime:
 
     async def initialize(self) -> None:
         await self.state_registry.refresh(self.ha)
+        await self.service_catalog.refresh(self.ha)
         
     async def _publish_device_event(
         self, old: Optional[EntityState], new: EntityState

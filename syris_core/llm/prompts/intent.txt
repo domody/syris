@@ -33,7 +33,7 @@ CONTROL (Home Assistant service call plan):
 - arguments MUST be: {"actions":[...]}
 Each action is either:
 
-1) Service call:
+1) Service call -> Carry out an action:
 {
   "kind":"service_call",
   "domain": "light"|"cover"|"climate"|"switch"|"media_player",
@@ -47,7 +47,7 @@ Each action is either:
   "requires_confirmation": true|false
 }
 
-2) State query:
+2) State query -> Query a devices state:
 {
   "kind":"state_query",
   "domain": "light"|"cover"|"climate"|"switch"|"media_player",
@@ -55,13 +55,30 @@ Each action is either:
   "query": "state"|"brightness"|"position"|"temperature"
 }
 
-TargetSpec rules:
-- area MUST be null.
-- scope="home": name=null, entity_ids=null or []
-- scope="name": name is non-empty, entity_ids=null or []
-- scope="entity_id": entity_ids is non-empty list, name=null
-- Prefer scope="name" for specific device phrases ("bed light").
-- Prefer scope="home" + selector="all" for generic plurals ("the lights").
+If the user request contains an imperative to change device state (turn on/off, set, open/close), you MUST choose kind="ha.call_service" and NEVER ha.state_query.
+
+TargetSpec (discriminated by "scope") rules:
+- "scope" MUST be one of: "home" | "name" | "entity_id".
+- "area" MUST always be null.
+
+1) scope="home"
+- name MUST be null
+- entity_ids MUST be [] (or null if your schema allows it, but prefer [])
+- selector: use "all" for generic plurals (e.g., "the lights"); otherwise "one"/"many" as appropriate.
+
+2) scope="name"
+- name MUST be a non-empty string
+- entity_ids MUST be [] (or null if allowed, but prefer [])
+- selector: prefer "one" for a single named device; use "many" only if the name clearly refers to a group.
+
+3) scope="entity_id"
+- entity_ids MUST be a non-empty list of entity_id strings
+- name MUST be null
+- selector: use "one" for a single entity_id, otherwise "many".
+
+Preference guidance:
+- Prefer scope="name" for specific device phrases ("bed light", "ceiling lights").
+- Prefer scope="home" + selector="all" for generic plurals ("the lights", "all lights").
 
 Data keys:
 - set_brightness: {"brightness_pct":0-100}

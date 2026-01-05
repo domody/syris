@@ -53,7 +53,7 @@ async def main():
     state_registry = StateRegistry.empty()
 
     ha_runtime = HomeAssistantRuntime(
-        ha=ha, state_registry=state_registry, event_bus=event_bus, resync_interval_s=300
+        ha=ha, state_registry=state_registry, service_catalog=service_catalog, event_bus=event_bus, resync_interval_s=300
     )
 
     ha_supervisor = IntegrationSupervisor(
@@ -114,7 +114,7 @@ async def main():
         ha_runtime.stop()
         ha_task.cancel()
         dev_task.cancel()
-        ws_task.cancel()
+        ws_task.cancel()   
         await asyncio.gather(ha_task, dev_task, ws_task, return_exceptions=True)
         log("core", "Shutdown complete")
 

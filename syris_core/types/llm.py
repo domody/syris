@@ -91,15 +91,37 @@ class TargetScope(str, Enum):
     NAME = "name"
     ENTITY_ID = "entity_id"
 
-
-class TargetSpec(BaseModel):
-    # scope: TargetScope
-    scope: Literal["home", "entity_id", "name"] = "home"
+class HomeTarget(BaseModel):
+    scope: Literal["home"]
     selector: Literal["all", "one", "many"] = "all"
+    area: None = None
+    name: None = None
+    entity_ids: List[str] = []
 
-    area: Optional[str] = None
-    name: Optional[str] = None
-    entity_ids: Optional[List[str]] = None
+class NameTarget(BaseModel):
+    scope: Literal["name"]
+    selector: Literal["one", "many"] = "one"
+    area: None = None
+    name: str
+    entity_ids: List[str] = []
+
+class EntityIdTarget(BaseModel):
+    scope: Literal["entity_id"]
+    selector: Literal["one", "many"] = "many"
+    area: None = None
+    name: None = None
+    entity_ids: List[str]
+
+TargetSpec = Annotated[Union[HomeTarget, NameTarget, EntityIdTarget], Field(discriminator="scope")]
+
+# class TargetSpec(BaseModel):
+#     # scope: TargetScope
+#     scope: Literal["home", "entity_id", "name"] = "home"
+#     selector: Literal["all", "one", "many"] = "all"
+
+#     area: Optional[str] = None
+#     name: Optional[str] = None
+#     entity_ids: Optional[List[str]] = None
 
 
 class StateQueryKind(str, Enum):
@@ -114,7 +136,7 @@ class QueryAction(BaseModel):
     domain: ControlDomain
     target: TargetSpec
 
-    query: StateQueryKind = StateQueryKind.STATE
+    query: StateQueryKind
 
     # summarize: bool = True
 

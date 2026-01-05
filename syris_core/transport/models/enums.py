@@ -6,7 +6,7 @@ class ProtocolVersion(int, Enum):
 class MsgType(str, Enum):
     # client to server
     HELLO = "hello"
-    SUBSCRIBE = "subscrive"
+    SUBSCRIBE = "subscribe"
     UNSUBSCRIBE = "unsubscribe"
     SET_FILTER = "set_filter"
     COMMAND = "command"

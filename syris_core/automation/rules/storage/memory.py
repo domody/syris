@@ -4,6 +4,7 @@ from syris_core.automation.rules.models.trigger import DeviceTrigger
 from syris_core.types.llm import (
     ControlAction,
     TargetSpec,
+    HomeTarget,
     ControlDomain,
     ControlOperation,
 )
@@ -24,7 +25,7 @@ def load_rules() -> List[Rule]:
                     kind="ha.call_service",
                     domain=ControlDomain.LIGHT,
                     operation=ControlOperation.POWER_TOGGLE,
-                    target=TargetSpec(scope="home", selector="all"),
+                    target=HomeTarget(scope="home", selector="all"),
                     data={
                         "brightness": 51
                     },

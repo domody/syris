@@ -71,28 +71,31 @@ class ControlExecutor:
             "service": service
         }
 
-        # start event so trace always has a step
-        start_event = Event(
-            type=EventType.TOOL,
-            source="control_executor",
-            payload={**tool_payload_base, "phase": "start"},
-            timestamp=time.time(),
-        )
-        await self.event_bus.publish(start_event)
+        async def emit_failure(
+            *,
+            error_type: str,
+            message: str,
+            retryable: bool = True,
+            extra: dict | None = None,
+            parent_event_id: str | None = None,
+        ):
+            payload = {
+                **tool_payload_base,
+                "phase": "failure",
+                "error": {"type": error_type, "message": message, "retryable": retryable},
+                **(extra or {}),
+            }
+            await self.event_bus.publish(
+                Event(
+                    type=EventType.TOOL,
+                    source="control_executor",
+                    parent_event_id=parent_event_id,
+                    payload=payload,
+                    timestamp=time.time(),
+                )
+            )
 
-        async def fail(error_type: str, message: str, retryable: bool = True, extra: dict | None = None):
-            await self.event_bus.publish(Event(
-                type=EventType.TOOL,
-                source="control_executor",
-                parent_event_id=start_event.event_id,
-                payload={
-                    **tool_payload_base,
-                    "phase": "failure",
-                    "error": {"type": error_type, "message": message, "retryable": retryable},
-                    **(extra or {})
-                },
-                timestamp=time.time()
-            ))
+        async def fail_result() -> ControlResult:
             return ControlResult(
                 domain=domain,
                 operation=service,
@@ -101,69 +104,89 @@ class ControlExecutor:
                 success=False,
             )
 
+
         # preflights
-        # integration health
+
         ok, reason = self.integration_status.check("home_assistant.connected")
-        if not ok: 
-            return await fail(
-                "integration_unavailable",
-                f"Home Assistant is not connected ({reason})",
-                retryable=True
-            )
-
-        # caches ready
-        if not self.service_catalog.ready:
-            return await fail("not_ready", "Service catalog not loaded yet.", retryable=True)
-
-        if not self.state_registry.ready:
-            return await fail("not_ready", "State registry not loaded yet.", retryable=True)
-
-        # validate service exists in HA
-        try:
-            self.service_catalog.require(domain, service) # tbd check for response key in json. If none -> dont send return response, If response: optional True or False, do send for return
-        except Exception as e:
-            return await fail(
-                "service_not_available",
-                f"Service not available: {domain}.{service} ({e})",
+        if not ok:
+            await emit_failure(
+                error_type="integration_unavailable",
+                message=f"Home Assistant is not connected ({reason})",
                 retryable=True,
             )
+            return await fail_result()
 
-        # resolve targets
+        if not self.service_catalog.ready:
+            await emit_failure(
+                error_type="not_ready",
+                message="Service catalog not loaded yet.",
+                retryable=True,
+            )
+            return await fail_result()
+
+        if not self.state_registry.ready:
+            await emit_failure(
+                error_type="not_ready",
+                message="State registry not loaded yet.",
+                retryable=True,
+            )
+            return await fail_result()
+
+        try:
+            self.service_catalog.require(domain, service)
+        except Exception as e:
+            await emit_failure(
+                error_type="service_not_available",
+                message=f"Service not available: {domain}.{service} ({e})",
+                retryable=True,
+            )
+            return await fail_result()
+
         entities = self.state_registry.all()
         if not entities:
-            return await fail("empty_registry", "State registry is empty.", retryable=True)
-                    
-        entity_ids = self.resolver.resolve(
-            target=action.target, domain=domain, entities=entities
-        )
-        if not entity_ids:
-            return await fail(
-                "no_matching_entities",
-                "No matching entities for that target.",
-                retryable=False
+            await emit_failure(
+                error_type="empty_registry",
+                message="State registry is empty.",
+                retryable=True,
             )
+            return await fail_result()
         
 
         # build expected transitions
+        entity_ids = self.resolver.resolve(target=action.target, domain=domain, entities=entities)
+        if not entity_ids:
+            await emit_failure(
+                error_type="no_matching_entities",
+                message="No matching entities for that target.",
+                retryable=False,
+                extra={"entity_ids": []},
+            )
+            return await fail_result()
+
+        # Build expected transitions (now that we have entity_ids)
         expected_to = infer_expected_to_state(domain, service)
         expected: dict[str, dict[str, str | None]] = {}
         for eid in entity_ids:
             st = self.state_registry.get(eid)
-            expected[eid] = {
-                "from_state": st.state if st else None,
-                "to_state": expected_to,
-            }
-        
-        # call HA
-        payload = dict(action.data)
-        payload["entity_id"] = entity_ids
-        
-        tool_payload = {
+            expected[eid] = {"from_state": st.state if st else None, "to_state": expected_to}
+
+        start_payload = {
             **tool_payload_base,
             "phase": "start",
             "entity_ids": entity_ids,
             "expected": expected,
         }
+        start_event = Event(
+            type=EventType.TOOL,
+            source="control_executor",
+            payload=start_payload,
+            timestamp=time.time(),
+        )
+        await self.event_bus.publish(start_event)    
+
+        # call HA
+        payload = dict(action.data)
+        payload["entity_id"] = entity_ids
 
         try:
             await self.ha.call_service(domain=domain, service=service, data=payload)
@@ -171,7 +194,7 @@ class ControlExecutor:
             await self.event_bus.publish(Event(
                 type=EventType.TOOL, 
                 source="control_executor",
-                payload={**tool_payload, "phase": "success"}, 
+                payload={**start_payload, "phase": "success"}, 
                 parent_event_id=start_event.event_id,
                 timestamp=time.time()
             ))
@@ -188,7 +211,7 @@ class ControlExecutor:
             await self.event_bus.publish(Event(
                 type=EventType.TOOL, 
                 source="control_executor",
-                payload={**tool_payload, "phase": "failure", "error": {
+                payload={**start_payload, "phase": "failure", "error": {
                     "type": type(e).__name__,
                     "message": str(e),
                     "retryable": True

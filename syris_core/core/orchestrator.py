@@ -31,6 +31,7 @@ from syris_core.types.llm import (
     ControlDomain,
     ControlOperation,
     TargetSpec,
+    NameTarget,
     ChatArgs
 )
 from syris_core.types.home_assistant import QueryResult, ControlResult
@@ -67,7 +68,7 @@ class Orchestrator:
         response_prompt = open(PROMPTS_DIR / self.config.system_prompt_file).read()
 
         planner_provider = LLMProvider(model_name=self.config.model_name)
-        router_provider  = LLMProvider(model_name="qwen2.5:7b-instruct")
+        router_provider  = LLMProvider(model_name=self.config.model_name)
 
         tool_list = TOOL_PROMPT_LIST.strip()
 
@@ -148,7 +149,6 @@ class Orchestrator:
                     "args": req.args,
                 }
             }
-
 
         event = Event(
             type=EventType.INPUT,
@@ -234,12 +234,12 @@ class Orchestrator:
         #                 ControlAction(
         #                     kind="ha.call_service",
         #                     domain=ControlDomain.LIGHT,
-        #                     operation=ControlOperation.POWER_TOGGLE,
-        #                     target=TargetSpec(
-        #                         scope="home",
-        #                         selector="all",
+        #                     operation=ControlOperation.POWER_OFF,
+        #                     target=NameTarget(
+        #                         scope="name",
+        #                         selector="many",
         #                         area=None,
-        #                         name=None,
+        #                         name="ceiling lights",
         #                         entity_ids=[],
         #                     ),
         #                     data={},
