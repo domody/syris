@@ -30,6 +30,6 @@ class TransportEvent(BaseModel):
     tool_name: Optional[str] = Field(default=None, max_length=128)
 
     # optional schema marker
-    schema: Optional[str] = Field(default=None, max_length=64)
+    event_schema: Optional[str] = Field(default=None, max_length=64)
 
     payload: JsonDict = Field(default_factory=dict)
