@@ -29,7 +29,7 @@ import { ServerMessage, S_Event } from "@/types";
 import { summarizeEvent } from "@/util/event-summary";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowUp02Icon } from "@hugeicons/core-free-icons";
+import { ArrowUp02Icon, AudioWave01Icon } from "@hugeicons/core-free-icons";
 import { formatTime } from "@/util/format";
 
 export function CommandConsole() {
@@ -148,11 +148,20 @@ function ConsoleInput() {
             onSend();
           }
         }}
+        disabled={disabled}
       />
       <InputGroupAddon align="block-end">
         <InputGroupButton
+          variant={"ghost"}
+          className={"rounded-full ml-auto"}
+          size={"icon-xs"}
+          disabled
+        >
+          <HugeiconsIcon icon={AudioWave01Icon} strokeWidth={2} />
+        </InputGroupButton>
+        <InputGroupButton
           variant="default"
-          className="rounded-full ml-auto"
+          className="rounded-full"
           size="icon-xs"
           disabled={disabled}
           onClick={onSend}

@@ -21,6 +21,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 
+import { useDashboardStore } from "@/state/dashboard-store";
+
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlugSocketIcon } from "@hugeicons/core-free-icons";
 
@@ -31,7 +33,7 @@ export function Panel({
   children,
   ...props
 }: React.ComponentProps<"div"> & { title?: string; footer?: React.ReactNode }) {
-  const ws_connected = true;
+  const wsStatus = useDashboardStore((s) => s.wsStatus)
 
   return (
     <Card
@@ -45,7 +47,7 @@ export function Panel({
         <CardDescription>{title}</CardDescription>
       </CardHeader>
       <CardContent className="px-2 flex-1 min-h-0 overflow-hidden">
-        {ws_connected ? (
+        {wsStatus === "connected" ? (
           children
         ) : (
           <Empty className="border border-dashed h-full rounded-md">
@@ -64,7 +66,7 @@ export function Panel({
           </Empty>
         )}
       </CardContent>
-      {footer && <CardFooter className="px-2 shrink-0">{footer}</CardFooter>}
+      {footer && <CardFooter className="px-2 shrink-0 mt-2">{footer}</CardFooter>}
     </Card>
   );
 }
