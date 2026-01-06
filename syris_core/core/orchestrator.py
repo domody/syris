@@ -68,7 +68,7 @@ class Orchestrator:
         response_prompt = open(PROMPTS_DIR / self.config.system_prompt_file).read()
 
         planner_provider = LLMProvider(model_name=self.config.model_name)
-        router_provider  = LLMProvider(model_name=self.config.model_name)
+        router_provider  = LLMProvider("qwen2.5:7b-instruct")
 
         tool_list = TOOL_PROMPT_LIST.strip()
 
