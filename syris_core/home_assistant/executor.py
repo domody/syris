@@ -18,6 +18,7 @@ from syris_core.util.logger import log
 from syris_core.events.bus import EventBus
 from syris_core.types.events import Event, EventType
 from syris_core.tracing.integrations.status import IntegrationStatus
+from .normalizer.ha_normalizer import HomeAssistantArgNormalizer
 
 def infer_expected_to_state(domain: str, service: str) -> str | None:
     # lights/switches
@@ -51,13 +52,30 @@ class ControlExecutor:
         self.state_registry = state_registry
         self.event_bus = event_bus
         self.integration_status = integration_status
+        self.normalizer = HomeAssistantArgNormalizer()
 
-    async def execute_action(self, action: Action) -> Any:
-        if isinstance(action, ControlAction):
-            return await self.execute_control_action(action=action)
+    async def execute_action(self, user_text: str, action: Action) -> Any:
+        # normalize args before starting flow
+        is_control = isinstance(action, ControlAction)
+        subaction_id = "control" if is_control else "query"
+        raw_args = action.model_dump(exclude_none=True, exclude_defaults=False)
 
-        elif isinstance(action, QueryAction):
-            return await self.execute_query_action(action=action)
+        normalized = self.normalizer.normalize(
+            subaction_id=subaction_id,
+            raw_args=raw_args,
+            user_text=user_text,
+            ctx=None
+        )
+
+        if not normalized.ok:
+            return
+
+        if is_control:
+            normalized_action = ControlAction.model_validate(normalized.args)
+            return await self.execute_control_action(action=normalized_action)
+
+        normalized_action = QueryAction.model_validate(normalized.args)
+        return await self.execute_query_action(action=normalized_action)
 
     async def execute_control_action(self, action: ControlAction) -> ControlResult:
         domain = (

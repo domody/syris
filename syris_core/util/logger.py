@@ -36,6 +36,7 @@ LogSource = Literal[
     "tool",
     "memory",
     "audio",
+    "warning",
     "error",
     "orchestrator",
     "subscriber",

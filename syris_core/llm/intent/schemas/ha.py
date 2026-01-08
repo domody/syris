@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -7,7 +7,7 @@ from syris_core.types.llm import ControlDomain, ControlOperation, TargetSpec, St
 
 class HAControlArgs(BaseModel):
     domain: ControlDomain = Field(
-        description="Target Home Assistant domain for the control action (light, climate, cover, etc.)."
+        description="Target Home Assistant domain for the control action (light, climate, cover, etc.).",
     )
     operation: ControlOperation = Field(
         description="Specific control operation to perform for the target domain."
@@ -15,9 +15,10 @@ class HAControlArgs(BaseModel):
     target: TargetSpec = Field(
         description="Target specification describing which entity or area the action applies to."
     )
-    data: dict[str, Any] = Field(
+    data: Optional[dict[str, Any]] = Field(
         default_factory=dict,
         description="Additional service data needed for the control operation.",
+        json_schema_extra={"examples": [{"brightness": 128}, {"color_temp": 300}]}
     )
     requires_confirmation: bool = Field(
         default=False,
