@@ -212,7 +212,7 @@ FULL_LANE_REGISTRY: dict[str, Lane] = {
     ),
     "plan": Lane(
         id="plan",
-        prompt_line="Choose plan for multi-step workflows, reports, diagnostics, or tasks requiring multiple actions/tools.",
+        prompt_line="Choose plan for multi-step workflows that combine multiple actions/tools into one outcome (reports, diagnostics, summaries, investigations).",
         keywords=[
             "plan", "steps", "workflow", "report", "diagnose", "investigate",
             "analyze", "root cause", "compare", "summarize", "checklist",
@@ -248,7 +248,7 @@ FULL_LANE_REGISTRY: dict[str, Lane] = {
     ),
        "tool": Lane(
         id="tool",
-        prompt_line="Choose tool for local/system/hardware information (time/date, CPU, memory, disk, OS, uptime) or non-HA utilities.",
+        prompt_line="Choose tool for a single direct local/system/hardware lookup or utility action (one tool call). Choose plan for reports/diagnostics or anything requiring multiple tool calls.",
         keywords=[
         "cpu", "processor", "load", "usage",
         "memory", "ram",
@@ -277,7 +277,7 @@ FULL_LANE_REGISTRY: dict[str, Lane] = {
     )
 }
 
-DISALLOWED = ["calendar", "plan", "email", "autonomy"]
+DISALLOWED = ["calendar", "email", "autonomy"]
 
 LANE_REGISTRY = {id: lane for id, lane in FULL_LANE_REGISTRY.items() if lane.id not in DISALLOWED}
 LANES = [lane.id for id, lane in LANE_REGISTRY.items()]

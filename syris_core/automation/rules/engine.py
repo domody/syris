@@ -101,7 +101,7 @@ class RuleEngine:
 
                 for action in rule.actions:
                     if isinstance(action, ControlAction):
-                        await self.control_executor.execute_action(action)
+                        await self.control_executor.execute_action(user_text="", action=action)
 
                 await self._emit("automation.rule_completed", {"rule_id": rule.id, "status": "success"})
             except Exception as e:

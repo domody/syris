@@ -37,8 +37,9 @@ from ..models.intent import Lane, Subaction
 
 
 class IntentParser:
-    def __init__(self, provider: LLMProvider, system_prompt: str):
-        self.provider = provider
+    def __init__(self, routing_provider: LLMProvider, args_provider: LLMProvider, system_prompt: str):
+        self.routing_provider = routing_provider
+        self.args_provider = args_provider
         self.system_prompt = system_prompt
 
     async def parse(self, text: str, snap: MemorySnapshot) -> Intent:
@@ -137,9 +138,9 @@ class IntentParser:
 
     async def route_lane(self, text: str, snap: MemorySnapshot):
         lane_scores = score_lane(text=text)
+        print(lane_scores)
         top_lanes: list[str] = lane_scores["top_lanes"]
         scores: dict[str, float] = lane_scores["scores"]
-        
         EPS = 1e-9
 
         chat_score = scores.get("chat", 0.0)
@@ -160,8 +161,8 @@ class IntentParser:
     
         schema = build_lane_router_schema(candidates=top_lanes, include_chat_fallback=True)
         prompt = build_lane_router_prompt(candidates=top_lanes)
-
-        response = await self.provider.complete(LLMCallOptions(
+        print(prompt)
+        response = await self.routing_provider.complete(LLMCallOptions(
                 system_prompt=prompt,
                 tools=None,
                 memory=snap.messages,
@@ -202,7 +203,7 @@ class IntentParser:
         if not prompt:
             return None
         
-        response = await self.provider.complete(LLMCallOptions(
+        response = await self.routing_provider.complete(LLMCallOptions(
                 system_prompt=prompt,
                 tools=None,
                 memory=snap.messages,
@@ -232,7 +233,7 @@ class IntentParser:
         snap: MemorySnapshot,
     ) -> Optional[dict]:
         prompt = build_argument_filler_prompt(subaction=subaction, schema=schema)
-        response = await self.provider.complete(
+        response = await self.args_provider.complete(
             LLMCallOptions(
                 system_prompt=prompt,
                 tools=None,
