@@ -9,14 +9,23 @@ import {
   asTraceLinkPayload,
 } from "./event-narrow";
 
-export function summarizeEvent(ev: TransportEvent): string {
+export function summarizeEvent(
+  ev: TransportEvent,
+  truncate_msg: boolean = true
+): string {
   // Assistant
   const a = asAssistantPayload(ev);
-  if (a) return truncate(a.text, 140);
+  if (a) {
+    if (truncate_msg) return truncate(a.text, 140);
+    else return a.text;
+  }
 
   // Input
   const i = asInputPayload(ev);
-  if (i) return truncate(i.text, 140);
+    if (i) {
+    if (truncate_msg) return truncate(i.text, 140);
+    else return i.text;
+  }
 
   // Device
   const d = asDevicePayload(ev);
@@ -33,7 +42,10 @@ export function summarizeEvent(ev: TransportEvent): string {
     const name = t.kind ?? ev.tool_name ?? "tool";
     const svc = t.domain && t.service ? `${t.domain}.${t.service}` : "";
     if (phase === "failure" && t.error?.message) {
-      return `${name} ${svc} ${phase}: ${truncate(String(t.error.message), 120)}`;
+      return `${name} ${svc} ${phase}: ${truncate(
+        String(t.error.message),
+        120
+      )}`;
     }
     return `${name} ${svc} ${phase}`.trim();
   }
@@ -47,15 +59,21 @@ export function summarizeEvent(ev: TransportEvent): string {
     if (typeof c === "boolean") parts.push(`connected=${c}`);
     if (typeof wsAlive === "boolean") parts.push(`ws_alive=${wsAlive}`);
     const le = (ih.patch as any).last_error?.message;
-    if (typeof le === "string" && le.length) parts.push(`err=${truncate(le, 90)}`);
+    if (typeof le === "string" && le.length)
+      parts.push(`err=${truncate(le, 90)}`);
     return parts.join(" ");
   }
 
   // Trace link
   const tl = asTraceLinkPayload(ev);
   if (tl) {
-    const matchedOn = tl.matched_on ? ` matched_on=${Object.keys(tl.matched_on).join(",")}` : "";
-    return `trace.link ${tl.cause_event_id.slice(0, 6)} -> ${tl.effect_event_id.slice(0, 6)}${matchedOn}`;
+    const matchedOn = tl.matched_on
+      ? ` matched_on=${Object.keys(tl.matched_on).join(",")}`
+      : "";
+    return `trace.link ${tl.cause_event_id.slice(
+      0,
+      6
+    )} -> ${tl.effect_event_id.slice(0, 6)}${matchedOn}`;
   }
 
   // Fallback: show kind + maybe payload.kind
