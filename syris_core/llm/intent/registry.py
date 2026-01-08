@@ -30,17 +30,18 @@ FULL_LANE_REGISTRY: dict[str, Lane] = {
         subactions={
             "control": Subaction(
                 id="control",
-                prompt_line="Control a device (on/off, set level, open/close, lock/unlock, media controls).",
+                prompt_line="Control a device (on/off, set level, open/close, lock/unlock, media controls).\nNever guess an entity id. If you are unsure, use a name scope.",
+                fill_guidance="If user intent is turning on/off/toggling, use power_on/power_off/power_toggle.\nUse set_brightness only if a brightness/percent is mentioned or “dim/brighten”.\nUse set_color_temp only if warmth/coolness/temperature is mentioned or a color temp value is provided.",
                 keywords=["turn on", "turn off", "set", "open", "close", "lock", "unlock", "volume", "play", "pause"],
                 examples=["Turn off the bedroom lights.", "Lock the front door.", "Set volume to 30%."],
-                schema_id="ha.control_device",
+                schema_id="ha.control",
             ),
             "query": Subaction(
                 id="query",
-                prompt_line="Query device/entity state or attributes.",
+                prompt_line="Query device/entity state or attributes.\nNever guess an entity id. If you are unsure, use a name scope.",
                 keywords=["is", "are", "status", "state", "what is", "how many"],
                 examples=["Is the garage door open?", "What temperature is the hallway thermostat?"],
-                schema_id="ha.query_state",
+                schema_id="ha.query",
             ),
             # "list_entities": Subaction(
             #     id="list_entities",

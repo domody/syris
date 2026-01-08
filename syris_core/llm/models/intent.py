@@ -4,6 +4,7 @@ from typing import Optional
 class Subaction(BaseModel):
     id: str
     prompt_line: str
+    fill_guidance: Optional[str] = None
     keywords: Optional[list[str]]
     examples: Optional[list[str]] = None
     schema_id: str

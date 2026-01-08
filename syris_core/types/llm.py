@@ -111,7 +111,8 @@ class EntityIdTarget(BaseModel):
     name: None = None
     entity_ids: List[str]
 
-TargetSpec = Annotated[Union[HomeTarget, NameTarget, EntityIdTarget], Field(discriminator="scope")]
+# EntityIdTarget
+TargetSpec = Annotated[Union[HomeTarget, NameTarget], Field(discriminator="scope")]
 
 # class TargetSpec(BaseModel):
 #     # scope: TargetScope

@@ -68,7 +68,8 @@ class Orchestrator:
         response_prompt = open(PROMPTS_DIR / self.config.system_prompt_file).read()
 
         planner_provider = LLMProvider(model_name=self.config.model_name)
-        router_provider  = LLMProvider("qwen2.5:7b-instruct")
+        router_provider  = LLMProvider("qwen2.5:7b")
+        # router_provider  = LLMProvider(model_name=self.config.model_name)
 
         tool_list = TOOL_PROMPT_LIST.strip()
 
@@ -454,7 +455,7 @@ class Orchestrator:
         control_results = []
 
         for action in intent_obj.arguments.actions:
-            data = await self.control_executor.execute_action(action=action)
+            data = await self.control_executor.execute_action(user_text=user_text, action=action)
 
             if isinstance(action, QueryAction):
                 had_query = True

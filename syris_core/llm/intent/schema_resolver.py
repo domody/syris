@@ -18,8 +18,8 @@ from .schemas.tool import ToolArgs
 
 def _build_schema_registry() -> dict[str, type[BaseModel]]:
     registry: dict[str, type[BaseModel]] = {
-        "ha.control_device": HAControlArgs,
-        "ha.query_state": HAQueryArgs,
+        "ha.control": HAControlArgs,
+        "ha.query": HAQueryArgs,
         "schedule.set_timer": ScheduleSetTimerArgs,
         "schedule.set_alarm": ScheduleSetAlarmArgs,
         "schedule.set_reminder": ScheduleSetReminderArgs,
