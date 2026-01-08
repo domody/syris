@@ -19,3 +19,6 @@ data/log/*.log
 
 ha.json
 **/tests/*
+
+AGENTS.md
+.codex/

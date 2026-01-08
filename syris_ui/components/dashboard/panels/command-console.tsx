@@ -148,7 +148,7 @@ function ConsoleInput() {
             onSend();
           }
         }}
-        disabled={disabled}
+        disabled={wsStatus != "connected"}
       />
       <InputGroupAddon align="block-end">
         <InputGroupButton

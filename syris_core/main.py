@@ -114,8 +114,8 @@ async def main():
         ha_runtime.stop()
         ha_task.cancel()
         dev_task.cancel()
-        ws_task.cancel()   
-        await asyncio.gather(ha_task, dev_task, ws_task, return_exceptions=True)
+        ws_task.cancel()    
+        await asyncio.gather(ha_task, ws_task, dev_task, return_exceptions=True)
         log("core", "Shutdown complete")
 
 

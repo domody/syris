@@ -30,12 +30,10 @@ def default_intent() -> Intent:
         confidence=0.0,
     ))
 
-# @dataclass
 class AssistantContext(BaseModel):
     request_id: str
     trace_id: Optional[str] = None
 
-    # whatever your orchestrator has (best), else derived from INPUT
     intent: Intent = field(default_factory=default_intent)
 
     integrations: dict[str, Any] = field(default_factory=dict)

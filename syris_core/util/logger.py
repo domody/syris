@@ -36,6 +36,7 @@ LogSource = Literal[
     "tool",
     "memory",
     "audio",
+    "warning",
     "error",
     "orchestrator",
     "subscriber",
@@ -63,7 +64,7 @@ _write_lock = threading.Lock()
 
 
 # Log function for clean centralised logging throughout system
-def log(source: LogSource, message: str, level: str = "info", write_file=True):
+def log(source: LogSource, message: str, level: str = "info", write_file=False):
     timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
     color = COLORS.get(source, COLORS["reset"])
@@ -88,7 +89,7 @@ _lora_write_lock = threading.Lock()
 
 
 def log_lora_data(message: str):
-    write_file = True
+    write_file = False
     
     file_line = f"{message}\n"
     file_path = os.path.join(LOG_DIR, "lora_data.log")
