@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { Panel } from "./panels/base-panel";
 import { CommandConsole } from "./panels/command-console";
 import { EventStreamPanel } from "./panels/event-stream";
+import { AudioVisualizer } from "./panels/audio-visualizer";
 
 export function DashboardShell() {
   return (
@@ -11,7 +12,7 @@ export function DashboardShell() {
       <div className="w-full h-full p-2 grid grid-cols-3 gap-x-2">
         <Column className="grid-rows-2">
           <CommandConsole />
-          <Panel />
+          <AudioVisualizer />
         </Column>
         <Column className="grid-rows-2">
           <EventStreamPanel />

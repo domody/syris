@@ -28,12 +28,17 @@ import { PlugSocketIcon } from "@hugeicons/core-free-icons";
 
 export function Panel({
   title = "base-panel",
+  actions,
   footer,
   className,
   children,
   ...props
-}: React.ComponentProps<"div"> & { title?: string; footer?: React.ReactNode }) {
-  const wsStatus = useDashboardStore((s) => s.wsStatus)
+}: React.ComponentProps<"div"> & {
+  title?: string;
+  actions?: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  const wsStatus = useDashboardStore((s) => s.wsStatus);
 
   return (
     <Card
@@ -45,6 +50,7 @@ export function Panel({
     >
       <CardHeader className="pt-1 px-2 shrink-0">
         <CardDescription>{title}</CardDescription>
+        {actions && wsStatus === "connected" && <CardAction>{actions}</CardAction>}
       </CardHeader>
       <CardContent className="px-2 flex-1 min-h-0 overflow-hidden">
         {wsStatus === "connected" ? (
@@ -66,7 +72,9 @@ export function Panel({
           </Empty>
         )}
       </CardContent>
-      {footer && <CardFooter className="px-2 shrink-0 mt-2">{footer}</CardFooter>}
+      {footer && (
+        <CardFooter className="px-2 shrink-0 mt-2">{footer}</CardFooter>
+      )}
     </Card>
   );
 }
@@ -116,7 +124,10 @@ export function TerminalFeed({
   }, [items.length]);
 
   return (
-    <div ref={containerRef} className="h-full w-full overflow-y-auto no-scrollbar">
+    <div
+      ref={containerRef}
+      className="h-full w-full overflow-y-auto no-scrollbar"
+    >
       <div className="flex flex-col gap-1 justify-end mt-auto">
         {items.map((it, idx) => renderItem(it, idx))}
         <div ref={bottomRef} className="bg-bordr h-px w-full" />
