@@ -32,7 +32,9 @@ from syris_core.types.llm import (
     ControlOperation,
     TargetSpec,
     NameTarget,
-    ChatArgs
+    ChatArgs,
+    PlanIntent,
+    PlanArgs
 )
 from syris_core.types.home_assistant import QueryResult, ControlResult
 from syris_core.automation.scheduling.service import SchedulingService
@@ -382,7 +384,8 @@ class Orchestrator:
     async def _execute_plan_async(
         self, event: Event, intent: Intent, user_text: str, snap: MemorySnapshot
     ):
-        plan = await self.planner.generate()
+        intent_obj = assert_intent_type(intent=intent, expected_type=PlanIntent)
+        plan = await self.planner.generate(intent=intent_obj, snap=snap)
 
         result: PlanExecutionResult = await self.plan_executor.execute(
             user_text=user_text, plan=plan

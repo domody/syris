@@ -34,7 +34,7 @@ from ..intent.schema_resolver import resolve_schema, resolve_schema_json
 from ..intent.argument_filler import build_argument_filler_prompt
 from ..intent.build_intent import build_intent_from_subaction
 from ..models.intent import Lane, Subaction
-
+from ..response import get_message_content
 
 class IntentParser:
     def __init__(self, routing_provider: LLMProvider, args_provider: LLMProvider, system_prompt: str):
@@ -174,7 +174,7 @@ class IntentParser:
                 },
             )
         )
-        raw = response.message.content
+        raw: str = get_message_content(response=response)
         log("llm", f"[IntentParser] Tokens: {response.eval_count}")
         log("llm", f"[IntentParser] Output: {response.message.content}")
         if not raw:
@@ -216,7 +216,7 @@ class IntentParser:
             )
         )
 
-        raw = response.message.content
+        raw: str = get_message_content(response=response)
         if not raw:
             return None
 
@@ -246,7 +246,7 @@ class IntentParser:
                 },
             )
         )
-        raw = response.message.content
+        raw: str = get_message_content(response=response)
         log("llm", f"[IntentParser] Tokens: {response.eval_count}")
         log("llm", f"[IntentParser] Output: {response.message.content}")
 

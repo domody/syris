@@ -4,25 +4,26 @@ from syris_core.llm.provider import LLMProvider
 from syris_core.types.llm import Intent, Plan, LLMCallOptions
 from syris_core.types.memory import MemorySnapshot
 from syris_core.util.logger import log
-
-
+from syris_core.types.llm import PlanIntent
+from ..response import get_message_content
 class Planner:
     def __init__(self, provider: LLMProvider, system_prompt: str):
         self.provider = provider
         self.system_prompt = system_prompt
 
-    async def generate(self) -> Plan:
+    async def generate(self, intent: PlanIntent, snap: MemorySnapshot) -> Plan:
         log("llm", f"[Planner] Generating plan...")
-
+        messages = [*snap.messages]
         response = await self.provider.complete(
             LLMCallOptions(
                 system_prompt=self.system_prompt,
+                memory=messages,
                 format=Plan.model_json_schema(),
-                think="medium",
+                think="high",
             )
         )
 
-        raw: str = response["message"]["content"]
+        raw: str = get_message_content(response=response)
 
         try:
             data = json.loads(raw)

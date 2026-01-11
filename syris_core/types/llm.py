@@ -186,11 +186,22 @@ class ToolIntent(BaseModel):
     confidence: float
     arguments: ToolArgs
 
+class PlanArgs(BaseModel):
+    goal: str 
+    context: Optional[str] = Field(default=None)
+    output_format: Optional[str] = Field(default=None)
+
+class PlanIntent(BaseModel):
+    type: Literal[IntentType.PLAN]
+    subtype: Optional[str] = Field(default=None)
+    confidence: float
+    arguments: PlanArgs
 
 IntentUnion = Annotated[
     Union[
         ScheduleIntent,
         ControlIntent,
+        PlanIntent,
         ToolIntent,
         ChatIntent,
         BaseIntent,  # fallback
