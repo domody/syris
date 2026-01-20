@@ -36,6 +36,37 @@ from ..intent.build_intent import build_intent_from_subaction
 from ..models.intent import Lane, Subaction
 from ..response import get_message_content
 
+def _extract_arguments_schema(schema: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    props = schema.get("properties")
+    if not isinstance(props, dict):
+        return schema, False
+
+    arg_schema = props.get("arguments")
+    if isinstance(arg_schema, dict):
+        return arg_schema, True
+
+    return schema, False
+
+
+def _schema_has_fields(schema: dict[str, Any]) -> bool:
+    inner_schema, _wrapped = _extract_arguments_schema(schema)
+    props = inner_schema.get("properties")
+    if not isinstance(props, dict):
+        return False
+
+    if props:
+        return True
+
+    required = inner_schema.get("required")
+    return bool(required)
+
+
+def _empty_args_for_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    _inner_schema, wrapped = _extract_arguments_schema(schema)
+    if wrapped:
+        return {"arguments": {}}
+    return {}
+
 class IntentParser:
     def __init__(self, routing_provider: LLMProvider, args_provider: LLMProvider, system_prompt: str):
         self.routing_provider = routing_provider
@@ -89,7 +120,7 @@ class IntentParser:
                 )
             )
 
-        args_schema = resolve_schema(subaction.schema_id)
+        args_schema = subaction.schema_model or resolve_schema(subaction.schema_id)
         if not args_schema:
             return Intent(
                 BaseIntent(
@@ -97,11 +128,15 @@ class IntentParser:
                 )
             )  
         
-        raw_args = await self.fill_subaction_args(
-            subaction=subaction,
-            snap=snap,
-            schema=args_schema.model_json_schema(),
-        )
+        schema_json = subaction.schema_json or args_schema.model_json_schema()
+        if not _schema_has_fields(schema_json):
+            raw_args = _empty_args_for_schema(schema_json)
+        else:
+            raw_args = await self.fill_subaction_args(
+                subaction=subaction,
+                snap=snap,
+                schema=schema_json,
+            )
 
         if raw_args is None:
             return Intent(
@@ -113,6 +148,9 @@ class IntentParser:
 
         try:
             parsed_args = args_schema.model_validate(raw_args)
+            print("Args schema")
+            print(args_schema)
+            print(parsed_args)
         except Exception as e:
             log("error", f"[IntentParser] Invalid args for schema {args_schema}: {e}")
             return Intent(
@@ -188,6 +226,7 @@ class IntentParser:
 
     async def route_subaction(self, text: str, lane_id: str, snap: MemorySnapshot) -> Optional[str]:
         subaction_scores = score_subactions(text=text, lane_id=lane_id)
+        print(subaction_scores)
         top_subactions: list[str] = subaction_scores["top_subactions"]
         scores: dict[str, float] = subaction_scores["scores"]
 
@@ -233,6 +272,7 @@ class IntentParser:
         snap: MemorySnapshot,
     ) -> Optional[dict]:
         prompt = build_argument_filler_prompt(subaction=subaction, schema=schema)
+
         response = await self.args_provider.complete(
             LLMCallOptions(
                 system_prompt=prompt,

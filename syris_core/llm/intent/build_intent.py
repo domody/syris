@@ -124,7 +124,12 @@ def build_intent_from_subaction(
         )
 
     if lane_id == "tool":
+        print(f"Build Intent Args: {args}")
         tool_payload = getattr(args, "arguments", {})
+        if isinstance(tool_payload, BaseModel):
+            print(tool_payload.model_dump())
+            tool_payload = tool_payload.model_dump()
+            
         return Intent(
             ToolIntent(
                 type=IntentType.TOOL,

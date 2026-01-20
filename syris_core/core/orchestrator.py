@@ -355,7 +355,8 @@ class Orchestrator:
             type=EventType.TOOL,
             source="orchestrator",
             payload={
-                "tool_name": "test"
+                "kind": "tool.call",
+                "tool_name": "test",
             },
             timestamp=time.time()
         ))

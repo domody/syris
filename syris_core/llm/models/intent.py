@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Any
 
 class Subaction(BaseModel):
     id: str
@@ -8,6 +8,8 @@ class Subaction(BaseModel):
     keywords: Optional[list[str]]
     examples: Optional[list[str]] = None
     schema_id: str
+    schema_model: Optional[type[BaseModel]] = None
+    schema_json: Optional[dict[str, Any]] = None
 
 class SubactionBias(BaseModel):
     on_imperative: float = 0.0

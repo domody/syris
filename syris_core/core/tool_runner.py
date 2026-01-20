@@ -22,7 +22,7 @@ class ToolRunner:
         self, tool_names: list[str], args: ToolArgs
     ) -> tuple[dict[str, Any], list[dict]]:
         tasks: list[asyncio.Task[ToolCallResult]] = []
-
+        print(args)
         for tool_name in tool_names:
             if not tool_name:
                 continue
@@ -44,6 +44,8 @@ class ToolRunner:
         return results, tool_messages
 
     async def _run_one(self, tool_name: str, args: Any) -> ToolCallResult:
+        print(args)
+
         entry = self._registry.get(tool_name)
         if not entry:
             msg = {"role": "tool", "tool_name": tool_name, "content": "Tool not found."}
@@ -52,10 +54,13 @@ class ToolRunner:
             )
 
         func: Callable[..., Any] = entry["func"]
-
+        print(tool_name)
         tool_args = args.get(tool_name, {}) if isinstance(args, dict) else args
         if tool_args is None:
             tool_args = {}
+
+        print("Tool args")
+        print(tool_args)
 
         async with self._sem:
             try:

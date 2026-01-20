@@ -94,7 +94,7 @@ def score_subactions(lane_id: str, text: str, top_n: int = 3) -> dict[str, Any]:
     if not subactions:
         return empty
     index = _build_subaction_keyword_index(subactions)
-
+    print(index)
     t = text.strip()
     t_norm = _normalize_phrase(t)
     toks = _tokens(t_norm)
