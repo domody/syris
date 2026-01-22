@@ -43,7 +43,7 @@ type DiaryMealVM = {
   itemCount: number;
 };
 
-import { getMealsWithItems } from "@/lib/data/meals";
+import { getMealsWithItems } from "@/lib/data/meals.server";
 import { buildDiaryVM } from "@/lib/vm/diaryMeal";
 export async function MealsCard() {
   const date = todayDate();
