@@ -1,13 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { SyrisCard } from "../ui/syirs-card";
 import {
   Item,
   ItemActions,
@@ -63,28 +55,24 @@ export function HomePage() {
 
 function MacronutrientTargetCard() {
   return (
-    <Card className="w-full max-w-md overflow-hidden bg-transparent gap-0 ring-0 p-0">
-      <CardHeader className="px-0">
-        <CardDescription className="mt-1.5">
-          Macronutrient Targets
-        </CardDescription>
-        <CardAction>
-          <Button variant={"ghost"} size={"icon-lg"}>
-            <HugeiconsIcon
-              icon={ArrowUp01Icon}
-              strokeWidth={2}
-              className="rotate-180"
-            />
-          </Button>
-        </CardAction>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-y-2 items-start justify-start px-0 flex-1 bg-muted/50 p-3 rounded-md">
-        <ProgressBar />
-        <ProgressBar />
-        <ProgressBar />
-        <ProgressBar />
-      </CardContent>
-    </Card>
+    <SyrisCard
+      title="Macronutrient Targets"
+      action={
+        <Button variant="ghost" size="icon-lg">
+          <HugeiconsIcon
+            icon={ArrowUp01Icon}
+            strokeWidth={2}
+            className="rotate-180"
+          />
+        </Button>
+      }
+      contentVariant="panel"
+    >
+      <ProgressBar />
+      <ProgressBar />
+      <ProgressBar />
+      <ProgressBar />
+    </SyrisCard>
   );
 }
 
@@ -117,27 +105,25 @@ function ProgressBar() {
 
 function MealsCard() {
   return (
-    <Card className="w-full max-w-md overflow-hidden bg-transparent gap-0 ring-0 p-0">
-      <CardHeader className="px-0">
-        <CardDescription className="mt-1.5">Diary</CardDescription>
-        <CardAction>
-          <Button variant={"ghost"} size={"icon-lg"}>
-            <HugeiconsIcon
-              icon={ArrowUp01Icon}
-              strokeWidth={2}
-              className="rotate-180"
-            />
-          </Button>
-        </CardAction>
-      </CardHeader>
-      <CardContent className="gap-y-2 flex flex-col items-start justify-start px-0 flex-1">
-        <MealItem mealType={"breakfast"} />
-        <MealItem mealType={"snack"} />
-        <MealItem mealType={"lunch"} />
-        <MealItem mealType={"snack"} />
-        <MealItem mealType={"dinner"} />
-      </CardContent>
-    </Card>
+    <SyrisCard
+      title="Diary"
+      action={
+        <Button variant="ghost" size="icon-lg">
+          <HugeiconsIcon
+            icon={ArrowUp01Icon}
+            strokeWidth={2}
+            className="rotate-180"
+          />
+        </Button>
+      }
+      contentVariant="list"
+    >
+      <MealItem mealType="breakfast" />
+      <MealItem mealType="snack" />
+      <MealItem mealType="lunch" />
+      <MealItem mealType="snack" />
+      <MealItem mealType="dinner" />
+    </SyrisCard>
   );
 }
 

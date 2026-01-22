@@ -1,15 +1,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { SyrisCard } from "@/components/ui/syirs-card";
 import {
   Item,
   ItemActions,
@@ -42,7 +34,10 @@ import Link from "next/link";
 
 export function AddPage() {
   const sortedAddMap = React.useMemo(
-    () => [...addMap].sort((a, b) => Number(a.disabled || 0) - Number(b.disabled || 0)),
+    () =>
+      [...addMap].sort(
+        (a, b) => Number(a.disabled || 0) - Number(b.disabled || 0),
+      ),
     [addMap],
   );
 
@@ -50,10 +45,9 @@ export function AddPage() {
     <PageWrap className="px-0">
       <TopBar className="px-4">
         <Button variant={"ghost"} size={"icon-lg"} asChild>
-            <Link href={"/"}>
+          <Link href={"/"}>
             <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} />
-            </Link>
-          
+          </Link>
         </Button>
         {/* <div className="flex items-center justify-center gap-0">
           <p>Select a Meal</p>
@@ -80,33 +74,21 @@ export function AddPage() {
           );
         })}
       </div>
-      <Card className="w-full max-w-md overflow-hidden bg-transparent gap-0 ring-0 p-0 px-4 mt-4">
-        <CardHeader className="px-0">
-          <CardDescription className="mt-1.5">History</CardDescription>
-          <CardAction>
-            <Button variant={"outline"}>
-              <HugeiconsIcon icon={FilterMailSquareIcon} strokeWidth={2} />
-              Filter
-            </Button>
-          </CardAction>
-        </CardHeader>
-        <CardContent className="gap-y-2 flex flex-col items-start justify-start px-0 flex-1 pt-2">
-          <HistoryItem />
-          <HistoryItem />
-          <HistoryItem />
-          <HistoryItem />
-          <HistoryItem />
-          <HistoryItem />
-          <HistoryItem />
-          <HistoryItem />
-          <HistoryItem />
-          <HistoryItem />
-          <HistoryItem />
-          <HistoryItem />
-          <HistoryItem />
-          <HistoryItem />
-        </CardContent>
-      </Card>
+      <SyrisCard
+        className="px-4 mt-4"
+        title="History"
+        action={
+          <Button variant="outline">
+            <HugeiconsIcon icon={FilterMailSquareIcon} strokeWidth={2} />
+            Filter
+          </Button>
+        }
+        contentVariant="list"
+      >
+        <HistoryItem />
+        <HistoryItem />
+        {/* ... */}
+      </SyrisCard>
     </PageWrap>
   );
 }
