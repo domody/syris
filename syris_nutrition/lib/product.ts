@@ -70,3 +70,15 @@ export function toProductLite(data: any): ProductLite {
     nutrients_units: mergedUnits,
   };
 }
+
+export async function fetchProductLite(barcode: number): Promise<ProductLite>  {
+
+    const data = await offFetchJson(`/api/v2/product/${barcode}`, {
+    next: { revalidate: 60 * 60 * 24 },
+  });
+
+  const product = toProductLite(data)
+
+  return product
+}
+
