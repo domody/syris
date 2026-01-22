@@ -13,7 +13,6 @@ export function BottomBar() {
   return (
     <nav className="fixed shrink-0 bottom-0 left-0 right-0 z-50 flex h-16 w-full items-center justify-around shadow-t text-xs bg-background border-t">
       {navMap.mobile.map((nav) => {
-        console.log(nav.label);
 
         return (
           <Link

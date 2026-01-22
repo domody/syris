@@ -1,13 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { SyrisCard } from "../ui/syirs-card";
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemMedia,
-  ItemTitle,
-} from "@/components/ui/item";
 
 import { ComponentExample } from "../component-example";
 
@@ -25,8 +17,7 @@ import {
   SpaghettiIcon,
 } from "@hugeicons/core-free-icons";
 
-import { createClient } from "@/utils/supabase/client";
-import { cookies } from "next/headers";
+import { MealsCard } from "./meals-card";
 
 export function HomePage() {
   return (
@@ -106,87 +97,6 @@ function ProgressBar() {
   );
 }
 
-async function MealsCard() {
-  const supabase = createClient();
-
-  const { data: meals, error } = await supabase
-    .from("meals")
-    .select("*")
-    .limit(50);
-
-  return (
-    <SyrisCard
-      title="Diary"
-      action={
-        <Button variant="ghost" size="icon-lg">
-          <HugeiconsIcon
-            icon={ArrowUp01Icon}
-            strokeWidth={2}
-            className="rotate-180"
-          />
-        </Button>
-      }
-      contentVariant="list"
-    >
-      {meals?.map((meal) => {
-        return (
-          <MealItem mealType={meal.meal_type} /> 
-        )
-      })}
-      {/* <MealItem mealType="breakfast" />
-      <MealItem mealType="snack" />
-      <MealItem mealType="lunch" />
-      <MealItem mealType="snack" />
-      <MealItem mealType="dinner" /> */}
-    </SyrisCard>
-  );
-}
-
-type MealType = "breakfast" | "lunch" | "dinner" | "snack";
-const MEAL_CONFIG: Record<MealType, { label: string; icon: any }> = {
-  breakfast: {
-    label: "Breakfast",
-    icon: Coffee02Icon,
-  },
-  lunch: {
-    label: "Lunch",
-    icon: Sandwich,
-  },
-  dinner: {
-    label: "Dinner",
-    icon: SpaghettiIcon,
-  },
-  snack: {
-    label: "Snack",
-    icon: CookieIcon,
-  },
-};
-
-type MealItemProps = {
-  mealType: MealType;
-};
-
-function MealItem({ mealType }: MealItemProps) {
-  const { label, icon } = MEAL_CONFIG[mealType];
-
-  return (
-    <Item variant={"muted"}>
-      <ItemMedia variant="icon">
-        <HugeiconsIcon icon={icon} strokeWidth={2} />
-      </ItemMedia>
-      <ItemContent>
-        <ItemTitle>{label}</ItemTitle>
-        <ItemDescription>Greek Yogurt and 4 more</ItemDescription>
-        <ItemDescription>
-          420 kcals | <b>C</b> 20% <b>P</b> 20% <b>F</b> 20%
-        </ItemDescription>
-      </ItemContent>
-      <ItemActions>
-        <Button variant={"secondary"}>Log</Button>
-      </ItemActions>
-    </Item>
-  );
-}
 
 // Breakfast: Coffee02Icon
 // Lunch: Sandwich
