@@ -29,21 +29,7 @@ import {
   MealItemSchema,
   MealItemSnapshotSchema,
 } from "@/types/meals";
-
-const MealWithItemsSchema = MealSchema.extend({
-  meal_items: z
-    .array(
-      MealItemSchema.extend({
-        meal_item_snapshots: z.preprocess((v) => {
-          if (v == null) return []; // undefined/null -> []
-          return Array.isArray(v) ? v : [v]; // object -> [object]
-        }, z.array(MealItemSnapshotSchema)),
-      }),
-    )
-    .default([]),
-});
-
-type MealWithItems = z.infer<typeof MealWithItemsSchema>;
+import { todayDate } from "@/utils/date";
 
 type MacroPct = { c: number; p: number; f: number };
 
@@ -57,93 +43,11 @@ type DiaryMealVM = {
   itemCount: number;
 };
 
-function asNum(n: unknown): number {
-  // Supabase numeric often comes back as string
-  if (n == null) return 0;
-  const x = typeof n === "string" ? Number(n) : (n as number);
-  return Number.isFinite(x) ? x : 0;
-}
-
-function macroPctFromGrams(
-  protein_g: number,
-  carbs_g: number,
-  fat_g: number,
-): MacroPct {
-  const pCal = protein_g * 4;
-  const cCal = carbs_g * 4;
-  const fCal = fat_g * 9;
-  const total = pCal + cCal + fCal;
-  if (total <= 0) return { c: 0, p: 0, f: 0 };
-
-  return {
-    c: Math.round((cCal / total) * 100),
-    p: Math.round((pCal / total) * 100),
-    f: Math.round((fCal / total) * 100),
-  };
-}
-
-function previewFromNames(names: string[]): string {
-  if (names.length === 0) return "No items logged";
-  if (names.length === 1) return names[0];
-  return `${names[0]} and ${names.length - 1} more`;
-}
-
-function toDiaryMealVM(meal: MealWithItems): DiaryMealVM {
-  const mealType = meal.meal_type as MealType;
-  const { label } = MEAL_CONFIG[mealType];
-
-  const items = meal.meal_items ?? [];
-
-  const totals = items.reduce(
-    (acc, item) => {
-      const snap = item.meal_item_snapshots?.[0]; // 1:1 but returned as array
-      acc.kcal += asNum(snap?.kcal);
-      acc.protein += asNum(snap?.protein_g);
-      acc.carbs += asNum(snap?.carbs_g);
-      acc.fat += asNum(snap?.fat_g);
-      return acc;
-    },
-    { kcal: 0, protein: 0, carbs: 0, fat: 0 },
-  );
-
-  const names = items.map((i) => i.display_name).filter(Boolean);
-  const pct = macroPctFromGrams(totals.protein, totals.carbs, totals.fat);
-
-  return {
-    mealType,
-    mealId: meal.id,
-    label,
-    itemsPreview: previewFromNames(names),
-    kcal: Math.round(totals.kcal),
-    macroPct: pct,
-    itemCount: items.length,
-  };
-}
-
-function buildDiaryVM(meals: MealWithItems[]): DiaryMealVM[] {
-  return meals.flatMap(toDiaryMealVM)
-}
-
+import { getMealsWithItems } from "@/lib/data/meals";
+import { buildDiaryVM } from "@/lib/vm/diaryMeal";
 export async function MealsCard() {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("meals")
-    .select(
-      `
-    id, user_id, eaten_at, local_date, meal_type, note, created_at,
-    meal_items (
-      id, meal_id, source_type, source_ref, display_name, brand, created_at,
-      meal_item_snapshots (
-        meal_item_id, kcal, protein_g, carbs_g, fat_g, sugars_g, fiber_g, salt_g, data_quality, confidence, created_at
-      )
-    )
-  `,
-    )
-    .eq("local_date", "2026-01-22")
-    .order("eaten_at", { ascending: true });
-
-  const meals = MealWithItemsSchema.array().parse(data ?? []);
+  const date = todayDate();
+  const meals = await getMealsWithItems(date);
   const diaryVM = buildDiaryVM(meals);
 
   return (
@@ -161,7 +65,6 @@ export async function MealsCard() {
       contentVariant="list"
     >
       {diaryVM?.map((vm) => {
-        console.log(vm.mealId)
         return <MealItem key={vm.mealId} vm={vm} />;
       })}
     </SyrisCard>

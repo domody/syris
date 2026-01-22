@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
 import { Button } from "@/components/ui/button";

@@ -18,6 +18,7 @@ import {
 } from "@hugeicons/core-free-icons";
 
 import { MealsCard } from "./meals-card";
+import { MacronutrientTargetCard } from "./totals-card";
 
 export function HomePage() {
   return (
@@ -47,55 +48,8 @@ export function HomePage() {
   );
 }
 
-function MacronutrientTargetCard() {
-  return (
-    <SyrisCard
-      title="Macronutrient Targets"
-      action={
-        <Button variant="ghost" size="icon-lg">
-          <HugeiconsIcon
-            icon={ArrowUp01Icon}
-            strokeWidth={2}
-            className="rotate-180"
-          />
-        </Button>
-      }
-      contentVariant="panel"
-    >
-      <ProgressBar />
-      <ProgressBar />
-      <ProgressBar />
-      <ProgressBar />
-    </SyrisCard>
-  );
-}
 
-function ProgressBar() {
-  const macro = "Energy";
-  const current = "1672.2";
-  const goal = "1735.6";
-  const unit = "kcal";
-  const percent = 95;
 
-  return (
-    <div className="flex flex-col gap-1 w-full">
-      <div className="flex items-center justify-between w-full">
-        <p>
-          <b>{macro}</b> - {current} / {goal} {unit}
-        </p>
-        <p className={`${percent > 100 ? "text-orange-400" : ""}`}>
-          {percent}%
-        </p>
-      </div>
-      <div className="w-full h-2 relative overflow-hidden rounded-full bg-red-500/50">
-        <div
-          className="h-full absolute top-0 left-0 bg-red-500"
-          style={{ width: `${percent > 100 ? 100 : percent}%` }}
-        />
-      </div>
-    </div>
-  );
-}
 
 
 // Breakfast: Coffee02Icon
