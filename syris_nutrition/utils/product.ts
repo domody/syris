@@ -1,4 +1,4 @@
-import { offFetchJson } from "./off";
+import { offFetchJson } from "../lib/off";
 import { ProductLite } from "@/types/product";
 
 type Nutriments = Record<string, unknown>;

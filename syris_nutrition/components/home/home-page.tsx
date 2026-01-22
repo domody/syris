@@ -25,6 +25,9 @@ import {
   SpaghettiIcon,
 } from "@hugeicons/core-free-icons";
 
+import { createClient } from "@/utils/supabase/client";
+import { cookies } from "next/headers";
+
 export function HomePage() {
   return (
     <div
@@ -103,7 +106,14 @@ function ProgressBar() {
   );
 }
 
-function MealsCard() {
+async function MealsCard() {
+  const supabase = createClient();
+
+  const { data: meals, error } = await supabase
+    .from("meals")
+    .select("*")
+    .limit(50);
+
   return (
     <SyrisCard
       title="Diary"
@@ -118,11 +128,16 @@ function MealsCard() {
       }
       contentVariant="list"
     >
-      <MealItem mealType="breakfast" />
+      {meals?.map((meal) => {
+        return (
+          <MealItem mealType={meal.meal_type} /> 
+        )
+      })}
+      {/* <MealItem mealType="breakfast" />
       <MealItem mealType="snack" />
       <MealItem mealType="lunch" />
       <MealItem mealType="snack" />
-      <MealItem mealType="dinner" />
+      <MealItem mealType="dinner" /> */}
     </SyrisCard>
   );
 }

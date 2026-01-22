@@ -1,4 +1,4 @@
-import { fetchProductLite } from "@/lib/product";
+import { fetchProductLite } from "@/utils/product";
 
 export default async function Page() {
   const barcode = 5060517885137;
