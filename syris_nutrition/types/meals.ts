@@ -6,6 +6,7 @@ import {
   NumericSchema,
   NullableNumericSchema,
 } from "./helpers";
+
 // Meal Enums
 export const MealTypeSchema = z.enum(["breakfast", "lunch", "dinner", "snack"]);
 export type MealType = z.infer<typeof MealTypeSchema>;
@@ -26,7 +27,15 @@ export const DataQualitySchema = z.enum([
 ]);
 
 export const PortionUnitSchema = z.enum(["g", "ml", "piece", "serving"]);
+export type PortionUnit = z.infer<typeof PortionUnitSchema>;
 
+export const PortionBasisSchema = z.enum([
+  "per_serving",
+  "per_100g",
+  "per_100ml",
+]);
+
+// Schemas
 export const MealSchema = z.object({
   id: UuidSchema,
   user_id: UuidSchema,
@@ -36,7 +45,6 @@ export const MealSchema = z.object({
   note: z.string().nullable().optional(), // nullable text
   created_at: TimestampSchema, // NOT NULL timestamptz default now()
 });
-
 export type Meal = z.infer<typeof MealSchema>;
 
 export const MealItemSchema = z.object({
@@ -48,7 +56,6 @@ export const MealItemSchema = z.object({
   brand: z.string().nullable().optional(), // nullable text
   created_at: TimestampSchema, // NOT NULL
 });
-
 export type MealItem = z.infer<typeof MealItemSchema>;
 
 export const MealItemSnapshotSchema = z.object({
@@ -74,7 +81,6 @@ export const MealItemAssumptionSchema = z.object({
   meal_item_id: UuidSchema, // uuid (FK -> public.meal_items.id)
   assumption: z.string(),
 });
-
 export type MealItemAssumption = z.infer<typeof MealItemAssumptionSchema>;
 
 export const MealItemPortionSchema = z.object({
@@ -86,3 +92,17 @@ export const MealItemPortionSchema = z.object({
   created_at: TimestampSchema, // timestamptz
 });
 export type MealItemPortion = z.infer<typeof MealItemPortionSchema>;
+
+export const MealItemBaseSchema = z.object({
+  meal_item_id: UuidSchema, // uuid (PK/FK -> public.meal_items.id)
+  basis: PortionBasisSchema,
+  serving_grams: NullableNumericSchema,
+  kcal: z.number(),
+  protein_g: NullableNumericSchema,
+  carbs_g: NullableNumericSchema,
+  fat_g: NullableNumericSchema,
+  sugars_g: NullableNumericSchema,
+  fiber_g: NullableNumericSchema,
+  salt_g: NullableNumericSchema,
+});
+export type MealItemBase = z.infer<typeof MealItemBaseSchema>;

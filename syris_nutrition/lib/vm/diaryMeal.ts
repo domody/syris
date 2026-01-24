@@ -6,6 +6,7 @@ import {
   MealItemSchema,
   MealItemSnapshotSchema,
 } from "@/types/meals";
+import { type MealWithItems } from "../data/meals.server";
 
 const MEAL_CONFIG: Record<MealType, { label: string }> = {
   breakfast: {
@@ -22,30 +23,22 @@ const MEAL_CONFIG: Record<MealType, { label: string }> = {
   },
 };
 
-const MealWithItemsSchema = MealSchema.extend({
-  meal_items: z
-    .array(
-      MealItemSchema.extend({
-        meal_item_snapshots: z.preprocess((v) => {
-          if (v == null) return []; // undefined/null -> []
-          return Array.isArray(v) ? v : [v]; // object -> [object]
-        }, z.array(MealItemSnapshotSchema)),
-      }),
-    )
-    .default([]),
-});
-
-type MealWithItems = z.infer<typeof MealWithItemsSchema>;
-
+type MacroObject = {
+  value: number;
+  pct: number;
+};
 type MacroPct = { c: number; p: number; f: number };
+type MacroInfo = { c: MacroObject; p: MacroObject; f: MacroObject };
 
 type DiaryMealVM = {
   mealType: MealType;
   mealId?: string;
+  date: string;
   label: string;
   itemsPreview: string;
   kcal: number;
   macroPct: MacroPct;
+  macroInfo: MacroInfo;
   itemCount: number;
 };
 
@@ -56,6 +49,28 @@ function asNum(n: unknown): number {
   return Number.isFinite(x) ? x : 0;
 }
 
+function macroInfoFromGrams(
+  protein_g: number,
+  carbs_g: number,
+  fat_g: number,
+): MacroInfo {
+  const pCal = protein_g * 4;
+  const cCal = carbs_g * 4;
+  const fCal = fat_g * 9;
+  const total = pCal + cCal + fCal;
+  if (total <= 0)
+    return {
+      c: { value: 0, pct: 0 },
+      p: { value: 0, pct: 0 },
+      f: { value: 0, pct: 0 },
+    };
+
+  return {
+    c: { value: carbs_g, pct: Math.round((cCal / total) * 100) },
+    p: { value: protein_g, pct: Math.round((pCal / total) * 100) },
+    f: { value: fat_g, pct: Math.round((fCal / total) * 100) },
+  };
+}
 function macroPctFromGrams(
   protein_g: number,
   carbs_g: number,
@@ -88,7 +103,7 @@ function toDiaryMealVM(meal: MealWithItems): DiaryMealVM {
 
   const totals = items.reduce(
     (acc, item) => {
-      const snap = item.meal_item_snapshots?.[0]; // 1:1 but returned as array
+      const snap = item.snapshot;
       acc.kcal += asNum(snap?.kcal);
       acc.protein += asNum(snap?.protein_g);
       acc.carbs += asNum(snap?.carbs_g);
@@ -100,13 +115,15 @@ function toDiaryMealVM(meal: MealWithItems): DiaryMealVM {
 
   const names = items.map((i) => i.display_name).filter(Boolean);
   const pct = macroPctFromGrams(totals.protein, totals.carbs, totals.fat);
-
+  const info = macroInfoFromGrams(totals.protein, totals.carbs, totals.fat)
   return {
     mealType,
     mealId: meal.id,
+    date: meal.local_date,
     label,
     itemsPreview: previewFromNames(names),
     kcal: Math.round(totals.kcal),
+    macroInfo: info,
     macroPct: pct,
     itemCount: items.length,
   };

@@ -20,5 +20,6 @@ export function formatDateOnly(date: Date = new Date()): string {
  * Returns today's date as YYYY-MM-DD (UTC).
  */
 export function todayDate(): string {
+  return "2026-01-22"
   return formatDateOnly(new Date());
 }

@@ -31,11 +31,18 @@ import {
 } from "@/types/meals";
 import { todayDate } from "@/utils/date";
 
+type MacroObject = {
+  value: number;
+  pct: number;
+};
+
 type MacroPct = { c: number; p: number; f: number };
+type MacroInfo = { c: MacroObject; p: MacroObject; f: MacroObject };
 
 type DiaryMealVM = {
   mealType: MealType;
   mealId?: string;
+  date: string;
   label: string;
   itemsPreview: string;
   kcal: number;
@@ -45,6 +52,7 @@ type DiaryMealVM = {
 
 import { getMealsWithItems } from "@/lib/data/meals.server";
 import { buildDiaryVM } from "@/lib/vm/diaryMeal";
+import Link from "next/link";
 export async function MealsCard() {
   const date = todayDate();
   const meals = await getMealsWithItems(date);
@@ -98,25 +106,27 @@ function MealItem({ vm }: MealRowProps) {
   const { label, icon } = MEAL_CONFIG[vm.mealType];
 
   return (
-    <Item variant="muted">
-      <ItemMedia variant="icon">
-        <HugeiconsIcon icon={icon} strokeWidth={2} />
-      </ItemMedia>
+    <Item variant="muted" asChild>
+      <Link href={`/diary/${vm.date}/${vm.mealType}`}>
+        <ItemMedia variant="icon">
+          <HugeiconsIcon icon={icon} strokeWidth={2} />
+        </ItemMedia>
 
-      <ItemContent>
-        <ItemTitle>{vm.label}</ItemTitle>
-        <ItemDescription>{vm.itemsPreview}</ItemDescription>
-        <ItemDescription>
-          {vm.kcal} kcals | <b>C</b> {vm.macroPct.c}% <b>P</b> {vm.macroPct.p}%{" "}
-          <b>F</b> {vm.macroPct.f}%
-        </ItemDescription>
-      </ItemContent>
+        <ItemContent>
+          <ItemTitle>{vm.label}</ItemTitle>
+          <ItemDescription>{vm.itemsPreview}</ItemDescription>
+          <ItemDescription>
+            {vm.kcal} kcals | <b>C</b> {vm.macroPct.c}% <b>P</b> {vm.macroPct.p}
+            % <b>F</b> {vm.macroPct.f}%
+          </ItemDescription>
+        </ItemContent>
 
-      <ItemActions>
-        <Button variant="secondary">
-          {vm.itemCount === 0 ? "Log" : "View"}
-        </Button>
-      </ItemActions>
+        <ItemActions>
+          <Button variant="secondary">
+            <Link href={`/add`}>Log</Link>
+          </Button>
+        </ItemActions>
+      </Link>
     </Item>
   );
 }
