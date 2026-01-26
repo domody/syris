@@ -19,6 +19,7 @@ import {
 
 import { MealsCard } from "./meals-card";
 import { MacronutrientTargetCard } from "./totals-card";
+import { Notice } from "../notice/notice";
 
 export function HomePage() {
   return (
@@ -41,6 +42,7 @@ export function HomePage() {
         </div>
       </div>
       <div className="w-full flex flex-col items-start justify-start gap-y-4">
+        <Notice />
         <MacronutrientTargetCard />
         <MealsCard />
       </div>
