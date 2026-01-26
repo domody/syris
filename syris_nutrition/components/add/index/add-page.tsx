@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { SyrisCard } from "@/components/ui/syirs-card";
@@ -23,6 +23,7 @@ import { addMap } from "../add-map";
 
 import type { ProductLite } from "@/types/product";
 import { MealsClient, MEAL_TYPES, type MealType } from "@/lib/data/meals.client";
+import { MealTypeSchema } from "@/types/meals";
 
 // (Optional) dev-only seed item
 const testItem: ProductLite = {
@@ -82,10 +83,18 @@ function getErrorMessage(e: unknown) {
 }
 
 export function AddPage() {
+  const searchParams = useSearchParams();
+  let prefillType = searchParams.get("prefillType")
+
+  if (!MealTypeSchema.safeParse(prefillType).success) {
+    prefillType = null;
+  }
+
   const mealsClient = React.useMemo(() => new MealsClient(), []);
   const [selectedItems, setSelectedItems] = React.useState<ProductLite[]>([testItem]);
 
-  const [mealType, setMealType] = React.useState<MealType | null>(null);
+  console.log(prefillType)
+  const [mealType, setMealType] = React.useState<MealType | null>(prefillType as MealType);
 
   return (
     <PageWrap className="px-0 relative">
@@ -227,12 +236,12 @@ function MealTypeSelect({
     >
       <SelectTrigger
         id="select-meal-type"
-        className="bg-transparent border-0 text-base text-primary font-semibold focus-visible:ring-0"
+        className="bg-transparent dark:bg-transparent border-0 text-base text-primary font-semibold focus-visible:ring-0"
       >
         <SelectValue placeholder="Select a Meal" />
       </SelectTrigger>
 
-      <SelectContent>
+      <SelectContent position="popper" align="center">
         <SelectGroup>
           <SelectItem value="breakfast">Breakfast</SelectItem>
           <SelectItem value="lunch">Lunch</SelectItem>

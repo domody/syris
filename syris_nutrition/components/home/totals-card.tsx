@@ -8,6 +8,7 @@ import { ArrowUp01Icon } from "@hugeicons/core-free-icons";
 
 import { createClient } from "@/utils/supabase/server";
 import { todayDate } from "@/utils/date";
+import { MacronutrientProgress } from "../data/macros-progress";
 
 type MacroSummaryVM = {
   date: string;
@@ -22,33 +23,6 @@ function n(x: unknown): number {
   const v = typeof x === "string" ? Number(x) : (x as number);
   return Number.isFinite(v) ? v : 0;
 }
-
-const macroMeta = {
-  kcal: {
-    label: "Energy",
-    unit: "kcal",
-    trackClass: "bg-amber-500/30",
-    fillClass: "bg-amber-500",
-  },
-  protein: {
-    label: "Protein",
-    unit: "g",
-    trackClass: "bg-blue-500/30",
-    fillClass: "bg-blue-500",
-  },
-  carbs: {
-    label: "Carbs",
-    unit: "g",
-    trackClass: "bg-violet-500/30",
-    fillClass: "bg-violet-500",
-  },
-  fat: {
-    label: "Fat",
-    unit: "g",
-    trackClass: "bg-emerald-500/30",
-    fillClass: "bg-emerald-500",
-  },
-};
 
 export async function MacronutrientTargetCard() {
   const date = todayDate()
@@ -95,7 +69,7 @@ export async function MacronutrientTargetCard() {
 
   return (
     <SyrisCard
-      title="Macronutrient Targets"
+      title="Targets"
       action={
         <Button variant="ghost" size="icon-lg">
           <HugeiconsIcon
@@ -108,18 +82,17 @@ export async function MacronutrientTargetCard() {
       contentVariant="panel"
     >
       {Object.entries(vm.goals).map(([key, goal]) => {
-        const current = vm.totals[key];
-        const meta = macroMeta[key] ?? { label: key, unit: "", track: "", fill: "" };
+        const current = vm.totals[key as keyof typeof vm.goals];
 
         return (
-          <ProgressBar
+          <MacronutrientProgress
             key={key}
-            macro={meta.label}
-            current={current}
-            goal={goal}
-            unit={meta.unit}
-            track={meta.trackClass}
-            fill = {meta.fillClass}
+            macro={key as keyof typeof vm.goals}
+            value={current}
+            target={goal}
+            // unit={meta.unit}
+            // track={meta.trackClass}
+            // fill = {meta.fillClass}
           />
         );
       })}
