@@ -8,7 +8,7 @@ export function BottomBarPageWrapper({
 }) {
   return (
     <div className="relative w-screen h-screen">
-      <div className="h-[calc(100vh-4rem)] w-full overflow-x-hidden overflow-y-auto pb-2">
+      <div className="h-[calc(100vh-4rem)] w-full overflow-x-hidden overflow-y-auto pb-2 no-scrollbar">
         {children}
       </div>
       <BottomBar />

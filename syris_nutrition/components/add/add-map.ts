@@ -15,7 +15,7 @@ export const addMap = [
   },
   {
     label: "Scan Barcode",
-    link: "/scan/barcode",
+    link: "/add/scan/barcode",
     icon: BarcodeScanIcon,
   },
   {

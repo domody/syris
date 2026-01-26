@@ -123,7 +123,8 @@ function MealItem({ vm }: MealRowProps) {
 
         <ItemActions>
           <Button variant="secondary">
-            <Link href={`/add`}>Log</Link>
+            {/* <Link href={`/add`}>Log</Link> */}
+            Log
           </Button>
         </ItemActions>
       </Link>

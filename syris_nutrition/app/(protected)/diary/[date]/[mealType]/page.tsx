@@ -100,21 +100,21 @@ export default async function Page({
             const snapshot = item.snapshot!;
             const portion = item.portion!;
             return (
-              <Item key={item.id} variant={"muted"} >
+              <Item key={item.id} variant={"muted"} asChild>
                 <Link href={`/diary/${date}/${mealType}/${item.id}`}>
                   <ItemContent>
                     <ItemTitle>{item.display_name}</ItemTitle>
                     <ItemDescription>{portion.portion_label}</ItemDescription>
                     <ItemDescription>{snapshot.kcal} kcal</ItemDescription>
                   </ItemContent>
+                  <ItemActions>
+                    <HugeiconsIcon
+                      className="size-4"
+                      icon={ArrowRight01Icon}
+                      strokeWidth={2}
+                    />
+                  </ItemActions>
                 </Link>
-                <ItemActions>
-                  <HugeiconsIcon
-                    className="size-4"
-                    icon={ArrowRight01Icon}
-                    strokeWidth={2}
-                  />
-                </ItemActions>
               </Item>
             );
           })}
