@@ -6,27 +6,25 @@ import { ThemedText } from "@/components/ui/themed-text";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { Link } from "expo-router";
+import { useMealsDay } from "@/hooks/meals.hooks";
+import { MealItem } from "@/components/common/meal-item";
+import { PageWrap } from "@/components/common/page-wrap";
+import { MealsCard } from "@/components/home/meals-card";
 
 export default function Home() {
   const { user, loading } = useAuth();
-  const t = useTheme();
 
 
   return (
-    <ThemedView
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <ThemedText>Logged In!</ThemedText>
-      <ThemedText>{user?.id ?? "No user..."}</ThemedText>
-      <Link href={"/testing"} asChild>
-        <Button className="mt-4">
-          <Text>Go to Testing</Text>
-        </Button>
-      </Link>
-    </ThemedView>
+    <PageWrap className="items-center justify-center gap-2">
+        <ThemedText>Logged In!</ThemedText>
+        <ThemedText>{user?.id ?? "No user..."}</ThemedText>
+        <Link href={"/testing"} asChild>
+          <Button className="mt-4">
+            <Text>Go to Testing</Text>
+          </Button>
+        </Link>
+        <MealsCard />
+    </PageWrap>
   );
 }

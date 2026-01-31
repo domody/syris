@@ -39,7 +39,7 @@ function ItemSeparator({
 
 const itemVariants = cva(
   cn(
-    "[a]:hover:bg-muted rounded-md border text-xs/relaxed w-full group/item focus-visible:border-ring focus-visible:ring-ring/50 flex items-center flex-wrap outline-none transition-colors duration-100 focus-visible:ring-[3px] [a]:transition-colors",
+    "[a]:hover:bg-muted rounded-md border text-xs/relaxed w-full group/item focus-visible:border-ring focus-visible:ring-ring/50 flex flex-row items-center flex-wrap outline-none transition-colors duration-100 focus-visible:ring-[3px] [a]:transition-colors",
     // keep structure: allow web-only additions later without touching the base styles
     Platform.select({ web: "" }),
   ),
@@ -134,7 +134,7 @@ function ItemContent({
     <View
       data-slot="item-content"
       className={cn(
-        "gap-1 group-data-[size=xs]/item:gap-0.5 flex-col [&+[data-slot=item-content]]:flex-none",
+        "gap-1 group-data-[size=xs]/item:gap-0.5 flex-col flex-1 [&+[data-slot=item-content]]:flex-none",
         className,
       )}
       {...props}

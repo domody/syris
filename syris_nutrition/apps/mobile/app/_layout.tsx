@@ -12,6 +12,8 @@ import {
 } from "@expo-google-fonts/jetbrains-mono";
 import { SplashScreen } from "expo-router";
 import { useFonts } from "@expo-google-fonts/jetbrains-mono";
+import { QueryProvider } from "@/providers/query-provider";
+import { AuthQuerySync } from "@/providers/auth-query-sync";
 
 function RootStack() {
   const { user, loading: userLoading } = useAuth();
@@ -64,10 +66,13 @@ function RootStack() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <RootStack />
-        <PortalHost />
-      </AuthProvider>
+      <QueryProvider>
+        <AuthProvider>
+          <AuthQuerySync />
+          <RootStack />
+          <PortalHost />
+        </AuthProvider>
+      </QueryProvider>
     </ThemeProvider>
   );
 }
