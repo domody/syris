@@ -11,6 +11,7 @@ export default function Home() {
   const { user, loading } = useAuth();
   const t = useTheme();
 
+
   return (
     <ThemedView
       style={{

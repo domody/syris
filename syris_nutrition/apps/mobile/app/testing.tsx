@@ -2,7 +2,7 @@ import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { View } from "react-native";
 import { Button } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
+import { Text, TextClassContext } from "@/components/ui/text";
 import {
   Item,
   ItemContent,

@@ -8,7 +8,7 @@ import {
   AiBrain05Icon,
 } from '@hugeicons/core-free-icons';
 
-const opne = (url: string) => WebBrowser.openBrowserAsync(url);
+const open = (url: string) => WebBrowser.openBrowserAsync(url);
 
 export default function LoginPage() {
   return (
@@ -19,7 +19,7 @@ export default function LoginPage() {
             <HugeiconsIcon
               icon={AiBrain05Icon}
               strokeWidth={2}
-              size={16}
+              size={14}
               color={"white"}
               className=""
             />

@@ -29,6 +29,7 @@
     "@rn-primitives/slot": "^1.2.0",
     "@rneui/themed": "^5.0.0",
     "@supabase/supabase-js": "^2.93.1",
+    "@tanstack/react-query": "^5.90.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "expo": "~54.0.32",
