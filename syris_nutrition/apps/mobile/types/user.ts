@@ -15,4 +15,19 @@ export const UserGoalsSchema = z.object({
   carbs_g_target: NullableNumericSchema,
   fat_g_target: NullableNumericSchema,
 });
+
 export type UserGoals = z.infer<typeof UserGoalsSchema>;
+
+export const UserDailyTotalsSchema = z.object({
+  user_id: UuidSchema,
+  date: DateSchema,
+  kcal: NumericSchema,
+  protein_g: NumericSchema,
+  carbs_g: NumericSchema,
+  fat_g: NumericSchema,
+  sugars_g: NumericSchema,
+  fiber_g: NumericSchema,
+  salt_g: NumericSchema,
+});
+
+export type UserDailyTotals = z.infer<typeof UserDailyTotalsSchema>;

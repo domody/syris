@@ -10,6 +10,7 @@ import { useMealsDay } from "@/hooks/meals.hooks";
 import { MealItem } from "@/components/common/meal-item";
 import { PageWrap } from "@/components/common/page-wrap";
 import { MealsCard } from "@/components/home/meals-card";
+import { TargetsCard } from "@/components/home/targets-card";
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -17,13 +18,14 @@ export default function Home() {
 
   return (
     <PageWrap className="items-center justify-center gap-2">
-        <ThemedText>Logged In!</ThemedText>
+        {/* <ThemedText>Logged In!</ThemedText>
         <ThemedText>{user?.id ?? "No user..."}</ThemedText>
         <Link href={"/testing"} asChild>
           <Button className="mt-4">
             <Text>Go to Testing</Text>
           </Button>
-        </Link>
+        </Link> */}
+        <TargetsCard />
         <MealsCard />
     </PageWrap>
   );
