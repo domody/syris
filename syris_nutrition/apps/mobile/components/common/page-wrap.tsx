@@ -1,18 +1,46 @@
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/providers/theme-provider";
-import { View, ViewProps } from "react-native";
+import { ScrollView, View, ViewProps } from "react-native";
 
-export function PageWrap({ style, className, ...props }: ViewProps) {
+type PageWrapProps = ViewProps & {
+  withScrollView?: boolean; // default: true
+  scrollViewClassName?: string; // optional if you ever want to override
+};
+
+export function PageWrap({
+  style,
+  className,
+  children,
+  withScrollView = true,
+  scrollViewClassName,
+  ...props
+}: PageWrapProps) {
   const backgroundColor = useTheme().colors.background;
+
+  const containerClassName = cn(
+    "mx-auto flex flex-col flex-1 w-full max-w-5xl min-w-0 justify-start items-start 2xl:max-w-6xl no-scrollbar",
+    !withScrollView && "px-4 pt-4 pb-16",
+    className,
+  );
 
   return (
     <View
-      className={cn(
-        "mx-auto px-4 pb-16 flex flex-col min-h-screen w-full max-w-5xl min-w-0 justify-start items-start 2xl:max-w-6xl no-scrollbar",
-        className,
-      )}
-      style={[{ backgroundColor }, style]}
+      className={containerClassName}
+      style={[{ backgroundColor }, style]}  
       {...props}
-    />
+    >
+      {withScrollView ? (
+        <ScrollView
+          className={cn(
+            "flex flex-col flex-1 w-full px-4 pt-4 pb-16",
+            scrollViewClassName,
+          )}
+        >
+          {children}
+        </ScrollView>
+      ) : (
+        children
+      )}
+    </View>
   );
 }

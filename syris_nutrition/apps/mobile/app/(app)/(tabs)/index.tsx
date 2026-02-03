@@ -11,13 +11,14 @@ import { MealItem } from "@/components/common/meal-item";
 import { PageWrap } from "@/components/common/page-wrap";
 import { MealsCard } from "@/components/home/meals-card";
 import { TargetsCard } from "@/components/home/targets-card";
+import { Progress } from "@/components/ui/progress";
 
 export default function Home() {
   const { user, loading } = useAuth();
 
 
   return (
-    <PageWrap className="items-center justify-center gap-2">
+    <PageWrap className="items-center justify-start gap-2">
         {/* <ThemedText>Logged In!</ThemedText>
         <ThemedText>{user?.id ?? "No user..."}</ThemedText>
         <Link href={"/testing"} asChild>

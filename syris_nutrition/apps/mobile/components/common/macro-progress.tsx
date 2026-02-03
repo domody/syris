@@ -52,7 +52,7 @@ export function MacronutrientProgress({
           <Text>{pct.toFixed(2)}%</Text>
         </View>
         <Progress value={pct} />
-      </View>{" "}
+      </View>
     </TextClassContext>
   );
 }

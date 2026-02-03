@@ -57,8 +57,8 @@ export function SyrisCard({
       <CardContent
         className={cn(
           "flex flex-col items-start justify-start px-0",
-          contentVariant === "list" && "gap-y-2 pt-2",
-          contentVariant === "panel" && "gap-y-2 bg-muted/50 p-3 rounded-md",
+          contentVariant === "list" && "gap-y-2 mt-2",
+          contentVariant === "panel" && "gap-y-2 bg-muted/50 p-3 rounded-md mt-2",
           contentClassName,
         )}
       >
