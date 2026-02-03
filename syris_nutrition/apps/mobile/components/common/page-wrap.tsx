@@ -5,6 +5,7 @@ import { ScrollView, View, ViewProps } from "react-native";
 type PageWrapProps = ViewProps & {
   withScrollView?: boolean; // default: true
   scrollViewClassName?: string; // optional if you ever want to override
+  scrollViewContentContainerClassName?: string
 };
 
 export function PageWrap({
@@ -13,6 +14,7 @@ export function PageWrap({
   children,
   withScrollView = true,
   scrollViewClassName,
+  scrollViewContentContainerClassName,
   ...props
 }: PageWrapProps) {
   const backgroundColor = useTheme().colors.background;
@@ -26,11 +28,12 @@ export function PageWrap({
   return (
     <View
       className={containerClassName}
-      style={[{ backgroundColor }, style]}  
+      style={[{ backgroundColor }, style]}
       {...props}
     >
       {withScrollView ? (
         <ScrollView
+          contentContainerClassName={cn("gap-2", scrollViewClassName)}
           className={cn(
             "flex flex-col flex-1 w-full px-4 pt-4 pb-16",
             scrollViewClassName,

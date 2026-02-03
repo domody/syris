@@ -1,11 +1,11 @@
 import { Href, Tabs as JsTabs } from "expo-router";
 import { TabList, Tabs, TabSlot, TabTrigger } from "expo-router/ui";
-import { HugeiconsIcon } from "@hugeicons/react-native";
+import { HugeiconsIcon, IconSvgElement } from "@hugeicons/react-native";
 import { HapticTab } from "@/components/navigation/tabs/haptic-tab";
 import { Home04Icon, PlusSignIcon } from "@hugeicons/core-free-icons";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
-import { Text } from "@/components/ui/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { HapticTabButton } from "@/components/navigation/tabs/haptic-tab-button";
 
 type TabsFlag = "javascript" | "native" | "custom";
 
@@ -65,25 +65,11 @@ function NativeTabsLayout() {
   );
 }
 
-type IconSvgObject =
-  | [
-      string,
-      {
-        [key: string]: string | number;
-      },
-    ][]
-  | readonly (readonly [
-      string,
-      {
-        readonly [key: string]: string | number;
-      },
-    ])[];
-
 type NavItem = {
   name: "index" | "add";
   label: string;
-  href: Href; // allows strings or objects, but we'll keep strings here
-  icon: IconSvgObject;
+  href: Href;
+  icon: IconSvgElement;
   primary?: boolean;
 };
 const NAV = [
@@ -110,9 +96,9 @@ function CustomTabsLayout() {
       <TabList className="border-t border-border h-16">
         {NAV.map((tab) => (
           <TabTrigger
-            key={tab.name} // ✅ key
-            name={tab.name} // ✅ must be unique + match route ("index", "add")
-            href={tab.href} // ✅ typed as "/" | "/add" automatically
+            key={tab.name}
+            name={tab.name}
+            href={tab.href}
             style={{
               flexDirection: "column",
               flex: 1,
@@ -121,9 +107,9 @@ function CustomTabsLayout() {
               alignItems: "center",
               gap: 4,
             }}
+            asChild
           >
-            <HugeiconsIcon size={20} icon={tab.icon} color={"white"} />
-            <Text className="text-xs">{tab.label}</Text>
+            <HapticTabButton icon={tab.icon} label={tab.label} />
           </TabTrigger>
         ))}
       </TabList>

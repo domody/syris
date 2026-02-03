@@ -18,14 +18,7 @@ export default function Home() {
 
 
   return (
-    <PageWrap className="items-center justify-start gap-2">
-        {/* <ThemedText>Logged In!</ThemedText>
-        <ThemedText>{user?.id ?? "No user..."}</ThemedText>
-        <Link href={"/testing"} asChild>
-          <Button className="mt-4">
-            <Text>Go to Testing</Text>
-          </Button>
-        </Link> */}
+    <PageWrap>
         <TargetsCard />
         <MealsCard />
     </PageWrap>

@@ -1,6 +1,6 @@
 import { createTheme } from "./create-theme";
 
-const radiusBase = 7;
+const radiusBase = 8;
 
 export const light = createTheme({
   mode: "light",

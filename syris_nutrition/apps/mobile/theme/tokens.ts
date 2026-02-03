@@ -57,7 +57,6 @@ export type ThemeTokens = {
     "4xl": number;
   };
 
-  // Optional, but handy if you want parity with --font-sans/--font-mono later
   fonts?: {
     sans?: string;
     mono?: string;
