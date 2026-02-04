@@ -2,7 +2,7 @@ export const qk = {
   auth: ["auth"] as const,
 
   user: (userId: string) => ["user", userId] as const,
-
+  
   meals: {
     day: (userId: string, localDate: string) =>
       ["meals", userId, "day", localDate] as const,
@@ -29,4 +29,8 @@ export const qk = {
     effective: (userId: string, localDate: string) =>
       ["goals", userId, "effective", localDate] as const,
   },
+
+  off: {
+    product: (barcode: string) => ["off", "product", barcode] as const,
+  }
 };
