@@ -31,7 +31,13 @@ export default function BarcodeScanner() {
     const barcode = result.data.replace(/\D/g, "");
     setScanned(true);
 
-    router.replace(`/product/${barcode}` as Href);
+    router.replace({
+      pathname: "/product/[barcode]",
+      params: {
+        barcode: barcode,
+        type: result.type,
+      },
+    });
     // Alert.alert(
     //   "Barcode scanned",
     //   `Type: ${result.type}\nData: ${result.data}`,
@@ -88,7 +94,13 @@ export default function BarcodeScanner() {
         <Button
           variant={"secondary"}
           size={"icon"}
-          onPress={() => router.push("/")}
+          onPress={() => {
+            if (router.canDismiss()) {
+              router.dismissAll();
+            } else {
+              router.replace("/");
+            }
+          }}
         >
           <HugeiconsIcon size={20} icon={Cancel01Icon} color={"white"} />
         </Button>

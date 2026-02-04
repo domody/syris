@@ -4,7 +4,7 @@ export default function AppLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
         headerStyle: {
           backgroundColor: "var(--background)",
         },
@@ -13,20 +13,22 @@ export default function AppLayout() {
         headerTitleStyle: {
           fontFamily: "var(--font-mono)",
         },
+        // headerTitle: "Today"
       }}
     >
       <Stack.Screen name="(tabs)" />
       <Stack.Screen
-        name="scan/barcode.tsx"
+        name="scan/barcode"
         options={{
           headerShown: false,
           presentation: "fullScreenModal",
         }}
       />
       <Stack.Screen
-        name="product/[barcode].tsx"
+        name="product/[barcode]"
         options={{
           headerShown: true,
+          headerBackVisible: false,
         }}
       />
     </Stack>
