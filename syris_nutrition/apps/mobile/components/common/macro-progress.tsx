@@ -40,8 +40,10 @@ export function MacronutrientProgress({
   value: number;
   goal: number;
 }) {
-  const pct = (value / goal) * 100;
-
+  const safeGoal = goal > 0 ? goal : 1;
+  const pctRaw = (value / safeGoal) * 100;
+  const pct = Math.max(0, Math.min(100, pctRaw));
+  
   return (
     <TextClassContext value="text-xs">
       <View className="w-full gap-1">

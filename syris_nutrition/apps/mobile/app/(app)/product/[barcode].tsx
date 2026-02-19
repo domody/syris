@@ -39,8 +39,14 @@ export default function ProductScreen() {
             Barcode: {barcode} {type}
           </Text>
         </View>
-
-        <TargetsCard />
+        <TargetsCard
+          override={{
+            kcal: product?.nutrients_per_serving["energy-kcal"] as number,
+            protein_g: product?.nutrients_per_serving.proteins as number,
+            carbs_g: product?.nutrients_per_serving.carbohydrates as number,
+            fat_g: product?.nutrients_per_serving.fat as number,
+          }}
+        />
       </ScrollView>
       <View
         className="flex-row gap-4 items-start justify-between w-full px-4 pt-2 border-t border-border"

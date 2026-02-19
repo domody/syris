@@ -63,7 +63,9 @@ function WebIndicator({ value, className }: IndicatorProps) {
 }
 
 function NativeIndicator({ value, className }: IndicatorProps) {
-  const progress = useDerivedValue(() => value ?? 0);
+  if (Platform.OS === "web") return null;
+  
+  const progress = useDerivedValue(() => value ?? 0, [value]);
 
   const indicator = useAnimatedStyle(() => {
     return {
@@ -74,14 +76,16 @@ function NativeIndicator({ value, className }: IndicatorProps) {
     };
   }, [value]);
 
-  if (Platform.OS === "web") {
-    return null;
-  }
-
   return (
     <ProgressPrimitive.Indicator asChild>
       <Animated.View
-        style={indicator}
+        // style={[
+        //   // { width: "100%", height: "100%", transformOrigin: "left" as any },
+        //   indicator,
+        // ]}
+        style={{
+          width: `${value as number}%`
+        }}
         className={cn("bg-primary mr-auto h-full", className)}
       />
     </ProgressPrimitive.Indicator>
