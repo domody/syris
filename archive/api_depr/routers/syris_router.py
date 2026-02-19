@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from syris_core_depr import engine
+from syris_core_v1 import engine
 import json
 
 
