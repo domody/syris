@@ -1,7 +1,17 @@
 [project]
 name = "syris-core"
 version = "0.1.0"
-description = "Add your description here"
+description = "Proactive 24/7 AI Assistant"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.10.4,<0.11.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+package = true
+
+[project.scripts]
+syris = "syris_core.main:main"
