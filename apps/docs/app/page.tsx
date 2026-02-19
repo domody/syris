@@ -1,5 +1,7 @@
 import { ComponentExample } from "@/components/component-example";
+import { source } from "@/lib/source";
 
 export default function Page() {
-return <ComponentExample />;
+  console.log(source);
+  return <ComponentExample />;
 }
