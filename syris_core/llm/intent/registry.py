@@ -1,5 +1,5 @@
 from ..models.intent import Lane, Subaction, LaneConfig, SubactionBias
-from syris_core.tools.registry import TOOL_PROMPT_LIST
+from syris_core.tools.registry import TOOL_REGISTRY
 
 FULL_LANE_REGISTRY: dict[str, Lane] = {
         "ha": Lane(
@@ -212,7 +212,7 @@ FULL_LANE_REGISTRY: dict[str, Lane] = {
     ),
     "plan": Lane(
         id="plan",
-        prompt_line="Choose plan for multi-step workflows, reports, diagnostics, or tasks requiring multiple actions/tools.",
+        prompt_line="Choose plan for multi-step workflows that combine multiple actions/tools into one outcome (reports, diagnostics, summaries, investigations).",
         keywords=[
             "plan", "steps", "workflow", "report", "diagnose", "investigate",
             "analyze", "root cause", "compare", "summarize", "checklist",
@@ -230,25 +230,25 @@ FULL_LANE_REGISTRY: dict[str, Lane] = {
                 examples=["Plan how to migrate my smart-home hub to a new server."],
                 schema_id="plan.create_plan",
             ),
-            "generate_report": Subaction(
-                id="generate_report",
-                prompt_line="Generate a structured report (findings, recommendations, next steps).",
-                keywords=["report", "summary", "findings", "recommendations"],
-                examples=["Write a report on why automations are failing."],
-                schema_id="plan.generate_report",
-            ),
-            "run_diagnostics": Subaction(
-                id="run_diagnostics",
-                prompt_line="Run diagnostics workflow (gather info, propose tests, interpret results).",
-                keywords=["diagnose", "debug", "troubleshoot", "investigate"],
-                examples=["Diagnose why the living room speaker keeps disconnecting."],
-                schema_id="plan.run_diagnostics",
-            ),
+            # "generate_report": Subaction(
+            #     id="generate_report",
+            #     prompt_line="Generate a structured report (findings, recommendations, next steps).",
+            #     keywords=["report", "summary", "findings", "recommendations"],
+            #     examples=["Write a report on why automations are failing."],
+            #     schema_id="plan.generate_report",
+            # ),
+            # "run_diagnostics": Subaction(
+            #     id="run_diagnostics",
+            #     prompt_line="Run diagnostics workflow (gather info, propose tests, interpret results).",
+            #     keywords=["diagnose", "debug", "troubleshoot", "investigate"],
+            #     examples=["Diagnose why the living room speaker keeps disconnecting."],
+            #     schema_id="plan.run_diagnostics",
+            # ),
         },
     ),
        "tool": Lane(
         id="tool",
-        prompt_line="Choose tool for local/system/hardware information (time/date, CPU, memory, disk, OS, uptime) or non-HA utilities.",
+        prompt_line="Choose tool for a single direct local/system/hardware lookup or utility action (one tool call). Choose plan for reports/diagnostics or anything requiring multiple tool calls.",
         keywords=[
         "cpu", "processor", "load", "usage",
         "memory", "ram",
@@ -277,7 +277,7 @@ FULL_LANE_REGISTRY: dict[str, Lane] = {
     )
 }
 
-DISALLOWED = ["calendar", "plan", "email", "autonomy"]
+DISALLOWED = ["calendar", "email", "autonomy"]
 
 LANE_REGISTRY = {id: lane for id, lane in FULL_LANE_REGISTRY.items() if lane.id not in DISALLOWED}
 LANES = [lane.id for id, lane in LANE_REGISTRY.items()]
@@ -286,22 +286,38 @@ if "tool" in LANES:
     tool_reg = LANE_REGISTRY.get("tool")
 
     if tool_reg:
-        for tool_entry in TOOL_PROMPT_LIST.split("\n"):
-            try:
-                _name, description = tool_entry.split(": ", 1)
-                name = _name.split("- ", 1)[1]
-                
-                if tool_reg.subactions is None:
-                    tool_reg.subactions = {}
+        if tool_reg.subactions is None:
+            tool_reg.subactions = {}
 
-                tool_reg.subactions[name] = Subaction(
-                    id=name,
-                    prompt_line=description,
-                    keywords=None,
-                    schema_id=name
-                )
-            except:
-                continue
+        for tool_key, entry in TOOL_REGISTRY.items():
+            metadata = entry.get("metadata") or {}
+            description = metadata.get("description", f"Tool: {tool_key}")
+            schema_model = entry.get("schema_model")
+            schema_json = entry.get("schema_json")
+
+            intent = metadata.get("intent") or {}
+            if not isinstance(intent, dict):
+                intent = {}
+
+            keywords = intent.get("keywords")
+            if not isinstance(keywords, list):
+                keywords = None
+
+            examples = intent.get("examples")
+            if not isinstance(examples, list):
+                examples = None
+
+            prompt_line = intent.get("prompt_line") or description
+
+            tool_reg.subactions[tool_key] = Subaction(
+                id=tool_key,
+                prompt_line=prompt_line,
+                keywords=keywords,
+                examples=examples,
+                schema_id=tool_key,
+                schema_model=schema_model,
+                schema_json=schema_json,
+            )
 
 
 IMPERATIVE_VERBS = {
@@ -315,3 +331,6 @@ INTERROGATIVES = {
     "is", "are", "am", "do", "does", "did", "can", "could", "would", "will",
     "status",
 }
+
+
+print(LANE_REGISTRY)

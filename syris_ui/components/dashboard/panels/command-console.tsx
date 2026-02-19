@@ -86,10 +86,10 @@ function TranscriptItem({ message }: { message: ServerMessage }) {
   return (
     <Item className={"hover:bg-accent/50"}>
       <ItemContent>
-        <div className="flex items-center gap-2">
+        <div className="flex items-start gap-2">
           <span className="text-muted-foreground tabular-nums">{ts}</span>
           <span>{message.event.kind === "input" ? `>` : `[SYRIS]`}</span>
-          <span>{summarizeEvent(message.event)}</span>
+          <span>{summarizeEvent(message.event, false)}</span>
           {/* <span className="text-muted-foreground tabular-nums ml-auto">{ts}</span> */}
         </div>
         {/* <ItemDescription>

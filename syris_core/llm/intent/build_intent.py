@@ -7,6 +7,7 @@ from syris_core.llm.intent.schemas.schedule import (
     ScheduleSetReminderArgs,
     ScheduleSetTimerArgs,
 )
+from .schemas.plan import PlanCreateArgs
 from syris_core.types.llm import (
     Intent,
     IntentType,
@@ -22,6 +23,8 @@ from syris_core.types.llm import (
     ScheduleIntent,
     ScheduleSetArgs,
     ScheduleAction,
+    PlanIntent,
+    PlanArgs,
     LLMCallOptions,
 )
 
@@ -121,7 +124,12 @@ def build_intent_from_subaction(
         )
 
     if lane_id == "tool":
+        print(f"Build Intent Args: {args}")
         tool_payload = getattr(args, "arguments", {})
+        if isinstance(tool_payload, BaseModel):
+            print(tool_payload.model_dump())
+            tool_payload = tool_payload.model_dump()
+            
         return Intent(
             ToolIntent(
                 type=IntentType.TOOL,
@@ -131,4 +139,21 @@ def build_intent_from_subaction(
             )
         )
 
+    if lane_id == "plan":
+        if subaction_id == "create_plan":
+            if not isinstance(args, PlanCreateArgs):
+                return None
+            
+            return Intent(
+                PlanIntent(
+                    type=IntentType.PLAN,
+                    confidence=0.9,
+                    arguments=PlanArgs(
+                        goal=args.goal,
+                        context=args.context,
+                        output_format=args.output_format
+                    )
+                )
+            )
+        
     return None

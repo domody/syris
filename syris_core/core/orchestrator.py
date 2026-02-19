@@ -32,7 +32,9 @@ from syris_core.types.llm import (
     ControlOperation,
     TargetSpec,
     NameTarget,
-    ChatArgs
+    ChatArgs,
+    PlanIntent,
+    PlanArgs
 )
 from syris_core.types.home_assistant import QueryResult, ControlResult
 from syris_core.automation.scheduling.service import SchedulingService
@@ -68,13 +70,16 @@ class Orchestrator:
         response_prompt = open(PROMPTS_DIR / self.config.system_prompt_file).read()
 
         planner_provider = LLMProvider(model_name=self.config.model_name)
-        router_provider  = LLMProvider("qwen2.5:7b")
+        intent_routing_provider = LLMProvider("llama3.1")
+        intent_args_provider = LLMProvider("qwen2.5:7b-instruct")
+
         # router_provider  = LLMProvider(model_name=self.config.model_name)
 
         tool_list = TOOL_PROMPT_LIST.strip()
 
         self.intent_parser = IntentParser(
-            provider=router_provider,
+            routing_provider=intent_routing_provider,
+            args_provider=intent_args_provider,
             system_prompt=intent_prompt.replace("{TOOL_PROMPT_LIST}", tool_list),
         )
         self.planner = Planner(
@@ -350,7 +355,8 @@ class Orchestrator:
             type=EventType.TOOL,
             source="orchestrator",
             payload={
-                "tool_name": "test"
+                "kind": "tool.call",
+                "tool_name": "test",
             },
             timestamp=time.time()
         ))
@@ -379,7 +385,8 @@ class Orchestrator:
     async def _execute_plan_async(
         self, event: Event, intent: Intent, user_text: str, snap: MemorySnapshot
     ):
-        plan = await self.planner.generate()
+        intent_obj = assert_intent_type(intent=intent, expected_type=PlanIntent)
+        plan = await self.planner.generate(intent=intent_obj, snap=snap)
 
         result: PlanExecutionResult = await self.plan_executor.execute(
             user_text=user_text, plan=plan

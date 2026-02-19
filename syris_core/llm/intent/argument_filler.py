@@ -3,12 +3,28 @@ from typing import Any
 from .schema_resolver import resolve_schema_json
 from ..models.intent import Subaction
 
+def _unwrap_arguments_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    props = schema.get("properties")
+    if not isinstance(props, dict):
+        return schema
+
+    arg_schema = props.get("arguments")
+    if not isinstance(arg_schema, dict):
+        return schema
+
+    arg_props = arg_schema.get("properties")
+    if isinstance(arg_props, dict):
+        return arg_schema
+
+    return schema
+
 def build_fill_guide_from_schema_json(
     schema: dict[str, Any],
     *,
     max_fields: int = 10,
     include_optionals: bool = True,
 ) -> str:
+    schema = _unwrap_arguments_schema(schema)
     props: dict[str, Any] = schema.get("properties", {}) or {}
     required: list[str] = schema.get("required", []) or []
 

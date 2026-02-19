@@ -6,6 +6,7 @@ from syris_core.types.llm import Intent, PlanExecutionResult, LLMCallOptions
 from syris_core.types.memory import MemorySnapshot
 from syris_core.util.logger import log
 from syris_core.tracing.snapshot.snapshot_builder import SnapshotBuilder
+from ..response import get_message_content
 
 class ResponseComposer:
     def __init__(self, provider: LLMProvider, system_prompt: str, snapshot_builder: SnapshotBuilder):
@@ -48,7 +49,8 @@ class ResponseComposer:
         response = await self.provider.complete(
             LLMCallOptions(system_prompt=final, memory=messages, instructions=json.dumps({"assistant_context": context.model_dump_json()}))
         )
-        return response["message"]["content"].strip()
+        raw: str = get_message_content(response=response)
+        return raw
 
     # compose optimistic / error / tool response ?? / summarize
 
