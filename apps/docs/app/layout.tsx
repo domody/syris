@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { RootProvider } from "fumadocs-ui/provider/next";
+import { Topbar } from "@/components/nav/topbar";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -26,11 +27,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="en" className={`dark ${inter.variable}`} suppressHydrationWarning>
       <body
-        className={`flex flex-col min-h-screen ${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`flex flex-col min-h-screen pt-14 overflow-x-hidden ${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <RootProvider>{children}</RootProvider>
+          <Topbar />
+          {children}
       </body>
     </html>
   );
