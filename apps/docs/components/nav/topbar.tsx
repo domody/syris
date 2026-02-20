@@ -17,7 +17,7 @@ export function Topbar() {
           syris-docs
         </Link>
         <Link
-          href={"/docs/repo-structure"}
+          href={"/docs"}
           className={buttonVariants({ variant: "ghost", size: "default" })}
         >
           Documentation
