@@ -1,0 +1,74 @@
+---
+title: What is SYRIS?
+description: SYRIS is a single-user, always-on personal operating system for automation, orchestration, and proactive assistance.
+---
+
+**SYRIS is not a chat bot. It is a personal operating system for automation and orchestration.**
+
+Most “assistants” are optimized around messaging: you send text, it replies, maybe calls a tool.
+
+SYRIS is different. It’s a **24/7 control plane** that continuously ingests stimuli from the world (messages, schedules, device events, rules, webhooks), turns them into normalized events, and safely executes actions through a capability- and policy-driven runtime.
+
+SYRIS is built around this core shape:
+
+- **Omnichannel in** &gt; normalized `MessageEvent`
+- **Rules-first routing** &gt; deterministic fast paths when possible
+- **Plan/Execute** &gt; immediate actions or resumable multi-step tasks
+- **Tools + integrations** &gt; capability registry, scoped permissions, retry discipline
+- **Audit + telemetry** &gt; everything queryable via API (dashboard-first), no log spelunking
+
+## Goals
+
+SYRIS is designed to be:
+
+- **Always-on, restart-resilient:** resumes safely after crashes/restarts.
+- **Operator-friendly:** you can always answer “what is it doing and why?”
+- **Proactive:** timers, alarms, schedules, watchers, and rules can initiate actions.
+- **Safe by default:** autonomy levels, confirmation gates, dry-run previews, least privilege.
+- **Observable by design:** append-only audit events + queryable projections for a dashboard.
+
+## What SYRIS does
+
+SYRIS coordinates:
+
+- **Home/IoT automation:** Home Assistant and device control, with anti-flap and quiet-hours policies.
+- **Timers, alarms, and schedules:** first-class, persistent, visible, operator-controllable.
+- **Rules engine:** IFTTT-style rules that trigger workflows via events (auditable and debounced).
+- **Task orchestration:** multi-step workflows with checkpoints, retries, pause/resume, cancellation.
+- **Integrations + tools:** adapters that conform to strict interfaces and declare capabilities/scopes.
+- **System awareness:** a queryable system state surface (tasks, queues, schedules, health, autonomy).
+- **Long-running work:** optional sandbox workers for heavy jobs (gated; not default).
+- **Future vision stream:** pluggable visual event sources (treated like any other inbound adapter).
+
+## What SYRIS is not (non-goals for now)
+
+- Multi-user / multi-tenant.
+- A “perfect chat memory” social conversation agent.
+- Full duplex low-latency voice DSP (we process transcripts and events).
+- A distributed microservice platform (start modular monolith; design seams).
+- A dashboard UI product (we design the API surfaces and state model).
+
+## The design philosophy
+
+SYRIS optimizes for:
+
+- **Correctness > cleverness**
+- **Traceability > throughput**
+- **Deterministic fast paths > LLM everywhere**
+- **Modular monolith > microservices**
+- **Idempotency by default > best-effort retries**
+- **APIs for everything > “check logs”**
+
+## A simple mental model
+
+Think of SYRIS as a loop:
+
+1. Something happens &gt; event ingested
+2. Event normalized &gt; `MessageEvent`
+3. Router decides:
+   - **Fast lane:** execute immediately (bounded latency)
+   - **Work lane:** create/resume a Task (checkpointed)
+   - **Gated:** request approval (risk/autonomy policy)
+4. Tools execute with idempotency + retries
+5. Everything emits audit events + telemetry
+6. Dashboard queries state and controls the system safely

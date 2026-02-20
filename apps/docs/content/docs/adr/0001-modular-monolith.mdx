@@ -1,0 +1,88 @@
+---
+title: ADR 0001 — Modular Monolith First
+description: Start with a modular monolith for SYRIS core, with explicit seams for later extraction into workers/services.
+---
+
+**Decision: SYRIS core will start as a modular monolith, not microservices.**
+
+## Context
+
+SYRIS is a single-user, 24/7 automation and orchestration system with:
+- omnichannel event ingestion
+- a unified pipeline (Normalize &gt; Route &gt; Plan/Execute)
+- strict traceability and auditability
+- safety/autonomy gates and approvals
+- integrations/tooling with retry discipline and idempotency
+- scheduler/watchers/rules engine
+- future isolated workers (sandbox) and vision streams
+
+As a solo developer, the dominant risks are:
+- over-engineering early
+- losing observability during rapid iteration
+- building a system too complex to run, debug, and evolve
+
+## Decision
+
+We will implement SYRIS core as a **modular monolith**:
+- one primary “control plane” process (plus optional worker processes)
+- strong internal module boundaries and stable data contracts
+- explicit seams for later extraction:
+  - worker/sandbox subsystem boundary
+  - integration adapter interfaces
+  - projection builder (sync now, async later)
+
+## Alternatives considered
+
+### 1) Microservices from day one
+**Pros**
+- strong isolation boundaries
+- independent scaling/deployment
+
+**Cons**
+- operational overhead (service discovery, deployment, coordination)
+- distributed tracing required immediately
+- slows iteration and complicates debugging
+- too heavy for single-user + solo dev
+
+### 2) Monolith without boundaries
+**Pros**
+- fastest to start
+
+**Cons**
+- becomes untestable and fragile
+- encourages integration sprawl
+- breaks “dashboard-first observability” as behavior becomes implicit
+
+### 3) Event-sourced microservice platform
+**Pros**
+- replay/debug story is strong
+
+**Cons**
+- high upfront complexity
+- requires strong infra discipline early
+
+## Consequences
+
+### Positive
+- Faster iteration while maintaining a coherent architecture
+- Easier debugging (single process + consistent audit)
+- Simpler deployment and ops (especially early)
+- Clear internal contracts allow refactors without chaos
+
+### Negative
+- Some boundaries are “convention-enforced,” not network-enforced
+- Future extraction work will exist (but the seams reduce that cost)
+
+## Implementation notes
+
+- Create stable core schemas (`MessageEvent`, `Task`, `ToolCall`, `AuditEvent`, `Approval`).
+- Enforce invariants: trace_id everywhere, append-only audit, idempotency on effectful calls.
+- Keep integrations behind strict adapter interfaces.
+- Introduce worker processes as a separate runtime only when needed.
+
+## Follow-ups
+
+- ADR for persistence strategy (SQLite &gt; Postgres)
+- ADR for idempotency key strategy and tool outcome storage
+- ADR for fast lane vs work lane gating policy
+- ADR for projections approach (sync now, async projector later)

@@ -1,0 +1,126 @@
+---
+title: Component Map
+description: A C4-style view of the SYRIS modular monolith and its seams for future extraction.
+---
+
+**Start as a modular monolith, but design “seams” so you can extract workers or integrations later without rewrites.**
+
+## High-level flow
+
+```txt
+[Inbound Adapters] ---> [Normalize] ---> [Route] ---> [Execute]
+     |                      |            |            |
+     |                      |            |            +--> [Tool Runtime] --> [Outbound Adapters]
+     |                      |            |
+     |                      |            +--> [Rules Engine] (may emit events)
+     |                      |
+     |                      +--> persists MessageEvent + AuditEvent
+     |
+     +--> Scheduler/Watchers/Rules also emit events into the same Normalize step
+```
+
+## Core modules (responsibilities)
+
+### Inbound adapters
+
+- Poll / webhook / listen
+- Convert raw payloads into normalized inputs
+- Preserve provenance (IDs, timestamps, thread IDs)
+- No business logic
+
+### Normalizer
+
+- Produces canonical `MessageEvent` (versioned)
+- Redaction early
+- Attachment references (not inline)
+
+### Router (rules-first)
+
+- Hard filters (quiet hours / spam)
+- Deterministic fast paths (timers, device control, admin commands)
+- Rules engine evaluation
+- LLM fallback only for ambiguity
+- Produces `RoutingDecision` with `execution_mode` + scopes + gates
+
+### Executor / Task engine
+
+Two execution modes:
+
+- **Fast lane:** execute immediately (bounded latency)
+- **Work lane:** create/resume tasks with checkpointed steps
+
+Core features:
+
+- pause/resume/cancel
+- retries with backoff
+- idempotency keys on effectful steps
+
+### Tool runtime + registry
+
+- Tool registry: capabilities + scopes + health
+- Outbound tool execution:
+  - idempotency
+  - retries/backoff
+  - rate limit discipline
+
+- Connector-specific constraints (threads, formatting, feature support)
+
+### Scheduler + watchers
+
+- Durable schedules (timers/alarms/cron)
+- Watchers tick and emit events
+- Dedup/throttle/quiet hours policies
+
+### Rules engine
+
+- IFTTT-style rules: conditions &gt; actions
+- Debounce and suppression with auditable reasons
+- Emits child events with parent linkage
+
+### Safety layer
+
+- Autonomy levels + risk classification
+- Confirmation gates and approvals
+- Dry-run previews for risky tools
+
+### Observability subsystem
+
+- Append-only audit log
+- Projections for dashboard queries
+- Metrics/health/alarms
+- Replay/debug utilities
+
+### API layer (dashboard-first)
+
+- Status endpoints
+- Query endpoints for tasks/events/audit
+- Operator controls
+- Approvals API
+
+### Worker subsystem (seam)
+
+- Optional isolated runtime for heavy jobs
+- Job lifecycle: spawn/progress/checkpoint/cancel
+- Artifact storage and linking to trace/task/job
+
+## Process layout (runtime topology)
+
+```txt
+Control Plane (always-on)
+  - Ingestion (webhooks/pollers)
+  - Scheduler loop
+  - Watcher loop
+  - Task engine loop
+  - API server
+
+Worker(s) (optional)
+  - Sandbox jobs
+  - Vision processing (future)
+  - Heavy analysis / refactors / synthesis
+```
+
+## Seams for later extraction
+
+- Worker boundary (process/container runtime)
+- Integration adapters (can be moved out if needed)
+- Projection builder (sync &gt; async projector later)

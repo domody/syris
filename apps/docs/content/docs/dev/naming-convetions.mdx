@@ -1,0 +1,80 @@
+---
+title: Naming Conventions
+description: Naming, module organization, and codebase norms for consistency and long-term maintainability.
+---
+
+**Naming is architecture. Consistent names reduce cognitive load and prevent “shadow concepts.”**
+
+## Python naming
+
+### Packages and modules
+- Use `snake_case` for modules: `syris_core`, `task_engine`, `tool_registry`
+- Avoid dashes in Python module names (`syris-core` is project name only)
+- Prefer `src/syris_core/...` with a stable import namespace
+
+### Files and folders
+Recommended patterns:
+
+- `pipeline/normalize.py`, `pipeline/route.py`, `pipeline/execute.py`
+- `models/events.py`, `models/tasks.py`, `models/tools.py`
+- `integrations/<integration_name>/...`
+- `scheduler/scheduler.py`
+- `watchers/<watcher_name>.py`
+- `rules/engine.py`, `rules/models.py`
+
+Avoid:
+- “god modules” like `utils.py` or `helpers.py` as dumping grounds  
+  (If needed: allow exactly one `common/` module with strict review.)
+
+## Domain naming
+
+Use canonical terms from the Glossary:
+
+- `MessageEvent`, `AuditEvent`, `ToolCall`, `ToolResult`, `Task`, `Step`, `Approval`
+- `trace_id`, `span_id`, `idempotency_key`, `dedupe_key`
+
+Prefer explicit words over abbreviations:
+- `integration_id` not `iid`
+- `occurred_at` / `ingested_at` not `ts1` / `ts2`
+
+## IDs and keys
+
+- IDs: UUID strings (`event_id`, `task_id`, `step_id`, `tool_call_id`, `job_id`)
+- Correlation:
+  - `trace_id` spans the entire chain
+  - `parent_event_id` links derived events (watcher/rule &gt; child)
+- Idempotency:
+  - always `idempotency_key` for effectful actions
+- Dedupe:
+  - always `dedupe_key` for event deduplication/throttling
+
+## Versioning
+
+### Schemas
+All core schemas are versioned:
+- `schema_version: "1.0"`
+- evolution is additive whenever possible
+- breaking changes require a migration plan + ADR
+
+### Tools
+Tools declare:
+- `name`
+- `version`
+- `capabilities`
+- `scopes_required`
+
+## API naming
+
+- Use REST-ish resource nouns:
+  - `GET /tasks`
+  - `POST /tasks/{id}/cancel`
+  - `GET /audit?trace_id=...`
+- Operator actions are verbs but still auditable:
+  - `POST /controls/autonomy`
+  - `POST /approvals/{id}/approve`
+
+## Docs naming
+
+- ADRs: `adr/0001-title.mdx` (4-digit prefix)
+- Runbooks: `runbooks/<topic>.mdx`
+- Keep URLs stable (don’t rename without redirects if you care about links)

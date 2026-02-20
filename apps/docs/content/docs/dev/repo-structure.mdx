@@ -1,0 +1,90 @@
+---
+title: Repo Structure
+description: The monorepo layout for core, apps, shared packages, and archive modules (with boundary rules).
+---
+
+**This repo is a monorepo on purpose: core stays stable, apps iterate fast, and shared packages form the only legal bridge.**
+
+## Top-level layout
+
+```txt
+syris/
+├── core/
+│   └── syris_core/                 # SYRIS core (Python, uv)
+│       ├── pyproject.toml
+│       ├── src/syris_core/         # import namespace
+│       └── tests/
+├── apps/
+│   ├── dashboard/                  # mission control (Next.js)
+│   ├── docs/                       # internal docs (Next.js + Fumadocs)
+│   └── nutrition/                  # standalone app(s)
+├── packages/
+│   ├── shared-types/               # cross-app contracts (TS/JSON schema)
+│   ├── api-client/                 # typed client for core API (TS)
+│   └── ui/                         # optional shared UI primitives
+├── archive/                        # deprecated modules (read-only)
+└── ops/                            # deployment and ops artifacts
+````
+
+## Boundary rules
+
+### Apps are sandboxed
+
+Anything under `apps/*` is a standalone app and must **not** import from `core/*`.
+
+Allowed:
+
+* `apps/*` &gt; `packages/*`
+
+Not allowed:
+
+* `apps/*` &gt; `core/*`
+
+This keeps core stable and prevents “UI app quietly depending on core internals.”
+
+### Core owns integrations
+
+Core integrations and tools live under `core/syris_core/src/syris_core/…` because:
+
+* they deploy together
+* they share secrets/scopes policy
+* they participate in the same audit/trace runtime
+
+## Where SYRIS v3 lives
+
+All SYRIS runtime code belongs in:
+
+* `core/syris_core/src/syris_core/`
+
+Including:
+
+* pipeline (normalize/route/execute)
+* task engine
+* scheduler/watchers/rules
+* tool runtime + integrations registry
+* observability (audit, projections, telemetry)
+* API server and operator controls
+* worker/sandbox manager
+
+## Running locally (intent)
+
+Core:
+
+* `uv sync`
+* `uv run syris` (control plane)
+* `uv run syris-api` (API server)
+* `uv run syris-worker` (workers/sandbox)
+
+Apps:
+
+* `bun dev` in each app (dashboard/docs/nutrition)
+
+## Docs as a product
+
+Docs are treated as an app because:
+
+* they need navigation/search
+* they should be easy to keep updated
+* they become the “living memory” of the system
+
+The docs app reads its content from local `content/docs/*` within the app, avoiding cross-boundary filesystem hacks.

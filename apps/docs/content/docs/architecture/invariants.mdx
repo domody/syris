@@ -1,0 +1,79 @@
+---
+title: Core Invariants
+description: Non-negotiable rules that keep SYRIS observable, safe, and restart-resilient through refactors.
+---
+
+**These invariants are the “constitution” of SYRIS. If an implementation breaks one, it’s a bug or a redesign.**
+
+## Event and pipeline invariants
+
+- **Everything becomes a `MessageEvent`.**  
+  Every stimulus (messages, webhooks, schedules, device events, rule triggers) must normalize into a versioned `MessageEvent`.
+
+- **Single pipeline, three stages.**  
+  `Normalize &gt; Route &gt; Plan/Execute` exists as separable stages, each testable and observable.
+
+- **Rules-first routing exists.**  
+  Deterministic fast paths must handle common commands without model planning.
+
+## Traceability invariants
+
+- **Every chain has a `trace_id`.**  
+  Inbound event &gt; routing decision &gt; task/step &gt; tool calls/outcomes must share a trace.
+
+- **Every action is auditable.**  
+  Any meaningful decision or effect (tool call, suppression, gate decision, operator action) must emit an append-only `AuditEvent`.
+
+- **Audit is queryable via API.**  
+  “Check the logs” is never a requirement for understanding behavior.
+
+## Safety invariants
+
+- **Autonomy is explicit.**  
+  A current autonomy level exists and is visible + changeable via operator controls.
+
+- **Risk gating exists.**  
+  Outbound/effectful actions are classified by risk and may require approvals.
+
+- **Dry-run exists for risky tools.**  
+  High-risk operations must support preview/simulation before execution when feasible.
+
+## Idempotency invariants
+
+- **Effectful actions are idempotent.**  
+  Every tool call that can cause side effects must have an `idempotency_key` and store outcome mapping.
+
+- **Retries never duplicate side effects.**  
+  On retry/restart, the system must return the previous outcome or re-check provider state.
+
+## Responsiveness invariants
+
+- **Fast lane is the default.**  
+  Most user-facing commands must be near real-time and must not trigger long planning/sandbox work.
+
+- **Work lane is gated.**  
+  Long-running planning/sandbox jobs only start when needed (complexity/ambiguity) or via explicit user intent.
+
+## Operator control invariants
+
+- **Operator can intervene.**  
+  At minimum: pause/resume system, pause watcher/rule, cancel/retry task, toggle autonomy, enable/disable integration, approve/deny.
+
+- **Operator actions are audited.**  
+  All operator actions emit audit events with `actor=operator`.
+
+## Secrets and privacy invariants
+
+- **Secrets boundary exists.**  
+  Credentials/tokens are only accessible through a minimal secrets API; never logged.
+
+- **Redaction by default.**  
+  Audit payloads and logs must redact sensitive data based on policy.
+
+## Restart invariants
+
+- **Crash recovery is deterministic.**  
+  On restart, tasks/schedules/watchers reconstruct state from persisted storage and continue safely.
+
+- **In-flight uncertainty is handled.**  
+  Unknown tool outcomes are reconciled via idempotency key or provider check when possible.

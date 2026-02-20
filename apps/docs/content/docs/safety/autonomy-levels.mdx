@@ -1,0 +1,63 @@
+---
+title: Autonomy Levels
+description: How SYRIS decides what it can do automatically vs what requires confirmation, based on risk and policy.
+---
+
+**Autonomy exists so SYRIS can be useful without being dangerous.**
+
+Autonomy is always interpreted together with **risk level** and **tool scopes**. The same action may be allowed or gated depending on the autonomy level and policy.
+
+## Autonomy levels (A0–A4)
+
+| Level | Name | Default behavior | Effectful actions |
+|------:|------|------------------|------------------|
+| A0 | Suggest-only | Drafts, previews, explanations | Never executes effectful actions |
+| A1 | Confirm required | Can prepare actions + ask to confirm | Executes only after explicit approval for anything effectful |
+| A2 | Scoped autonomy | Automates low-risk actions | Low-risk auto; medium/high requires approval |
+| A3 | High autonomy | Operates broadly within granted scopes | Most actions auto; high/critical gated |
+| A4 | Full autonomy | Dangerous; usually disabled | Nearly all actions auto; still respects hard safety constraints |
+
+## Risk levels (guidance)
+
+| Risk | Examples | Typical gate |
+|------|----------|--------------|
+| Low | Read-only queries, status checks, local notes | Usually allowed in A2+ |
+| Medium | Controlling a single device, sending to private channel, creating calendar event | Often requires approval in A1/A2 |
+| High | Deleting data, controlling many devices, sending broadly, quiet-hours notifications | Approval required |
+| Critical | Purchases, public posting, irreversible actions, wide “blast radius” | Strong gate + explicit operator flow |
+
+## Confirmation gates
+
+A gate is a persisted `Approval` request that includes:
+- why it’s gated (risk/autonomy/policy)
+- the exact payload to execute (no “surprises”)
+- how to approve/deny (dashboard or explicit reply)
+- expiry window
+
+Approvals are **audited** and **trace-linked** to the originating event/task.
+
+## Dry-run previews
+
+For risky tools, SYRIS should generate a preview:
+- message render preview
+- device state diffs (before &gt; after)
+- patch previews for code changes
+- “what will happen” summary
+
+Execution must re-use the same idempotency key as the preview.
+
+## Fast lane vs work lane (and gating heavy work)
+
+- **Fast lane** is default for simple commands (e.g., “turn off lights”).
+- **Work lane** is reserved for multi-step tasks.
+- **Sandbox work** is reserved for heavy jobs and should be gated:
+  - explicit `/sandbox` intent
+  - or explicit operator confirmation when SYRIS wants to escalate
+
+## Hard safety constraints (always enforced)
+
+Regardless of autonomy level:
+- least privilege scopes are enforced
+- secrets are never exposed
+- redaction is applied to audit payloads
+- anti-spam / anti-flap policies remain active

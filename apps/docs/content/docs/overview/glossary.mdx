@@ -1,0 +1,46 @@
+---
+title: Glossary
+description: Shared vocabulary for SYRIS concepts, components, and data contracts.
+---
+
+**SYRIS stays maintainable by using consistent language. This page is the canonical dictionary.**
+
+## Core concepts
+
+| Term | Meaning |
+|------|---------|
+| **Stimulus** | Any inbound input: user message, webhook, device event, schedule tick, rule trigger, etc. |
+| **MessageEvent** | The unified, versioned internal schema representing a stimulus after normalization. |
+| **SystemEvent** | A system-emitted event (scheduler/watchers/rules/health) that still becomes a `MessageEvent`. |
+| **Normalize &gt; Route &gt; Plan/Execute** | The three-stage pipeline every event passes through. |
+| **Router** | Chooses deterministic fast paths first; uses model fallback only when needed. Produces a `RoutingDecision`. |
+| **Fast lane** | Immediate, single-step actions (e.g., “turn off lights”), designed for near real-time latency. |
+| **Work lane** | Multi-step tasks/workflows with checkpoints (resumable). |
+| **Task** | A persisted, long-lived workflow created by routing/planning. |
+| **Step** | Smallest resumable unit of work inside a Task. |
+| **Tool** | An executable capability exposed via a strict interface (send, read, control device, etc.). |
+| **Integration** | A configured connector instance (e.g., Home Assistant, Gmail) that provides tools and/or events. |
+| **InboundAdapter** | Converts raw events from external systems into normalized inputs / `MessageEvent`s. |
+| **OutboundAdapter** | Executes effectful actions against an external system (tools). |
+| **Capability** | Declarative description of what a tool can do (features, limits, threading support, etc.). |
+| **Scope** | Permission boundary for tools (least privilege). |
+| **Idempotency key** | Stable key that prevents duplicate side effects on retries/restarts. |
+| **AuditEvent** | Append-only record of decisions/actions/outcomes with trace correlation. |
+| **Trace ID** | Correlates the entire chain from the initial event to all tool calls/outcomes. |
+| **Approval** | A pending decision required by safety/autonomy policy (approve/deny). |
+| **Risk level** | Classification for actions (low/medium/high/critical) driving gates and policies. |
+| **Autonomy level** | System mode describing what actions can be executed automatically vs requiring confirmation. |
+| **Watcher** | Proactive component that periodically checks something and emits events (inbox, health, device state). |
+| **Scheduler** | Executes timers/alarms/cron schedules and emits events (durable, visible). |
+| **Rule** | IFTTT-style condition &gt; action mapping. Rules emit events or start tasks. |
+| **Projection** | Query-optimized “views” derived from audit/event logs for dashboard APIs. |
+| **Control plane** | The always-on core process that ingests events, routes them, runs tasks, and serves APIs. |
+| **Worker** | Optional isolated runtime for long-running jobs (sandbox), report progress and artifacts. |
+| **Artifact** | Output produced by jobs/tasks (reports, patches, files), linked to trace/task/job. |
+
+## Naming note
+
+- `syris-core` is the project name.
+- `syris_core` is the Python package/import namespace.
+
+Consistency here prevents “two names for the same thing” drift.

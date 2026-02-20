@@ -1,0 +1,182 @@
+---
+title: Data Contracts
+description: Draft v1 schemas for MessageEvent, Tasks, ToolCalls, AuditEvents, and Approvals (versioned and traceable).
+---
+
+**Data contracts are the stable spine of SYRIS. Implementations can change; contracts should evolve slowly and deliberately.**
+
+> These are **draft v1** shapes. Additive changes are preferred. Breaking changes require an ADR + migration plan.
+
+## MessageEvent (v1)
+
+```json
+{
+  "event_id": "uuid",
+  "schema_version": "1.0",
+  "occurred_at": "iso8601",
+  "ingested_at": "iso8601",
+  "source": {
+    "channel": "email|chat|webhook|ha_event|scheduler|rule_engine|vision",
+    "connector_id": "string",
+    "thread_id": "string|null",
+    "message_id": "string|null"
+  },
+  "actor": {
+    "actor_type": "user|system|integration",
+    "actor_id": "string"
+  },
+  "content": {
+    "text": "string|null",
+    "structured": { "any": "json" },
+    "attachments": [{ "id": "string", "kind": "string", "ref": "string" }],
+    "links": ["string"]
+  },
+  "context": {
+    "timezone": "Europe/London",
+    "locale": "en-GB",
+    "device_id": "string|null"
+  },
+  "correlation": {
+    "trace_id": "uuid",
+    "parent_event_id": "uuid|null",
+    "dedupe_key": "string|null"
+  },
+  "security": {
+    "sensitivity": "low|med|high",
+    "redaction_policy_id": "string"
+  }
+}
+````
+
+## RoutingDecision (v1)
+
+```json
+{
+  "trace_id": "uuid",
+  "event_id": "uuid",
+  "execution_mode": "fast|task|sandbox|gated",
+  "intent": "string",
+  "confidence": 0.0,
+  "matches": {
+    "fastpath": "string|null",
+    "rules": ["rule_id"],
+    "watchers": ["watcher_id"]
+  },
+  "required_scopes": ["string"],
+  "risk_level": "low|medium|high|critical",
+  "gates": [
+    {
+      "type": "approval",
+      "reason": "string",
+      "expires_at": "iso8601"
+    }
+  ],
+  "notes": "string|null"
+}
+```
+
+## Task and Step (v1)
+
+```json
+{
+  "task": {
+    "task_id": "uuid",
+    "created_at": "iso8601",
+    "status": "pending|running|paused|succeeded|failed|canceled",
+    "trigger_event_id": "uuid",
+    "trace_id": "uuid",
+    "current_step_id": "uuid|null",
+    "autonomy_level_at_start": "A0|A1|A2|A3|A4",
+    "labels": ["string"],
+    "next_wake_time": "iso8601|null"
+  },
+  "step": {
+    "step_id": "uuid",
+    "task_id": "uuid",
+    "name": "string",
+    "status": "pending|running|succeeded|failed|paused",
+    "attempt": 0,
+    "max_attempts": 3,
+    "retry_policy": { "type": "exponential", "max_delay_ms": 60000 },
+    "input": { "any": "json" },
+    "checkpoint": { "any": "json" },
+    "output": { "any": "json" },
+    "idempotency_key": "string|null",
+    "started_at": "iso8601|null",
+    "ended_at": "iso8601|null",
+    "error": { "code": "string", "message": "string", "detail": {} }
+  }
+}
+```
+
+## ToolCall and ToolResult (v1)
+
+```json
+{
+  "tool_call": {
+    "tool_call_id": "uuid",
+    "created_at": "iso8601",
+    "trace_id": "uuid",
+    "task_id": "uuid|null",
+    "step_id": "uuid|null",
+    "event_id": "uuid|null",
+    "connector_id": "string",
+    "tool_name": "string",
+    "action": "string",
+    "request": { "redacted": true },
+    "idempotency_key": "string",
+    "status": "attempted|succeeded|failed|unknown",
+    "latency_ms": 123
+  },
+  "tool_result": {
+    "status": "succeeded|failed",
+    "response": { "redacted": true },
+    "error": { "code": "string", "message": "string", "detail": {} }
+  }
+}
+```
+
+## AuditEvent (v1)
+
+```json
+{
+  "audit_id": "uuid",
+  "timestamp": "iso8601",
+  "trace_id": "uuid",
+  "span_id": "string",
+  "parent_span_id": "string|null",
+  "refs": {
+    "event_id": "uuid|null",
+    "task_id": "uuid|null",
+    "step_id": "uuid|null",
+    "tool_call_id": "uuid|null",
+    "job_id": "uuid|null"
+  },
+  "type": "string",
+  "summary": "string",
+  "payload": { "redacted": true },
+  "outcome": "success|failure|suppressed|info",
+  "latency_ms": 123,
+  "tool_name": "string|null",
+  "connector_id": "string|null",
+  "risk_level": "low|medium|high|critical|null",
+  "autonomy_level": "A0|A1|A2|A3|A4|null"
+}
+```
+
+## Approval (v1)
+
+```json
+{
+  "approval_id": "uuid",
+  "created_at": "iso8601",
+  "expires_at": "iso8601",
+  "status": "pending|approved|denied|expired",
+  "trace_id": "uuid",
+  "refs": { "event_id": "uuid|null", "task_id": "uuid|null", "step_id": "uuid|null" },
+  "risk_level": "low|medium|high|critical",
+  "autonomy_level": "A0|A1|A2|A3|A4",
+  "what": { "exact_payload_to_execute": {} },
+  "decision": { "by": "operator|null", "at": "iso8601|null", "reason": "string|null" }
+}
+```

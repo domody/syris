@@ -1,0 +1,108 @@
+---
+title: Observability Model
+description: How SYRIS exposes audit, telemetry, health, alarms, and operator controls without relying on console logs.
+---
+
+**If you can’t see what SYRIS is doing, you can’t safely run it 24/7. Observability is a product requirement.**
+
+## Principles
+
+- **Audit is the source of truth.** Logs are optional; audit is required.
+- **Everything is queryable.** The dashboard should not scrape console output.
+- **Traceability is end-to-end.** Inbound event &gt; decision &gt; tool calls &gt; outcomes.
+
+## The three pillars
+
+### 1) Append-only audit log
+Every meaningful operation emits an `AuditEvent`:
+- event ingested / normalized
+- routing decision
+- task created / step transitions
+- tool call attempted / succeeded / failed / deduped
+- watcher tick outcomes
+- rule evaluated / triggered / suppressed
+- gate required / approved / denied
+- operator actions
+
+Audit must be searchable by:
+- time range
+- `trace_id`
+- `event_id`, `task_id`, `step_id`
+- tool / connector
+- outcome / latency
+
+### 2) System state projections
+Projections are query-optimized views derived from event/audit logs:
+
+- **Tasks view:** active tasks, step status, next wake time
+- **Schedules view:** next run, last run, missed runs
+- **Watchers view:** enabled, last tick, last outcome, suppression counters
+- **Rules view:** enabled, hit counts, suppression reasons
+- **Integrations view:** health, auth status, last success/error, rate-limit state
+- **Approvals view:** pending approvals and context
+- **Queues/backlog view:** runnable tasks, schedule backlog, tool queue depth
+- **Autonomy view:** current level and change history
+- **Alarms view:** open/acked/resolved incidents
+
+### 3) Health + heartbeat
+A persistent heartbeat record should include:
+- status: healthy / degraded / down
+- uptime, restart reason, version/build
+- last heartbeat time + next expected heartbeat time
+- summary of degraded subsystems
+
+## Alarms and incident trail
+
+Alarms are persisted entities with:
+- type + severity
+- dedupe key (avoid storms)
+- state: open &gt; ack &gt; resolved
+- acknowledgements and resolution notes
+
+Example alarm types:
+- missed heartbeat
+- integration auth failed / expiring
+- repeated tool errors
+- stuck tasks (no progress)
+- schedule backlog growth
+- rule storm / suppression storm
+
+## Minimal API surface (dashboard-first)
+
+Status:
+- `GET /health`
+- `GET /state`
+
+Query:
+- `GET /events`
+- `GET /audit`
+- `GET /tasks`, `GET /tasks/{id}`
+- `GET /schedules`
+- `GET /watchers`
+- `GET /rules`
+- `GET /integrations`
+- `GET /approvals`
+- `GET /alarms`
+
+Controls (all audited):
+- `POST /controls/pause` / `/resume`
+- `POST /tasks/{id}/pause|resume|cancel|retry`
+- `PATCH /watchers/{id}` enable/disable
+- `PATCH /rules/{id}` enable/disable
+- `PATCH /integrations/{id}` enable/disable
+- `POST /controls/autonomy`
+- `POST /approvals/{id}/approve|deny`
+- `POST /alarms/{id}/ack|resolve`
+
+## How you debug anything in SYRIS
+
+1. Find the `trace_id` for the originating event
+2. Query audit events by `trace_id`
+3. Observe:
+   - routing decision
+   - which lane was chosen (fast/task/sandbox/gated)
+   - tool calls/outcomes and latency
+   - any suppression or gates
+4. If needed: replay the event through the pipeline in dry-run mode
+
+This workflow should work without reading logs.
