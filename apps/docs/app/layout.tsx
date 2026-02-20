@@ -27,12 +27,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark ${inter.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`dark ${inter.variable}`}
+      suppressHydrationWarning
+    >
       <body
-        className={`flex flex-col min-h-screen pt-14 overflow-x-hidden ${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`flex flex-col min-h-screen overflow-x-hidden [--header-height:calc(var(--spacing)*14)] antialiased ${geistSans.variable} ${geistMono.variable}`}
       >
-          <Topbar />
-          {children}
+        <Topbar />
+        {children}
       </body>
     </html>
   );

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 export function Topbar() {
   return (
-    <div className="h-14 w-screen border-b bg-background fixed top-0 left-0 z-99 text-sm text-muted-foreground gap-4 contain-content">
+    <div className="h-(--header-height) w-screen border-b bg-background sticky top-0 left-0 z-99 text-sm text-muted-foreground gap-4 contain-content">
       <div className="container flex items-center justify-start h-full">
         <Link
           href={"/"}

@@ -15,6 +15,8 @@ import {
   NextNeighbour,
   PreviousNeighbour,
 } from "@/components/nav/neighbours-buttons";
+import { DocsTableOfContents } from "@/components/nav/docs-toc";
+import { Separator } from "@/components/ui/separator";
 
 export const revalidate = false;
 export const dynamic = "force-static";
@@ -108,24 +110,10 @@ export default async function Page(props: {
                   </div>
                   <div className="ml-auto flex gap-2">
                     {neighbours.previous && (
-                      // <Button
-                      //   variant="secondary"
-                      //   size="icon"
-                      //   className="extend-touch-target size-8 shadow-none md:size-7"
-                      //   asChild
-                      // >
                       <PreviousNeighbour url={neighbours.previous.url} />
-                      // </Button>
                     )}
                     {neighbours.next && (
-                      // <Button
-                      //   variant="secondary"
-                      //   size="icon"
-                      //   className="extend-touch-target size-8 shadow-none md:size-7"
-                      //   asChild
-                      // >
                       <NextNeighbour url={neighbours.next.url} />
-                      // </Button>
                     )}
                   </div>
                 </div>
@@ -137,19 +125,8 @@ export default async function Page(props: {
               )}
             </div>
           </div>
+          <Separator />
           <div className="w-full flex-1 pb-16 *:data-[slot=alert]:first:mt-0 sm:pb-0">
-            {/*
-        {params.slug &&
-          params.slug[0] === "components" &&
-          params.slug[1] &&
-          params.slug[2] && (
-            <DocsBaseSwitcher
-              base={params.slug[1]}
-              component={params.slug[2]}
-              className="mb-4"
-            />
-          )}
-        */}
             <MDX components={mdxComponents} />
           </div>
           <div className="hidden h-16 w-full items-center gap-2 px-4 sm:flex sm:px-0">
@@ -173,19 +150,11 @@ export default async function Page(props: {
       <div className="sticky top-[calc(var(--header-height)+1px)] z-30 ml-auto hidden h-[90svh] w-(--sidebar-width) flex-col gap-4 overflow-hidden overscroll-none pb-8 xl:flex">
         <div className="h-(--top-spacing) shrink-0"></div>
 
-        {/*
-    {doc.toc?.length ? (
-      <div className="no-scrollbar flex flex-col gap-8 overflow-y-auto px-8">
-        <DocsTableOfContents toc={doc.toc} />
-      </div>
-    ) : null}
-    */}
-
-        {/*
-    <div className="hidden flex-1 flex-col gap-6 px-6 xl:flex">
-      <OpenInV0Cta />
-    </div>
-    */}
+        {doc.toc?.length ? (
+          <div className="no-scrollbar flex flex-col gap-8 overflow-y-auto px-8">
+            <DocsTableOfContents toc={doc.toc} />
+          </div>
+        ) : null}
       </div>
     </div>
   );

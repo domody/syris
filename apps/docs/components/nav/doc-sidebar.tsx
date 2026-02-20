@@ -25,7 +25,7 @@ export function DocSidebar({
   const currentBase = getCurrentBase(pathname);
 
   return (
-    <Sidebar className="bg-transparent border-r" collapsible="none" {...props}>
+    <Sidebar className="sticky top-[calc(var(--header-height)+0.6rem)] z-30 hidden h-[calc(100svh-10rem)] overscroll-none bg-transparent lg:flex" collapsible="none" {...props}>
       <SidebarContent className="no-scrollbar w-(--sidebar-menu-width) overflow-x-hidden pl-0">
         {tree.children.map((item) => {
           return (
