@@ -3,32 +3,58 @@
 import Link from "next/link";
 import { buttonVariants } from "../ui/button";
 import { ArrowLeft, ArrowRight } from "@solar-icons/react";
+import React from "react";
+import { cn } from "@/lib/utils";
 
-export function PreviousNeighbour({ url }: { url: string }) {
+export function PreviousNeighbour({
+  url,
+  label,
+  className,
+  ...props
+}: {
+  url: string;
+  label?: string;
+} & React.ComponentProps<"a">) {
   return (
     <Link
       href={url}
-      className={buttonVariants({
-        variant: "secondary",
-        size: "icon",
-      })}
+      className={cn(
+        buttonVariants({
+          variant: "secondary",
+          size: label ? "sm" : "icon",
+        }),
+        className,
+      )}
+      {...props}
     >
       <ArrowLeft />
-      <span className="sr-only">Previous</span>
+      {label ? <span>{label}</span> : <span className="sr-only">Previous</span>}
     </Link>
   );
 }
 
-export function NextNeighbour({ url }: { url: string }) {
+export function NextNeighbour({
+  url,
+  label,
+  className,
+  ...props
+}: {
+  url: string;
+  label?: string;
+} & React.ComponentProps<"a">) {
   return (
     <Link
       href={url}
-      className={buttonVariants({
-        variant: "secondary",
-        size: "icon",
-      })}
+      className={cn(
+        buttonVariants({
+          variant: "secondary",
+          size: label ? "sm" : "icon",
+        }),
+        className,
+      )}
+      {...props}
     >
-      <span className="sr-only">Next</span>
+      {label ? <span>{label}</span> : <span className="sr-only">Next</span>}
       <ArrowRight />
     </Link>
   );

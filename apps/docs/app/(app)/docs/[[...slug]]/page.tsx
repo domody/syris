@@ -154,9 +154,18 @@ export default async function Page(props: {
           </div>
           <div className="hidden h-16 w-full items-center gap-2 px-4 sm:flex sm:px-0">
             {neighbours.previous && (
-              <PreviousNeighbour url={neighbours.previous.url} />
+              <PreviousNeighbour
+                url={neighbours.previous.url}
+                label={neighbours.previous.name as string}
+              />
             )}
-            {neighbours.next && <NextNeighbour url={neighbours.next.url} />}
+            {neighbours.next && (
+              <NextNeighbour
+                className="ml-auto"
+                url={neighbours.next.url}
+                label={neighbours.next.name as string}
+              />
+            )}
           </div>
         </div>
       </div>
