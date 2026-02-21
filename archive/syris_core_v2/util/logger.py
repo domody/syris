@@ -5,25 +5,25 @@ from typing import Literal
 
 COLORS = {
     # Core System
-    "core": "\033[96m",  # bright cyan — primary system identity
-    "orchestrator": "\033[38;5;45m",  # teal/cyan — central execution engine
-    "event_bus": "\033[38;5;33m",  # deep cyan-blue — event routing backbone
+    "core": "\033[96m",  # bright cyan  -  primary system identity
+    "orchestrator": "\033[38;5;45m",  # teal/cyan  -  central execution engine
+    "event_bus": "\033[38;5;33m",  # deep cyan-blue  -  event routing backbone
     # Intelligence layer
-    "llm": "\033[95m",  # magenta — signals high-level reasoning
-    "intent": "\033[38;5;135m",  # soft purple — intent interpretation
-    "planning": "\033[38;5;171m",  # pastel purple — multi-step planning
+    "llm": "\033[95m",  # magenta  -  signals high-level reasoning
+    "intent": "\033[38;5;135m",  # soft purple  -  intent interpretation
+    "planning": "\033[38;5;171m",  # pastel purple  -  multi-step planning
     # Subsystem
-    "tool": "\033[92m",  # green — actionable operations
-    "memory": "\033[93m",  # yellow — storage/recall (semantic association)
-    "audio": "\033[90m",  # grey — ASR/TTS, more passive/log-oriented
+    "tool": "\033[92m",  # green  -  actionable operations
+    "memory": "\033[93m",  # yellow  -  storage/recall (semantic association)
+    "audio": "\033[90m",  # grey  -  ASR/TTS, more passive/log-oriented
     # Event + Subscribers
-    "event": "\033[94m",  # blue — external inputs into system
-    "subscriber": "\033[38;5;208m",  # orange — reactive handlers for event types
+    "event": "\033[94m",  # blue  -  external inputs into system
+    "subscriber": "\033[38;5;208m",  # orange  -  reactive handlers for event types
     # Diagnostics
-    "test": "\033[38;5;244m",  # light grey — neutral testing output
+    "test": "\033[38;5;244m",  # light grey  -  neutral testing output
     # Errors / Warnings
-    "error": "\033[91m",  # red — hard failures
-    "warning": "\033[38;5;220m",  # bright yellow-orange — non-fatal issues
+    "error": "\033[91m",  # red  -  hard failures
+    "warning": "\033[38;5;220m",  # bright yellow-orange  -  non-fatal issues
     # Reset
     "reset": "\033[0m",
 }

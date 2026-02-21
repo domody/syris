@@ -28,7 +28,7 @@ class _HAClarifyPolicy:
                 return self.missing_to_question[e]
         # generic fallback
         if missing_errors:
-            return "I need a bit more detail to do that—what exactly should I target or set?"
+            return "I need a bit more detail to do that - what exactly should I target or set?"
         return None
 
 

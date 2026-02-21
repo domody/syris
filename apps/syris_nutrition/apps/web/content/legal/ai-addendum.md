@@ -1,4 +1,4 @@
-# AI Features Addendum (SYRIS integration) — for later use
+# AI Features Addendum (SYRIS integration)  -  for later use
 
 **Last updated:** 26 January 2026
 **Status:** AI features currently disabled in syris-nutrition.

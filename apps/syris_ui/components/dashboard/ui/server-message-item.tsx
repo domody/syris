@@ -141,7 +141,7 @@ export function AckItem({
         <div className="flex items-center gap-2">
           <TitleWithTime
             ts={ts}
-            title={shortRequestId(message.request_id ?? "—")}
+            title={shortRequestId(message.request_id ?? " - ")}
           />
           <Badge variant={message.ok ? "secondary" : "destructive"}>ACK</Badge>
         </div>
@@ -232,7 +232,7 @@ export function WelcomeItem({
           <Badge variant="outline">WELCOME</Badge>
         </div>
         <ItemDescription className="font-mono text-xs text-muted-foreground">
-          caps: {(message.cap ?? []).join(", ") || "—"}
+          caps: {(message.cap ?? []).join(", ") || " - "}
         </ItemDescription>
       </ItemContent>
       <ItemActions />
@@ -257,7 +257,7 @@ export function DroppedItem({
           <span className="text-muted-foreground">{message.reason}</span>
         </ItemTitle>
         <ItemDescription className="font-mono text-xs text-muted-foreground">
-          {message.stream ? `stream: ${message.stream}` : "stream: —"}
+          {message.stream ? `stream: ${message.stream}` : "stream:  - "}
         </ItemDescription>
       </ItemContent>
       <ItemActions />

@@ -39,7 +39,7 @@ class C_Command(BaseModel):
     # chat mode
     text: Optional[str] = Field(default=None, max_length=16_000)
 
-    # control mode (example shape — you can expand later)
+    # control mode (example shape  -  you can expand later)
     action: Optional[str] = Field(default=None, max_length=128)  # e.g. "device.set"
     entity_id: Optional[str] = Field(default=None, max_length=256)
     args: Dict[str, Any] = Field(default_factory=dict)  # must be JSON-serializable

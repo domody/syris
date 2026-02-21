@@ -1,0 +1,39 @@
+<svg width="1600" height="1600" viewBox="0 0 1600 1600" fill="none"
+  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <rect width="1600" height="1600" fill="#000000"/>
+  <rect width="1600" height="1600" fill="#09090b" fill-opacity="0.4080536747698906"/>
+
+  <g clip-path="url(#clip0_50_327)">
+    <g filter="url(#filter0_f_50_327)">
+      <rect x="306" y="783" width="1113" height="1221" fill="#00c5df"/>
+      <rect x="4" y="687" width="1236" height="878" fill="#f2371f"/>
+      <rect x="476" y="715" width="1176" height="1271" fill="#00c5df"/>
+      <rect x="553" y="686" width="895" height="1054" fill="#90a2dc"/>
+      <rect x="81" y="516" width="893" height="1232" fill="#1f3fad"/>
+    </g>
+  </g>
+
+  <g style="mix-blend-mode:overlay">
+    <rect x="0" y="0" width="1600" height="1600"
+      style="fill:gray; stroke:transparent; filter:url(#feTurb02)"/>
+  </g>
+
+  <defs>
+    <filter id="feTurb02" filterUnits="objectBoundingBox" x="0%" y="0%" width="100%" height="100%">
+      <feTurbulence baseFrequency="0.7" numOctaves="3" seed="0" result="out1"/>
+      <feComposite in="out1" in2="SourceGraphic" operator="in" result="out2"/>
+      <feBlend in="SourceGraphic" in2="out2" mode="overlay" result="out3"/>
+    </filter>
+
+    <filter id="filter0_f_50_327" x="0" y="0" width="1600" height="1600"
+      filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur stdDeviation="250" result="effect1_foregroundBlur_50_327"/>
+    </filter>
+
+    <clipPath id="clip0_50_327">
+      <rect width="1600" height="1600" fill="white"/>
+    </clipPath>
+  </defs>
+</svg>

@@ -30,8 +30,8 @@ export function summarizeEvent(
   // Device
   const d = asDevicePayload(ev);
   if (d) {
-    const from = d.old_state ?? "—";
-    const to = d.new_state ?? "—";
+    const from = d.old_state ?? " - ";
+    const to = d.new_state ?? " - ";
     return `${d.entity_id} ${String(from)} -> ${String(to)}`;
   }
 
