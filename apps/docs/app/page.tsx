@@ -55,18 +55,27 @@ const art = String.raw`
 export default function Page() {
   return (
     <div className="w-screen min-h-screen pt-4 pb-6 md:pb-12 flex flex-col">
-      <div className="relative flex min-h-[600px] h-[70vh] max-h-[900px] border rounded-2xl overflow-hidden mx-auto w-full container bg-origin-border">
+      <div className="relative isolate flex min-h-[600px] h-[70vh] max-h-[900px] border rounded-2xl overflow-hidden mx-auto w-full container bg-origin-border">
         <div
-          className="absolute top-0 left-0 z-1 size-full opacity-25"
+          aria-hidden="true"
+          className="absolute inset-0 z-0 pointer-events-none opacity-50"
           style={{
             backgroundImage: "url('/gradient-bg.svg')",
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
         />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 z-1 pointer-events-none mix-blend-overlay opacity-[0.20]"
+          style={{
+            backgroundImage: "url('/noise-texture.png')",
+            backgroundRepeat: "repeat",
+            backgroundSize: "1800px 1800px",
+            backgroundPosition: "center",
+          }}
+        />
 
-        {/* <Image src={"/noisy-bg.svg"} fill={true} alt="Noisy Gradient Background" /> */}
-        {/* </div> */}
         <div className="size-full z-2 flex flex-col px-4 md:p-12 max-md:items-center max-md:text-center">
           <pre className="font-mono text-sm text-sidebar-primary leading-none tracking-tighter whitespace w-min overflow-hidden rounded absolute max-md:hidden -right-[20%] md:translate-x-0 -bottom-[10%] ">
             {art}
