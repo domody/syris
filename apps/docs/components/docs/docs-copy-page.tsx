@@ -19,7 +19,9 @@ function getPromptUrl(baseUrl: string, url: string) {
 Please open and use this page as the primary source of truth.
 If the page assumes context I haven't provided, also refer to the SYRIS overview (“What is SYRIS?”) and glossary in the docs.
 
-Help me understand how to apply this page: explain concepts, show concrete examples, and help debug implementation details.`,
+Help me understand how to apply this page: explain concepts, show concrete examples, and help debug implementation details.
+If something isn't stated in the docs, ask me what's missing rather than guessing.
+`,
   )}`;
 }
 

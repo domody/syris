@@ -59,7 +59,7 @@ export default function Page() {
         <div
           className="absolute top-0 left-0 z-1 size-full opacity-25"
           style={{
-            backgroundImage: "url('/noisy-bg.svg')",
+            backgroundImage: "url('/gradient-bg.svg')",
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
