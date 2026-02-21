@@ -25,6 +25,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import { InfoIcon } from "lucide-react"
 
 export const mdxComponents = {
   h1: ({ className, ...props }: React.ComponentProps<"h1">) => (
@@ -340,6 +341,7 @@ export const mdxComponents = {
   // CodeCollapsibleWrapper,
   // ComponentsList: ComponentsListWrapper,
   // DirectoryList,
+  InfoIcon,
   Link: ({ className, ...props }: React.ComponentProps<typeof Link>) => (
     <Link
       className={cn("font-medium underline underline-offset-4", className)}

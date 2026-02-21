@@ -1,0 +1,705 @@
+---
+title: SYRIS v3 System Design
+description: Baseline architecture design doc for the SYRIS v3 core (event pipeline, tasks, integrations, safety, observability, workers).
+---
+
+<Alert>
+    <InfoIcon />
+    <AlertTitle>Note</AlertTitle>
+    <AlertDescription>
+        This document is a consolidated architecture draft assembled from prior system requirements and iterative design discussions. It should be treated as a living baseline and updated as implementation realities emerge.
+    </AlertDescription>
+</Alert>
+
+## 1. Assumptions & non-goals
+
+### Assumptions
+
+- **Single user** means a single human operator identity, but the system still handles multiple “actors” (system, integrations, automations).
+- You’ll run this as a **single host process group** (one “control-plane” process + optional worker processes/containers) on a server or always-on machine.
+- **Python-first** implementation, with a preference for boring, well-supported libraries.
+- You want a **dashboard-first ops model**: everything important is queryable via an API; console logs are optional, never required.
+- You accept **eventual consistency** between ingestion and dashboards (milliseconds–seconds), as long as traceability is complete.
+- Integrations include “write” actions that must be gated by **autonomy level + risk policy**.
+- You will store state in a persistent DB (SQLite acceptable early; Postgres recommended once stable).
+
+### Non-goals (for now)
+
+- Multi-tenant, multi-user support.
+- Perfect natural language conversation memory akin to a chat app.
+- Real-time low-latency voice streaming (we support transcripts/events, not full duplex audio DSP).
+- Full-blown distributed tracing stack (we design traceability; can export later).
+- Building the dashboard UI itself (we design the APIs and data model).
+
+---
+
+## 2. Goals & quality attributes
+
+### Primary goals
+
+- **Always-on, restart-resilient**: resumes safely and deterministically.
+- **Omnichannel ingestion**: add new channels without touching core logic.
+- **Single pipeline**: every stimulus becomes a `MessageEvent` and goes through **Normalize → Route → Plan/Execute**.
+- **Proactive + auditable**: watchers/rules emit events into the same pipeline, with dedupe/throttle/quiet hours.
+- **Operator-friendly**: clear “why did it do that?” from persisted decision records and audit events.
+- **Safety & autonomy controls**: risk-based gates, dry-runs, least privilege, secrets boundary.
+
+### Quality attributes (tradeoffs made explicit)
+
+- **Correctness > cleverness**: deterministic routing and rules first; LLM only when needed.
+- **Traceability > throughput**: every action gets correlation IDs and audit records.
+- **Modular monolith > microservices**: start simple; design seams for later extraction (workers, connectors).
+- **Idempotency by design**: every effectful tool call uses an idempotency key and outcome storage.
+
+---
+
+## 3. High-level system overview
+
+### Core shape: “event-sourced-ish modular monolith”
+
+At the center is an **Event Processing Core** that consumes normalized events, routes them, and executes actions through a **Tool/Integration Layer**, while persisting:
+
+- inbound events
+- routing decisions
+- plans and task steps
+- tool calls and outcomes
+- system telemetry + health
+- watcher/rule evaluations
+
+**Key design choice:** use a **single durable event log + task store** to reconstruct state after restarts. This isn’t full event sourcing (you may also store current-state projections), but it provides replay/debuggability.
+
+### Major components
+
+1. **Inbound Adapters** (email, chat, webhooks, device events, voice transcripts, scheduler ticks)
+2. **Normalizer** → produces `MessageEvent` (versioned schema)
+3. **Router** (rules-first fast paths; LLM fallback)
+4. **Planner/Executor** (task engine for multi-step workflows)
+5. **Tool Registry & Outbound Adapters** (capabilities, scopes, rate limits, retries)
+6. **Watchers + Scheduler** (proactive triggers that emit events)
+7. **Rules Engine** (IFTTT-style) (also emits events)
+8. **Memory subsystem** (policy-driven facts/history separation)
+9. **Observability subsystem** (audit log, metrics, health, API projections)
+10. **Sandbox Worker subsystem** (isolated long-running jobs; skeleton now)
+
+---
+
+## 4. Data model & core schemas
+
+### 4.1 `MessageEvent` (unified internal event schema)
+
+**Versioned** (e.g., `schema_version="1.0"`). Must preserve provenance, identity, content, and correlation.
+
+**Fields (suggested):**
+
+- `event_id` (UUID)
+- `schema_version`
+- `occurred_at` (source timestamp)
+- `ingested_at`
+- `source`:
+  - `channel` (e.g., email, sms, slack, ha_event, webhook, scheduler, rule_engine, vision)
+  - `connector_id` (which integration instance)
+  - `thread_id` / `conversation_id` (if applicable)
+  - `message_id` (native id if applicable)
+- `actor`:
+  - `actor_type` (user | system | integration)
+  - `actor_id` (stable)
+- `content`:
+  - `text` (optional)
+  - `structured` (dict) (e.g., parsed intent, webhook payload summary)
+  - `attachments` (list of metadata refs)
+  - `links` (list)
+- `context`:
+  - `locale`, `timezone`
+  - `device_id` (if from IoT)
+- `correlation`:
+  - `trace_id` (spans the whole chain)
+  - `parent_event_id` (if triggered by watcher/rule)
+  - `dedupe_key` (if provided/derived)
+- `security`:
+  - `sensitivity` (low/med/high)
+  - `redaction_policy_id`
+
+**Tradeoff:** richer schema costs effort, but avoids bespoke handling per channel and makes dashboarding and replay viable.
+
+### 4.2 Task & workflow primitives
+
+- **Task**: long-lived entity with status and a list of **Steps**.
+- **Step**: smallest resumable unit with checkpoints and idempotency keys.
+
+**Task fields:**
+
+- `task_id`, `created_at`, `status` (pending/running/paused/succeeded/failed/canceled)
+- `trigger_event_id` (what started it)
+- `trace_id`
+- `current_step_id`
+- `autonomy_level_at_start`
+- `labels` (for dashboards)
+- `next_wake_time` (for sleepers)
+
+**Step fields:**
+
+- `step_id`, `task_id`, `name`, `status`
+- `attempt`, `max_attempts`, `retry_backoff_policy`
+- `input` (structured), `checkpoint` (structured), `output` (structured)
+- `idempotency_key` (required if effectful)
+- `started_at`, `ended_at`, `error` (structured)
+
+### 4.3 Audit log (append-only)
+
+Every meaningful operation writes an **AuditEvent**:
+
+- inbound event ingested
+- normalization output
+- routing decision
+- plan created/updated
+- tool call attempted (request metadata)
+- tool outcome (success/failure, latency)
+- watcher/rule evaluated and fired (or suppressed)
+- safety gate decisions
+
+AuditEvent fields:
+
+- `audit_id`, `timestamp`
+- `trace_id`, `span_id`, `parent_span_id`
+- `event_id` / `task_id` / `step_id` references
+- `type` (enum)
+- `summary` (human readable)
+- `payload` (structured, redacted)
+- `outcome` (success/failure/suppressed)
+- `latency_ms`, `connector_id`, `tool_name`
+- `risk_level`, `autonomy_level`
+
+**Tradeoff:** append-only logs grow; mitigate with retention + compaction + export.
+
+---
+
+## 5. Processing pipeline: Normalize → Route → Plan/Execute
+
+### 5.1 Normalize
+
+**Input:** raw adapter events  
+**Output:** `MessageEvent` + normalization audit record
+
+Responsibilities:
+
+- Validate adapter payload, extract timestamps/ids/thread, produce stable `dedupe_key`.
+- Redact sensitive fields early (store raw payload encrypted if needed).
+- Attach parsed hints (e.g., email subject/from, webhook type).
+- Store attachments as references (object store/local path), not inline.
+
+Testability: deterministic transforms.
+
+### 5.2 Route (rules-first routing with LLM fallback)
+
+**Input:** `MessageEvent`  
+**Output:** `RoutingDecision`
+
+Routing layers (in order):
+
+1. **Hard filters**: spam, blocked channels, quiet hours for notifications.
+2. **Deterministic intents (fast path)**:
+   - simple timers/reminders (“set timer 10m”)
+   - scheduling commands
+   - known home automation commands
+   - dashboard/admin commands (“pause watcher X”)
+3. **Rules Engine evaluation** (IFTTT-style rules that match this event)
+4. **Ambiguity fallback**: LLM classification + extraction (intent, entities, risk)
+5. **Default**: create a “conversation task” or ask for clarification via allowed channel.
+
+Routing decision must record:
+
+- matched rule(s), match reasons
+- extracted intent/entities
+- chosen task template (if any)
+- required permissions/scopes
+- required confirmation gates
+
+**Tradeoff:** rules-first is more work upfront but yields predictable ops and lower cost.
+
+### 5.3 Plan/Execute
+
+Two modes:
+
+- **Immediate single-step actions** (fast path): execute directly via a tool call, still with idempotency and audit.
+- **Task-based workflows**: create a Task with multiple Steps, checkpointed and resumable.
+
+Execution always:
+
+- checks **autonomy + risk gates**
+- uses **idempotency keys**
+- records tool request/outcome
+- updates projections for dashboard
+
+---
+
+## 6. Task engine & workflow orchestration
+
+### 6.1 Task model: resumable, checkpointed steps
+
+Core loop:
+
+1. Fetch runnable tasks (status=running, next_wake_time &gt;= now)
+2. For each, execute current step
+3. Persist checkpoint/output
+4. Move to next step or terminal state
+
+### 6.2 Step execution semantics
+
+- Each step is a pure function of (task state + event + inputs) that may call tools.
+- For effectful calls, step must provide:
+  - `idempotency_key = hash(tool_name + stable inputs + trace_id + step_id)`
+  - or a domain-specific key (e.g., “calendar_event:create:external_id=XYZ”).
+
+### 6.3 Retries, backoff, pause/resume
+
+- Retries only for **retryable** failures (network, 429).
+- Backoff policy per connector/tool (exponential with jitter).
+- Pause/resume toggles at:
+  - task level
+  - step level (rare but useful for operator intervention)
+
+### 6.4 Cancellation
+
+- Mark task canceled; attempt best-effort compensation only when safe and supported.
+- Record cancellation reason in audit.
+
+### 6.5 Correlation & traceability
+
+- `trace_id` created at ingestion.
+- Each stage writes audit spans; tool calls become child spans.
+- Task steps record `span_id` links to tool calls.
+
+**Tradeoff:** building a real “workflow engine” is heavier than simple background jobs, but it’s required for restart safety and operator control.
+
+---### 6.2 Step execution semantics
+
+- Each step is a pure function of (task state + event + inputs) that may call tools.
+- For effectful calls, step must provide:
+  - `idempotency_key = hash(tool_name + stable inputs + trace_id + step_id)`
+  - or a domain-specific key (e.g., “calendar_event:create:external_id=XYZ”).
+
+### 6.3 Retries, backoff, pause/resume
+
+- Retries only for **retryable** failures (network, 429).
+- Backoff policy per connector/tool (exponential with jitter).
+- Pause/resume toggles at:
+  - task level
+  - step level (rare but useful for operator intervention)
+
+### 6.4 Cancellation
+
+- Mark task canceled; attempt best-effort compensation only when safe and supported.
+- Record cancellation reason in audit.
+
+### 6.5 Correlation & traceability
+
+- `trace_id` created at ingestion.
+- Each stage writes audit spans; tool calls become child spans.
+- Task steps record `span_id` links to tool calls.
+
+**Tradeoff:** building a real “workflow engine” is heavier than simple background jobs, but it’s required for restart safety and operator control.
+
+---
+
+## 7. Tools, integrations & plugin system
+
+### 7.1 Strict interfaces
+
+#### `InboundAdapter`
+
+- `capabilities()` → what events it can emit (threads, attachments, message types)
+- `connect()` / `poll()` or `webhook_handler()`
+- `normalize(raw)` → returns normalized intermediate (or directly `MessageEvent`)
+
+#### `OutboundAdapter` / Tool
+
+- `capabilities()` → read/send/create/delete/control, formatting limits, supports threads, etc.
+- `scopes_required(action)` → list of permission scopes
+- `execute(request, context)` → `ToolResult` (structured)
+- Must implement:
+  - **rate limiting**
+  - **retry discipline**
+  - **idempotency support** (accept idempotency key, store mapping if API doesn’t)
+
+### 7.2 Tool Registry & capability discovery
+
+Registry stores:
+
+- tool name + version
+- connector instance configuration (without secrets)
+- capabilities
+- scopes
+- health status
+- rate limit state
+- last call outcome
+
+Core behavior adapts to capabilities (e.g., if channel doesn’t support threads, it creates a new message).
+
+### 7.3 Adding new connectors without core changes
+
+Core only knows:
+
+- “there is an inbound event”
+- “tools have capabilities/scopes”
+- “tool calls are audited”
+
+New connectors register themselves + provide adapters; routing and tasks remain stable.
+
+### 7.4 Secrets boundary
+
+- Secrets stored in a **dedicated secrets store module** with minimal API:
+  - `get_secret(connector_id, key)` returns ephemeral token
+- Adapters never print secrets; audit system applies redaction rules.
+- Ideally integrate OS keyring / Vault later; start with encrypted-at-rest store.
+
+**Tradeoff:** strict interfaces slow early prototyping but prevent integration sprawl and make observability consistent.
+
+---
+
+## 8. Scheduler, watchers & rules engine
+
+### 8.1 Scheduler
+
+Requirements:
+
+- timers, alarms, reminders
+- cron-like recurring schedules
+- visibility into next/last runs and missed runs
+
+Design:
+
+- Persist schedules in DB:
+  - `schedule_id`, `type` (cron/interval/one-shot), `next_run_at`, `last_run_at`
+  - `payload` (what event to emit)
+  - `timezone`, `quiet_hours_policy_id`
+  - `catch_up_policy` (skip, run_once, run_all_with_cap)
+
+Scheduler loop:
+
+- every N seconds, claim due schedules (with DB lock/lease)
+- emit a `MessageEvent` with `source.channel="scheduler"`
+- update next_run_at atomically
+
+### 8.2 Watchers framework
+
+A watcher is a specialized proactive component that produces events. Examples:
+
+- inbox watcher: “new important email”
+- device watcher: “motion detected”
+- model-cost watcher: “monthly usage high”
+- integration health watcher: “token expiring”
+
+Watcher interface:
+
+- `watcher_id`, `enabled`
+- `tick(now)` → emits 0..N `MessageEvent`s
+- must store:
+  - last tick time
+  - last outcome
+  - dedupe state
+  - rate limit / suppression state
+
+### 8.3 Rules engine (IFTTT-style)
+
+Rules are stored as:
+
+- `rule_id`, `enabled`, `priority`
+- `conditions`: match on event fields + time windows + state predicates
+- `actions`: emit event(s) or start task template(s)
+- `debounce_ms`, `dedupe_window`, `escalation_policy`
+- `audit_policy` (always log evaluation outcome)
+
+Rules evaluation:
+
+- on every `MessageEvent`, evaluate relevant rules (indexed by source/channel/type).
+- if matched, emit **RuleTriggeredEvent** as a `MessageEvent` (source=`rule_engine`, parent_event_id set).
+- if suppressed (debounce/quiet hours), emit **RuleSuppressed** audit event with reason.
+
+### 8.4 Anti-spam / device-flap controls
+
+- Global notification throttle
+- Per-rule debounce + dedupe keys
+- Quiet hours policy for outbound notifications and device controls
+- Escalation ladder (e.g., notify once → notify again after X if still true → require confirmation)
+
+**Tradeoff:** rules+watchers can explode in complexity; constrain with simple primitives and strong observability.
+
+---
+
+## 9. Autonomy, safety, confirmation gates & dry-run
+
+### 9.1 Autonomy levels (example)
+
+- **A0 Suggest-only**: never executes effectful actions, only drafts/previews.
+- **A1 Confirm required**: can execute only after explicit confirmation for medium/high risk.
+- **A2 Scoped autonomy**: can execute low-risk actions automatically; medium risk requires confirmation.
+- **A3 High autonomy**: executes most actions within allowed scopes; escalates only for high risk.
+- **A4 Full autonomy**: dangerous; likely disabled by default; requires explicit operator enable.
+
+Persist current autonomy level and history in system state.
+
+### 9.2 Risk classification
+
+Each tool action has:
+
+- `risk_level` (low/medium/high/critical)
+- computed from:
+  - action type (send message, delete data, control device, purchase)
+  - target (public/private channel)
+  - blast radius (many recipients, whole-home control)
+  - time (quiet hours)
+  - user policies
+
+### 9.3 Confirmation gates
+
+Gate decision record includes:
+
+- why gated (risk, autonomy, policy)
+- what needs confirmation (exact payload)
+- how to confirm (dashboard action, reply “yes”, etc.)
+- expiry window
+
+### 9.4 Dry-run mode
+
+For risky tools:
+
+- tool must implement `preview(request)` returning:
+  - rendered message
+  - planned device state changes
+  - diff/patch preview
+- execution only after approval, using the same idempotency key.
+
+**Tradeoff:** dry-run requires tool-specific work; start with the highest-risk tools first (email/send, delete, device control).
+
+---
+
+## 10. Memory architecture (policy-driven, facts vs history)
+
+### 10.1 Memory tiers
+
+1. **Short-term/session memory** (minutes–days)
+   - recent conversation summaries
+   - ephemeral context for tasks
+2. **Long-term facts/preferences** (explicitly confirmed)
+   - “I prefer X”
+   - “My address is Y” (sensitive; extra caution)
+3. **Event/task history** (audit + debugging)
+   - immutable-ish log of what happened
+
+### 10.2 Policy-driven writes
+
+Memory writes go through a **MemoryPolicy** gate:
+
+- classify candidate memory:
+  - fact vs history vs sensitive
+- require explicit approval for long-term facts
+- apply retention policies automatically
+- support deletion (“forget”) with tombstones + redaction
+
+### 10.3 Storage
+
+- Facts: keyed store with versioning + provenance + “confirmed_by_user_at”
+- Short-term: TTL tables
+- History: audit log + event store
+
+**Tradeoff:** separating facts from history prevents accidental “model hallucination memory” and supports privacy/deletion.
+
+---
+
+## 11. Observability, dashboard API & state projections
+
+### 11.1 Everything exposable via API: core principle
+
+You maintain **projections** (query-optimized views) derived from the append-only audit/event log:
+
+- tasks view (active tasks, step status, next wake)
+- schedules view (next run, last run, missed runs)
+- watchers view (enabled, last tick, next tick, health)
+- integrations view (health, auth status, last call)
+- autonomy view (current mode, last changes)
+- queues/backlogs view
+- alerts/incidents view
+
+### 11.2 Telemetry types
+
+- **Audit events** (append-only, queryable)
+- **Structured logs** (JSON-like) (optional, secondary to audit)
+- **Metrics** (counts, latencies, error rates) stored as time series
+- **Health/heartbeat** records
+
+### 11.3 Health model
+
+- System heartbeat every N seconds persisted:
+  - `status` (healthy/degraded/down)
+  - uptime, version/build, restart_reason
+  - last heartbeat time, next expected heartbeat time
+- Per integration:
+  - auth/token validity state
+  - last successful call time, last error
+  - rate-limit state, queue depth
+- Alarms:
+  - missed heartbeat
+  - integration repeated failures
+  - stuck tasks
+  - rule storms
+
+### 11.4 Operator controls (minimum viable)
+
+API endpoints to:
+
+- pause/resume system
+- pause/resume watcher/rule
+- cancel/retry task
+- set autonomy level
+- enable/disable integration
+- approve/deny gated actions
+
+Every control action generates an audit event with actor=operator.
+
+**Tradeoff:** projections add complexity, but they’re the only way to deliver dashboard-first ops without “grep logs”.
+
+---
+
+## 12. Reliability, idempotency, retries & crash recovery
+
+### 12.1 Crash recovery
+
+On restart:
+
+- load last heartbeat + mark previous session ended
+- resume runnable tasks from DB (status=running)
+- resume schedules (recompute next_run_at if needed)
+- resume watcher state (dedupe windows preserved)
+- reconcile in-flight tool calls:
+  - if tool call outcome unknown, re-check using idempotency key or provider API when possible
+
+### 12.2 Idempotency strategy
+
+- Every effectful tool call must have an idempotency key.
+- Store mapping: `idempotency_key → tool_call_id → outcome`.
+- If called again, tool adapter returns prior outcome without re-executing (or checks provider).
+
+### 12.3 Retry discipline
+
+- Retry only transient failures.
+- Respect provider 429/5xx guidance.
+- Backoff with jitter.
+- Cap attempts; escalate to operator after threshold.
+
+### 12.4 Graceful degradation
+
+If an integration is down:
+
+- route around it when possible
+- queue work with visibility (queue depth is dashboard-visible)
+- emit alarms after repeated failures
+
+**Tradeoff:** robust idempotency requires careful design, but it’s mandatory to avoid duplicate emails, calendar events, or device toggles.
+
+---
+
+## 13. Security, privacy, redaction & access control
+
+### 13.1 Dashboard access control
+
+Even single-user:
+
+- require auth (local token, OAuth, or reverse proxy)
+- role model can be simple: operator vs system
+- audit all dashboard actions
+
+### 13.2 Redaction by default
+
+- Redaction rules applied at ingestion + before persistence of audit payloads.
+- Store sensitive raw payloads encrypted with restricted access.
+- Provide “reveal” only via operator action, logged.
+
+### 13.3 Least privilege tools/scopes
+
+- Tools declare scopes (e.g., `email.send`, `calendar.write`, `ha.switch.control`)
+- Routing/planning must request scopes; runtime enforces them against configured grants.
+
+### 13.4 Data minimization
+
+- configurable retention windows
+- “wipe” operation
+- per-integration data policies
+
+---
+
+## 14. Future-facing: sandbox workers & vision streams (skeleton)
+
+### 14.1 Sandbox worker subsystem (long-running work)
+
+Goal: run heavy jobs without blocking the main loop.
+
+Design now (minimal):
+
+- **Job table**: `job_id`, `type`, `status`, `resource_limits`, `trace_id`, `task_id`
+- Worker interface:
+  - `spawn(job)` → starts isolated process/container
+  - `report_progress(job_id, percent, message, artifacts)`
+  - `checkpoint(job_id, state)`
+  - `cancel(job_id)`
+
+Isolation options:
+
+- Early: separate OS processes with resource limits (nice/cgroups where possible)
+- Later: containers (Docker) or microVMs
+
+Artifacts:
+
+- stored in artifact store with metadata, linked in audit log
+
+**Tradeoff:** starting with processes is simpler; containers later for stronger isolation.
+
+### 14.2 Pluggable vision/event stream support
+
+Treat vision as just another inbound adapter:
+
+- camera feed analysis runs in a worker
+- emits `MessageEvent` with `source.channel="vision"`
+- vision-derived structured fields:
+  - detected objects/events
+  - confidence
+  - frame reference id (optional, access-controlled)
+
+Rules/watchers can subscribe to vision events with the same debouncing and quiet-hours policies.
+
+---
+
+## 15. Implementation blueprint
+
+### 15.1 Suggested Python package layout (modular monolith)
+
+```text
+jarvis_os/
+  core/
+    models/                # pydantic schemas: MessageEvent, ToolCall, Task, AuditEvent
+    pipeline/              # normalize, route, execute
+    routing/               # deterministic intents, rule matching, llm fallback
+    tasks/                 # task engine, step runner, persistence adapters
+    safety/                # autonomy, risk model, gating, approvals
+    memory/                # memory policy, stores, retention
+    observability/         # audit writer, projections, metrics, health
+    state/                 # queryable system state aggregator
+  integrations/
+    registry.py            # tool registry, capability discovery
+    inbound/               # adapters: email, webhook, home assistant, etc.
+    outbound/              # tools: messaging, calendar, ha control, etc.
+  scheduler/
+    scheduler.py
+    watchers/              # watcher implementations
+    rules/                 # rules engine + rule definitions
+  workers/
+    manager.py             # job lifecycle
+    runtimes/              # process runtime, (future) container runtime
+  api/
+    app.py                 # FastAPI
+    routes/                # tasks, events, audit, health, integrations, controls
+  storage/
+    db.py                  # SQLAlchemy/SQLModel
+    migrations/
+    artifact_store.py
+    secrets_store.py
+  main.py                  # boot: start loops
