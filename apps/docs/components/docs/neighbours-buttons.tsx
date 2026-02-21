@@ -21,7 +21,7 @@ export function PreviousNeighbour({
       className={cn(
         buttonVariants({
           variant: "secondary",
-          size: label ? "sm" : "icon",
+          size: label ? "sm" : "icon-sm",
         }),
         className,
       )}
@@ -48,7 +48,7 @@ export function NextNeighbour({
       className={cn(
         buttonVariants({
           variant: "secondary",
-          size: label ? "sm" : "icon",
+          size: label ? "sm" : "icon-sm",
         }),
         className,
       )}

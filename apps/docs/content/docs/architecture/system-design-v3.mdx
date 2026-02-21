@@ -39,7 +39,7 @@ description: Baseline architecture design doc for the SYRIS v3 core (event pipel
 
 - **Always-on, restart-resilient**: resumes safely and deterministically.
 - **Omnichannel ingestion**: add new channels without touching core logic.
-- **Single pipeline**: every stimulus becomes a `MessageEvent` and goes through **Normalize → Route → Plan/Execute**.
+- **Single pipeline**: every stimulus becomes a `MessageEvent` and goes through **Normalize &gt; Route &gt; Plan/Execute**.
 - **Proactive + auditable**: watchers/rules emit events into the same pipeline, with dedupe/throttle/quiet hours.
 - **Operator-friendly**: clear “why did it do that?” from persisted decision records and audit events.
 - **Safety & autonomy controls**: risk-based gates, dry-runs, least privilege, secrets boundary.
@@ -71,7 +71,7 @@ At the center is an **Event Processing Core** that consumes normalized events, r
 ### Major components
 
 1. **Inbound Adapters** (email, chat, webhooks, device events, voice transcripts, scheduler ticks)
-2. **Normalizer** → produces `MessageEvent` (versioned schema)
+2. **Normalizer** &gt; produces `MessageEvent` (versioned schema)
 3. **Router** (rules-first fast paths; LLM fallback)
 4. **Planner/Executor** (task engine for multi-step workflows)
 5. **Tool Registry & Outbound Adapters** (capabilities, scopes, rate limits, retries)
@@ -173,7 +173,7 @@ AuditEvent fields:
 
 ---
 
-## 5. Processing pipeline: Normalize → Route → Plan/Execute
+## 5. Processing pipeline: Normalize &gt; Route &gt; Plan/Execute
 
 ### 5.1 Normalize
 
@@ -271,34 +271,6 @@ Core loop:
 
 **Tradeoff:** building a real “workflow engine” is heavier than simple background jobs, but it’s required for restart safety and operator control.
 
----### 6.2 Step execution semantics
-
-- Each step is a pure function of (task state + event + inputs) that may call tools.
-- For effectful calls, step must provide:
-  - `idempotency_key = hash(tool_name + stable inputs + trace_id + step_id)`
-  - or a domain-specific key (e.g., “calendar_event:create:external_id=XYZ”).
-
-### 6.3 Retries, backoff, pause/resume
-
-- Retries only for **retryable** failures (network, 429).
-- Backoff policy per connector/tool (exponential with jitter).
-- Pause/resume toggles at:
-  - task level
-  - step level (rare but useful for operator intervention)
-
-### 6.4 Cancellation
-
-- Mark task canceled; attempt best-effort compensation only when safe and supported.
-- Record cancellation reason in audit.
-
-### 6.5 Correlation & traceability
-
-- `trace_id` created at ingestion.
-- Each stage writes audit spans; tool calls become child spans.
-- Task steps record `span_id` links to tool calls.
-
-**Tradeoff:** building a real “workflow engine” is heavier than simple background jobs, but it’s required for restart safety and operator control.
-
 ---
 
 ## 7. Tools, integrations & plugin system
@@ -307,15 +279,15 @@ Core loop:
 
 #### `InboundAdapter`
 
-- `capabilities()` → what events it can emit (threads, attachments, message types)
+- `capabilities()` &gt; what events it can emit (threads, attachments, message types)
 - `connect()` / `poll()` or `webhook_handler()`
-- `normalize(raw)` → returns normalized intermediate (or directly `MessageEvent`)
+- `normalize(raw)` &gt; returns normalized intermediate (or directly `MessageEvent`)
 
 #### `OutboundAdapter` / Tool
 
-- `capabilities()` → read/send/create/delete/control, formatting limits, supports threads, etc.
-- `scopes_required(action)` → list of permission scopes
-- `execute(request, context)` → `ToolResult` (structured)
+- `capabilities()` &gt; read/send/create/delete/control, formatting limits, supports threads, etc.
+- `scopes_required(action)` &gt; list of permission scopes
+- `execute(request, context)` &gt; `ToolResult` (structured)
 - Must implement:
   - **rate limiting**
   - **retry discipline**
@@ -392,7 +364,7 @@ A watcher is a specialized proactive component that produces events. Examples:
 Watcher interface:
 
 - `watcher_id`, `enabled`
-- `tick(now)` → emits 0..N `MessageEvent`s
+- `tick(now)` &gt; emits 0..N `MessageEvent`s
 - must store:
   - last tick time
   - last outcome
@@ -420,7 +392,7 @@ Rules evaluation:
 - Global notification throttle
 - Per-rule debounce + dedupe keys
 - Quiet hours policy for outbound notifications and device controls
-- Escalation ladder (e.g., notify once → notify again after X if still true → require confirmation)
+- Escalation ladder (e.g., notify once &gt; notify again after X if still true &gt; require confirmation)
 
 **Tradeoff:** rules+watchers can explode in complexity; constrain with simple primitives and strong observability.
 
@@ -576,7 +548,7 @@ On restart:
 ### 12.2 Idempotency strategy
 
 - Every effectful tool call must have an idempotency key.
-- Store mapping: `idempotency_key → tool_call_id → outcome`.
+- Store mapping: `idempotency_key &gt; tool_call_id &gt; outcome`.
 - If called again, tool adapter returns prior outcome without re-executing (or checks provider).
 
 ### 12.3 Retry discipline
@@ -637,7 +609,7 @@ Design now (minimal):
 
 - **Job table**: `job_id`, `type`, `status`, `resource_limits`, `trace_id`, `task_id`
 - Worker interface:
-  - `spawn(job)` → starts isolated process/container
+  - `spawn(job)` &gt; starts isolated process/container
   - `report_progress(job_id, percent, message, artifacts)`
   - `checkpoint(job_id, state)`
   - `cancel(job_id)`

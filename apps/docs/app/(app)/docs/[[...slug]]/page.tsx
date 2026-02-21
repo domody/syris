@@ -14,9 +14,10 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import {
   NextNeighbour,
   PreviousNeighbour,
-} from "@/components/nav/neighbours-buttons";
-import { DocsTableOfContents } from "@/components/nav/docs-toc";
+} from "@/components/docs/neighbours-buttons";
+import { DocsTableOfContents } from "@/components/docs/docs-toc";
 import { Separator } from "@/components/ui/separator";
+import { DocsCopyPage } from "@/components/docs/docs-copy-page";
 
 export const revalidate = false;
 export const dynamic = "force-static";
@@ -106,7 +107,7 @@ export default async function Page(props: {
                 </h1>
                 <div className="docs-nav flex items-center gap-2">
                   <div className="hidden sm:block">
-                    {/* <DocsCopyPage page={raw} url={absoluteUrl(page.url)} /> */}
+                    <DocsCopyPage page={raw} url={absoluteUrl(page.url)} />
                   </div>
                   <div className="ml-auto flex gap-2">
                     {neighbours.previous && (
