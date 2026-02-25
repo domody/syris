@@ -1,0 +1,29 @@
+{
+  "name": "syris",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "packageManager": "bun@1.3.5",
+  "workspaces": [
+    "apps/*",
+    "apps/syris_nutrition/apps/*",
+    "core/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "start": "turbo run start --parallel",
+    "lint": "turbo run lint",
+    "web": "turbo run web --parallel",
+    "android": "turbo run android --parallel",
+    "ios": "turbo run ios --parallel",
+    "reset-project": "turbo run reset-project"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "turbo": "^2.8.11"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

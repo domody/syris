@@ -1,7 +1,7 @@
 // @ts-nocheck
-import * as __fd_glob_15 from "../content/docs/overview/what-is-syris.mdx?collection=docs"
-import * as __fd_glob_14 from "../content/docs/overview/glossary.mdx?collection=docs"
-import * as __fd_glob_13 from "../content/docs/safety/autonomy-levels.mdx?collection=docs"
+import * as __fd_glob_15 from "../content/docs/safety/autonomy-levels.mdx?collection=docs"
+import * as __fd_glob_14 from "../content/docs/overview/what-is-syris.mdx?collection=docs"
+import * as __fd_glob_13 from "../content/docs/overview/glossary.mdx?collection=docs"
 import * as __fd_glob_12 from "../content/docs/ops/observality-model.mdx?collection=docs"
 import * as __fd_glob_11 from "../content/docs/dev/repo-structure.mdx?collection=docs"
 import * as __fd_glob_10 from "../content/docs/dev/naming-convetions.mdx?collection=docs"
@@ -23,4 +23,4 @@ const create = server<typeof Config, import("fumadocs-mdx/runtime/types").Intern
   }
 }>({"doc":{"passthroughs":["extractedReferences"]}});
 
-export const docs = await create.docs("docs", "content/docs", {"meta.json": __fd_glob_0, "architecture/meta.json": __fd_glob_1, "dev/meta.json": __fd_glob_2, "overview/meta.json": __fd_glob_3, }, {"adr/0001-modular-monolith.mdx": __fd_glob_4, "adr/0002-mcp-integration.mdx": __fd_glob_5, "architecture/component-map.mdx": __fd_glob_6, "architecture/data-contracts.mdx": __fd_glob_7, "architecture/invariants.mdx": __fd_glob_8, "architecture/system-design-v3.mdx": __fd_glob_9, "dev/naming-convetions.mdx": __fd_glob_10, "dev/repo-structure.mdx": __fd_glob_11, "ops/observality-model.mdx": __fd_glob_12, "safety/autonomy-levels.mdx": __fd_glob_13, "overview/glossary.mdx": __fd_glob_14, "overview/what-is-syris.mdx": __fd_glob_15, });
+export const docs = await create.docs("docs", "content/docs", {"meta.json": __fd_glob_0, "architecture/meta.json": __fd_glob_1, "dev/meta.json": __fd_glob_2, "overview/meta.json": __fd_glob_3, }, {"adr/0001-modular-monolith.mdx": __fd_glob_4, "adr/0002-mcp-integration.mdx": __fd_glob_5, "architecture/component-map.mdx": __fd_glob_6, "architecture/data-contracts.mdx": __fd_glob_7, "architecture/invariants.mdx": __fd_glob_8, "architecture/system-design-v3.mdx": __fd_glob_9, "dev/naming-convetions.mdx": __fd_glob_10, "dev/repo-structure.mdx": __fd_glob_11, "ops/observality-model.mdx": __fd_glob_12, "overview/glossary.mdx": __fd_glob_13, "overview/what-is-syris.mdx": __fd_glob_14, "safety/autonomy-levels.mdx": __fd_glob_15, });

@@ -22,3 +22,6 @@ ha.json
 
 AGENTS.md
 .codex/
+
+node_modules/
+.turbo/

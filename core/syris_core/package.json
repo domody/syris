@@ -1,0 +1,7 @@
+{
+  "name": "syris-core",
+  "private": true,
+  "scripts": {
+    "dev": "uv run syris"
+  }
+}
