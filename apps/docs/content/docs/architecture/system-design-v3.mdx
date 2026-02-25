@@ -675,3 +675,96 @@ jarvis_os/
     artifact_store.py
     secrets_store.py
   main.py                  # boot: start loops
+```
+
+  ### 15.2 Persistence choices
+
+* Start with **SQLite + WAL** for simplicity; design SQL schema to migrate to Postgres.
+* Use **SQLModel/SQLAlchemy** for portability.
+* Artifact store:
+
+  * local filesystem with metadata in DB (start)
+  * later S3-compatible storage.
+
+### 15.3 Execution runtime (control plane + workers)
+
+* Control plane:
+
+  * event ingestion (webhooks + polling)
+  * scheduler loop
+  * watcher loop
+  * task engine loop
+  * API server (FastAPI)
+* Workers:
+
+  * separate processes for heavy jobs and optional connectors that need isolation.
+
+### 15.4 APIs (dashboard-first)
+
+Minimum endpoints:
+
+* `GET /health` (status, heartbeat)
+* `GET /state` (aggregated system state)
+* `GET /events` (inbound events with filters)
+* `GET /audit` (search by trace_id/task_id/tool/outcome/time)
+* `GET /tasks`, `GET /tasks/{id}`, `POST /tasks/{id}/cancel`, `/retry`, `/pause`, `/resume`
+* `GET /schedules`, `POST /schedules`, `PATCH /schedules/{id}`
+* `GET /watchers`, `PATCH /watchers/{id}` enable/disable
+* `GET /rules`, `PATCH /rules/{id}` enable/disable
+* `GET /integrations`, `PATCH /integrations/{id}` enable/disable
+* `GET /approvals`, `POST /approvals/{id}/approve|deny`
+* `POST /controls/autonomy` set level
+
+### 15.5 Deterministic “fast path” intent parsing
+
+Implement a small intent DSL for common commands:
+
+* timers/reminders (“timer 10m”, “remind me tomorrow 9am …”)
+* device control (“turn off living room lights”)
+* schedule management (“show next alarms”, “disable watcher inbox”)
+
+Use:
+
+* regex + small parser combinators
+* unit tests per intent
+
+LLM fallback used only if:
+
+* no deterministic match
+* or multiple plausible intents
+
+### 15.6 LLM integration discipline
+
+* LLM called through a single “ModelTool” with:
+
+  * strict input/output schema (pydantic)
+  * budget tracking (counts, cost estimates)
+  * redaction policies
+* LLM outputs treated as **suggestions**, not authority:
+
+  * routing uses confidence thresholds
+  * risky actions always gated by safety layer
+
+### 15.7 Observability implementation details
+
+* Every pipeline stage writes audit events.
+* Every tool call writes:
+
+  * `ToolCallAttempted` (request metadata redacted)
+  * `ToolCallSucceeded/Failed` (latency, error)
+* Maintain projections via:
+
+  * synchronous updates in the same transaction (simpler)
+  * later: async projector consuming audit log (more scalable)
+
+### 15.8 Minimal milestone plan (practical sequencing)
+
+1. **Event store + audit log + API** (foundation)
+2. **Normalize → Route (fast paths) → Execute (single-step)** with idempotency
+3. **Task engine** (multi-step, checkpointing)
+4. **Scheduler + basic watchers** (timers/reminders, heartbeat watcher)
+5. **Rules engine** (IFTTT-style) + dedupe/throttle
+6. **Integrations health + operator controls**
+7. **Sandbox worker skeleton**
+8. **Memory policy + UI-driven approvals**
+9. Expand integrations (Home Assistant, email, chat apps)

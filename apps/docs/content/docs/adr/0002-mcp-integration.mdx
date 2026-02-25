@@ -1,0 +1,55 @@
+---
+title: ADR 0002  -  MCP as Integration Provider Layer
+description: Adopt MCP as a standardized integration layer beneath the SYRIS Tool Runtime, preserving deterministic routing, safety gates, idempotency, and audit as first-class concerns.
+---
+
+**Decision: Adopt MCP as an integration provider layer under SYRIS’s canonical Tool Runtime, not as a replacement or direct model pass-through.**
+
+### Context
+
+SYRIS already has a Tool Runtime (ToolCall/ToolResult, registry, scopes, retries, idempotency, audit) and a centralized pipeline. We want to add MCP to standardize integration access and capability discovery, potentially consuming external MCP servers and optionally exposing SYRIS via MCP—without sacrificing fast deterministic routing, safety/autonomy gates, idempotency, or full auditability. MCP defines discovery (`tools/list`) and invocation (`tools/call`) over JSON-RPC and explicitly warns that tool behavior metadata/annotations should be treated as untrusted unless the server is trusted. ([Model Context Protocol][1])
+
+### Decision
+
+Adopt MCP as an **integration provider layer beneath SYRIS’s canonical Tool Runtime**:
+
+1. Implement an **MCPProvider + MCPToolAdapter** so MCP servers appear as normal tools in the SYRIS Tool Registry.
+2. Keep **safety/autonomy gating, approvals, idempotency, retries discipline, and audit logging** in SYRIS, before any MCP tool invocation.
+3. Optionally implement a **SYRIS MCP server facade** that exposes read-only resources and a safe “enqueue gated task” tool, avoiding direct exposure of high-risk effectful tools initially.
+
+### Alternatives Considered
+
+1. **Replace SYRIS Tool Runtime with MCP end-to-end** (ToolCall becomes MCP messages everywhere)
+2. **Let the model talk directly to MCP servers** (SYRIS just passes through)
+3. **Use MCP only for model-facing tool selection** (no core usage; deterministic code keeps custom connectors)
+
+### Consequences
+
+#### Positive
+
+* MCP servers plug into SYRIS with minimal per-connector bespoke work (standard discovery/invocation). ([Model Context Protocol][1])
+* SYRIS keeps a single enforcement point for gating, approvals, scopes, and audit—preserving operator control and traceability.
+* Fast-lane commands remain deterministic and low-latency (routing doesn’t require MCP/model).
+* Optional SYRIS MCP facade enables ecosystem interoperability without exposing raw internals.
+
+#### Negative
+
+* Adds connection/session management complexity (reconnects, tool list cache, drift handling).
+* Idempotency/retry semantics are not uniformly standardized across MCP tools → requires **local trust profiles and per-tool contracts**.
+* Tool discovery can cause context bloat if you expose everything to the model; requires curation. ([Kong Inc.][2])
+* Additional failure mode: “unknown outcome” when transport drops mid-call must be handled explicitly.
+
+### Implementation Notes
+
+* Add `integrations/mcp/connection_manager.py`, `provider.py`, `adapter.py`, `trust_policy.py`.
+* Extend Tool Registry with `provider_type` + `external_ref`.
+* Default posture: MCP tools are **high-risk until allowlisted**; ignore untrusted annotations by default. ([Model Context Protocol][1])
+* Add audit events for MCP connection lifecycle and tool sync diffs.
+* Keep sandbox workers behind a ToolBroker so workers cannot bypass gates or access secrets directly.
+
+### Follow-ups
+
+* Define a **Tool Trust Profile schema** (per server + per tool) covering: risk level, scopes mapping, idempotency contract, retry policy, preview capability.
+* Add a **tool curation strategy** for LLM exposure (route-first then attach subset; avoid global tool dumping).
+* Decide whether to support MCP client features like server-initiated sampling/elicitation; if enabled, map them to SYRIS events requiring explicit approval (default off). ([Model Context Protocol][3])
+

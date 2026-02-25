@@ -45,7 +45,7 @@ export function DocSidebar({
                             render={
                               <Link href={page.url}>
                                 <span className="absolute inset-0 flex w-(--sidebar-menu-width)" />
-                                {page.name}
+                                <span>{page.name}</span>
                                 {/* {PAGES_NEW.includes(page.url) && (
                                 <span
                                   className="flex size-2 rounded-full bg-blue-500"
