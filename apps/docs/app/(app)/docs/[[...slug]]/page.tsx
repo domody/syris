@@ -89,7 +89,7 @@ export default async function Page(props: {
   const doc = page.data;
   const MDX = doc.body;
   const neighbours = findNeighbour(source.pageTree, page.url);
-  const raw = page.data.getText("raw");
+  const raw = await page.data.getText("raw");
 
   return (
     <div
