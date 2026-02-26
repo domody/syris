@@ -1,5 +1,6 @@
 {
   "name": "syris",
+  "version": "3.0.1",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -17,7 +18,8 @@
     "web": "turbo run web --parallel",
     "android": "turbo run android --parallel",
     "ios": "turbo run ios --parallel",
-    "reset-project": "turbo run reset-project"
+    "reset-project": "turbo run reset-project",
+    "sync:version": "node scripts/sync-version.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
