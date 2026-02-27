@@ -1,0 +1,118 @@
+from dataclasses import dataclass
+from datetime import datetime, timezone
+import logging
+import uuid
+
+import uvicorn
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+
+from ..api.app import create_app
+from ..config import Settings
+from ..logging import configure_logging
+from ..observability.hearbeat import HeartbeatService
+from ..storage.db import create_engine, create_sessionmaker, init_db
+
+logger = logging.getLogger(__name__)
+
+@dataclass(frozen=True)
+class RuntimeState:
+    run_id: uuid.UUID
+    started_at: datetime
+    engine: AsyncEngine
+    sessionmaker: async_sessionmaker[AsyncSession]
+    heartbeat: HeartbeatService
+
+
+class ControlPlane:
+    """
+    Explicit Runtime Orchestrator
+    """
+
+    def __init__(self, settings: Settings) -> None:
+        self._settings = settings
+        self._app = None
+        self._runtime: RuntimeState | None = None
+
+    @property
+    def app(self):
+        if self._app is None:
+            raise RuntimeError("ControlPlane not started yet; call start() first.")    
+        return self._app
+    
+    async def start(self) -> None:
+        configure_logging(self._settings.log_level)
+
+        engine = create_engine(self._settings.db_url)
+        sessionmaker = create_sessionmaker(engine)
+
+        # ensure schema exists
+        await init_db(engine)
+
+        run_id = uuid.uuid4()
+        started_at = datetime.now(timezone.utc)
+
+        app = create_app(self._settings)
+
+        heartbeat = HeartbeatService(
+            sessionmaker,
+            run_id=run_id,
+            started_at=started_at,
+            interval_s=self._settings.heartbeat_interval_s,
+            service=self._settings.service_name,
+            version=self._settings.version
+        )
+        await heartbeat.start()
+
+        app.state.settings = self._settings
+        app.state.engine = engine
+        app.state.sessionmaker = sessionmaker
+        app.state.run_id = run_id
+        app.state.started_at = started_at
+        app.state.heartbeat = heartbeat
+
+        self._app = app
+        self._runtime = RuntimeState(
+            run_id=run_id,
+            started_at=started_at,
+            engine=engine,
+            sessionmaker=sessionmaker,
+            heartbeat=heartbeat
+        )
+
+        logger.info(
+            "ControlPlane started run_id=%s env=%s db=%s",
+            run_id,
+            self._settings.env,
+            self._settings.db_url,
+        )
+
+    async def stop(self) -> None:
+        if self._runtime is None:
+            return
+        
+        logger.info("ControlPlane stopping run_id=%s", self._runtime.run_id)
+        await self._runtime.heartbeat.stop()
+        await self._runtime.engine.dispose()
+
+        self._runtime = None
+        self._app = None
+
+    async def run(self) -> None:
+        """
+        Start the runtime and serve HTTP until shutdown signal
+        """
+        await self.start()
+        
+        config = uvicorn.Config(
+            self.app,
+            host=self._settings.api_host,
+            port=self._settings.api_port,
+            log_level=self._settings.log_level.lower(),
+            lifespan="off"
+        )
+        server = uvicorn.Server(config)
+
+        try:
+            await server.serve()
+        finally:
+            await self.stop()
