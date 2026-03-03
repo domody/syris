@@ -1,10 +1,36 @@
-import { cn } from "@/lib/utils"
+"use client";
 
+import { cn } from "@/lib/utils";
+import { Button } from "../ui/button";
+import { Eclipse } from "lucide-react";
+import { useTheme } from "next-themes";
 
-
-export function Topbar({className, ...props}: React.ComponentProps<"div">) {
-
-    return (
-        <div className={cn("h-(--header-height) border-b w-full flex items-center p-4", className)} {...props}></div>
-    )
+export function Topbar({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<"div">) {
+  const { resolvedTheme, setTheme } = useTheme();
+  return (
+    <div
+      className={cn(
+        "h-(--header-height) border-b w-full flex items-center p-4",
+        className,
+      )}
+      {...props}
+    >
+      <div className="flex flex-1 items-center">{children}</div>
+      <div className="flex items-center">
+        <Button
+          variant={"ghost"}
+          size={"icon"}
+          onClick={() => {
+            resolvedTheme === "light" ? setTheme("dark") : setTheme("light");
+          }}
+        >
+          <Eclipse />
+        </Button>
+      </div>
+    </div>
+  );
 }
