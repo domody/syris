@@ -27,11 +27,9 @@ function formatKey(key: string) {
 function formatDate(value: string) {
   const date = new Date(value);
 
-  return (
-    date.toLocaleString(undefined, {
-      timeStyle: "long",
-    }),
-  );
+  return date.toLocaleString(undefined, {
+    timeStyle: "long",
+  });
 }
 
 function formatUptime(seconds: number) {
@@ -85,9 +83,7 @@ function SnapshotCard({ title, value }: { title: string; value: string }) {
     <Card>
       <CardHeader>
         <CardDescription className="text-xs">{title}</CardDescription>
-        <CardTitle className="text-2xl truncate">
-          {value}
-        </CardTitle>
+        <CardTitle className="text-2xl truncate">{value}</CardTitle>
       </CardHeader>
     </Card>
   );
