@@ -19,7 +19,7 @@ export function Topbar({
       )}
       {...props}
     >
-      <div className="flex flex-1 items-center">{children}</div>
+      <div className="flex flex-1 items-center gap-2">{children}</div>
       <div className="flex items-center">
         <Button
           variant={"ghost"}

@@ -1,4 +1,3 @@
-import { ComponentExample } from "@/components/component-example";
 import { Topbar } from "@/components/nav/topbar";
 
 export default function Page() {
