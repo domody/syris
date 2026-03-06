@@ -6,6 +6,8 @@ import { useHealth } from "@/features/health/use-health";
 import type { HealthResponse } from "@/features/health/health-api";
 import { QueryBoundary } from "./query/query-boundary";
 import { UptimeBars } from "./uptime-bars";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { GlobeOffIcon } from "lucide-react";
 
 type HealthKey = keyof HealthResponse;
 
@@ -124,9 +126,19 @@ export function SystemSnapshot({
       }
       softDisable
       offline={
-        <div className="w-full rounded-md border p-3 text-sm">
-          API not reachable. Snapshot unavailable, but the app still works.
-        </div>
+        <Alert variant={"destructive"} className="col-span-2">
+          <GlobeOffIcon />
+          <AlertTitle>API not reachable</AlertTitle>
+          <AlertDescription>
+            System Snapshot unavailable. Check the backend is running and try
+            again.
+          </AlertDescription>
+          {/* <CardHeader>
+            <CardDescription className="text-foreground font-medium">
+              API not reachable. Snapshot unavailable, but the app still works.
+            </CardDescription>
+          </CardHeader> */}
+        </Alert>
       }
       errorFallback={(err) => (
         <div className="w-full rounded-md border p-3 text-sm">
@@ -147,7 +159,6 @@ export function SystemSnapshot({
             />
           ))}
       </div>
-
     </QueryBoundary>
   );
 }
