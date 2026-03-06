@@ -1,7 +1,13 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from ..config import Settings
 from ..api.routes.health import router as health_router
+
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 
 def create_app(settings: Settings) -> FastAPI:
     app = FastAPI(
@@ -10,4 +16,12 @@ def create_app(settings: Settings) -> FastAPI:
     )
     app.state.settings = settings # Control plane will overwrite or extend this at runtime
     app.include_router(health_router)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
     return app

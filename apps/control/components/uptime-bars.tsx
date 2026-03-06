@@ -28,22 +28,54 @@ const timeframeOptions = [
 
 type TimeframeOption = (typeof timeframeOptions)[number]["value"];
 
+type UptimeDay = {
+  date: string;
+  uptimePct: number | null;
+  incidents?: number;
+  downtimeMinutes?: number;
+};
+
+const uptimeData: UptimeDay[] = [
+  { date: "2026-03-01", uptimePct: 99.1, incidents: 1 },
+  { date: "2026-03-02", uptimePct: 100, incidents: 0 },
+  { date: "2026-03-03", uptimePct: 97.8, incidents: 1 },
+  { date: "2026-03-05", uptimePct: 92.4, incidents: 2 },
+  { date: "2026-03-06", uptimePct: 100, incidents: 0 },
+];
+
 export function UptimeBars({ ...props }: React.ComponentProps<"div">) {
   const [timeframeOption, setTimeframeOption] =
-    React.useState<TimeframeOption>("90_days");
+    React.useState<TimeframeOption>("45_days");
+  const [hoveredDay, setHoveredDay] = React.useState<UptimeDay | null>(null);
 
   const correspondingOption = timeframeOptions.find(
     (option) => option.value === timeframeOption,
   );
 
-  const labelValue = correspondingOption ? correspondingOption.label : null;
-  const numberValue = correspondingOption ? correspondingOption.number : null;
+  const labelValue = correspondingOption
+    ? correspondingOption.label
+    : "45 days";
+  const numberValue = correspondingOption ? correspondingOption.number : 45;
+
+  const visibleDays = React.useMemo(() => {
+    return normalizeUptimeData(uptimeData, numberValue);
+  }, [numberValue]);
+
+  const averageUptime = React.useMemo(() => {
+    return getAverageUptime(visibleDays);
+  }, [visibleDays]);
+
+  const headerTitle = hoveredDay ? getDayStatus(hoveredDay).title : "Uptime";
+
+  const headerDescription = hoveredDay
+    ? formatHoverDescription(hoveredDay)
+    : `Uptime of the SYRIS Backend over the last ${numberValue} days`;
 
   return (
     <Card {...props}>
       <CardHeader className="">
-        <CardTitle className="">Uptime</CardTitle>
-        <CardDescription>Uptime of the SYRIS Backend over the last 90 days</CardDescription>
+        <CardTitle>{headerTitle}</CardTitle>
+        <CardDescription>{headerDescription}</CardDescription>
         <CardAction className="">
           <Select
             value={timeframeOption}
@@ -69,19 +101,138 @@ export function UptimeBars({ ...props }: React.ComponentProps<"div">) {
       </CardHeader>
       <CardContent className="">
         <div className="flex flex-1 h-8 items-end justify-start gap-1">
-          {[...Array(numberValue)].map((_, i) => (
-            <div
-              key={i}
-              className="w-full h-6 hover:h-8 transition-all hover:cursor-pointer rounded bg-green-500"
-            />
-          ))}
+          {visibleDays.map((day) => {
+            const status = getDayStatus(day);
+
+            return (
+              <div
+                key={day.date}
+                className={`w-full rounded transition-all hover:h-8 hover:cursor-pointer ${
+                  hoveredDay?.date === day.date ? "h-8" : "h-6"
+                } ${status.color}`}
+                onMouseEnter={() => setHoveredDay(day)}
+                onMouseLeave={() => setHoveredDay(null)}
+                aria-label={`${day.date} - ${status.title}`}
+                // title={`${status.title} • ${formatHoverDescription(day)}`}
+              />
+            );
+          })}
         </div>
         <div className="flex flex-1 pt-3 items-center justify-between gap-2 text-xs text-muted-foreground">
           <p>{labelValue} ago</p>
-          <p>99.9%</p>
+          <p>
+            {hoveredDay?.uptimePct
+              ? `${hoveredDay.uptimePct}%`
+              : averageUptime
+                ? `${averageUptime}% avg`
+                : "No data"}
+          </p>
           <p>Today</p>
         </div>
       </CardContent>
     </Card>
   );
+}
+
+function formatDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getPastDates(days: number) {
+  const dates: string[] = [];
+  const today = new Date();
+
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    dates.push(formatDateKey(date));
+  }
+
+  return dates;
+}
+
+function normalizeUptimeData(data: UptimeDay[], days: number): UptimeDay[] {
+  const dates = getPastDates(days);
+  const dataByDate = new Map(data.map((day) => [day.date, day]));
+
+  return dates.map((date) => {
+    return (
+      dataByDate.get(date) ?? {
+        date,
+        uptimePct: null,
+        incidents: 0,
+      }
+    );
+  });
+}
+
+const STATUS_RULES = [
+  {
+    test: (uptimePct: number | null) => uptimePct === null,
+    color: "bg-accent",
+    title: "No data",
+  },
+  {
+    test: (uptimePct: number | null) => uptimePct === 100,
+    color: "bg-green-500",
+    title: "All systems operational",
+  },
+  {
+    test: (uptimePct: number | null) => uptimePct !== null && uptimePct >= 99,
+    color: "bg-amber-400",
+    title: "Degraded performance",
+  },
+  {
+    test: (uptimePct: number | null) => uptimePct !== null && uptimePct >= 95,
+    color: "bg-orange-400",
+    title: "Partial systems outage",
+  },
+  {
+    test: (_uptimePct: number | null) => true,
+    color: "bg-red-400",
+    title: "Major systems outage",
+  },
+] as const;
+
+function getDayStatus(day: UptimeDay) {
+  const match = STATUS_RULES.find((rule) => rule.test(day.uptimePct))!;
+  return {
+    color: match.color,
+    title: match.title,
+  };
+}
+
+function formatHoverDescription(day: UptimeDay) {
+  const date = new Date(day.date).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+
+  if (day.uptimePct === null) {
+    return `${date} - No data`;
+  }
+
+  const incidents = day.incidents ?? 0;
+
+  if (incidents > 0) {
+    return `${date} - ${incidents} incident${incidents === 1 ? "" : "s"}`;
+  }
+
+  return `${date}`;
+}
+
+function getAverageUptime(days: UptimeDay[]) {
+  const withData = days.filter((day) => day.uptimePct !== null);
+
+  if (withData.length === 0) return null;
+
+  const avg =
+    withData.reduce((sum, day) => sum + (day.uptimePct ?? 0), 0) /
+    withData.length;
+
+  return avg.toFixed(1);
 }

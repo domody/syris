@@ -1,86 +1,75 @@
+"use client";
+
 import { cn } from "@/lib/utils";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
-import { Button } from "./ui/button";
-import { Copy } from "lucide-react";
+import { Card, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { useHealth } from "@/features/health/use-health";
+import type { HealthResponse } from "@/features/health/health-api";
+import { QueryBoundary } from "./query/query-boundary";
+import { UptimeBars } from "./uptime-bars";
 
-function formatKey(key: string) {
-  const map: Record<string, string> = {
-    run_id: "Run ID",
-    uptime_s: "Uptime",
-    last_heartbeat_at: "Last Heartbeat",
-    db: "Database",
-  };
+type HealthKey = keyof HealthResponse;
 
-  if (map[key]) return map[key];
-
-  return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-
-  return date.toLocaleString(undefined, {
-    timeStyle: "long",
-  });
-}
-
-function formatUptime(seconds: number) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-
-  return `${h}h ${m}m ${s}s`;
-}
-
-function formatValue(key: health_keys, value: any) {
-  if (key === "db") return value.ok ? "Connected" : "Disconnected";
-
-  if (key === "uptime_s") return formatUptime(value);
-
-  if (key === "started_at" || key === "last_heartbeat_at") {
-    return formatDate(value);
-  }
-
-  return String(value)
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-const health_endpoint = {
-  status: "healthy",
-  service: "syris-core",
-  version: "3.0.1",
-  env: "dev",
-  run_id: "9f3c2b7e-8d41-4c2e-9a7b-1f2d6e8c4b10",
-  started_at: "2026-03-02T08:15:30.123456Z",
-  uptime_s: 12,
-  db: { ok: true, error: null },
-  last_heartbeat_at: "2026-03-02T12:30:45.654321Z",
-  now: "2026-03-02T12:45:00.000000Z",
-} as const;
-
-type health_keys = keyof typeof health_endpoint;
-
-const strip_items: health_keys[] = [
+const STRIP_ITEMS = [
   "status",
   "uptime_s",
   "last_heartbeat_at",
   "db",
   "version",
   "run_id",
-];
+] satisfies readonly HealthKey[];
 
-function SnapshotCard({ title, value }: { title: string; value: string }) {
+const GRID_CLASS = "w-full grid grid-cols-6 grid-rows-1 gap-2";
+
+const KEY_LABELS: Partial<Record<HealthKey, string>> = {
+  run_id: "Run ID",
+  uptime_s: "Uptime",
+  last_heartbeat_at: "Last Heartbeat",
+  db: "Database",
+};
+
+function formatKey(key: HealthKey) {
   return (
-    <Card>
+    KEY_LABELS[key] ??
+    key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  );
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  return date.toLocaleString(undefined, { timeStyle: "long" });
+}
+
+function formatUptime(seconds: number) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  return `${h}h ${m}m ${s}s`;
+}
+
+function formatValue(key: HealthKey, value: HealthResponse[HealthKey]) {
+  switch (key) {
+    case "db":
+      return (value as HealthResponse["db"]).ok ? "Connected" : "Disconnected";
+    case "uptime_s":
+      return formatUptime(value as number);
+    case "started_at":
+    case "last_heartbeat_at":
+      return formatDate(value as string);
+    default:
+      return String(value)
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+}
+
+export function SnapshotCard({
+  title,
+  value,
+  className,
+  ...props
+}: { title: string; value: string } & React.ComponentProps<"div">) {
+  return (
+    <Card className={cn("w-full", className)} {...props}>
       <CardHeader>
         <CardDescription className="text-xs">{title}</CardDescription>
         <CardTitle className="text-2xl truncate">{value}</CardTitle>
@@ -88,22 +77,77 @@ function SnapshotCard({ title, value }: { title: string; value: string }) {
     </Card>
   );
 }
+
+export function SnapshotCardSkeleton() {
+  return (
+    <Card className="w-full">
+      <CardHeader>
+        <CardDescription className="text-xs">
+          <span className="inline-block h-3 w-24 rounded bg-muted animate-pulse" />
+        </CardDescription>
+        <CardTitle className="text-2xl truncate">
+          <span className="inline-block h-7 w-32 rounded bg-muted animate-pulse" />
+        </CardTitle>
+      </CardHeader>
+    </Card>
+  );
+}
+
+function SystemSnapshotLoading({ excludes = [] }: { excludes?: HealthKey[] }) {
+  return (
+    <>
+      {STRIP_ITEMS.filter((item) => !excludes.includes(item)).map((key) => (
+        <SnapshotCardSkeleton key={key} />
+      ))}
+    </>
+  );
+}
+
 export function SystemSnapshot({
+  excludes = [],
   className,
   ...props
-}: React.ComponentProps<"div">) {
+}: { excludes?: HealthKey[] } & React.ComponentProps<"div">) {
+  const q = useHealth();
+
   return (
-    <div
-      className={cn("w-full grid grid-cols-6 grid-rows-1 gap-2", className)}
-      {...props}
+    <QueryBoundary
+      className={cn("w-full", className)}
+      isLoading={q.isLoading}
+      isError={q.isError}
+      error={q.error}
+      hasData={!!q.data}
+      loading={
+        <div className={cn(GRID_CLASS, className)}>
+          <SystemSnapshotLoading excludes={excludes} />
+        </div>
+      }
+      softDisable
+      offline={
+        <div className="w-full rounded-md border p-3 text-sm">
+          API not reachable. Snapshot unavailable, but the app still works.
+        </div>
+      }
+      errorFallback={(err) => (
+        <div className="w-full rounded-md border p-3 text-sm">
+          Snapshot failed to load.
+          <div className="mt-1 opacity-70">
+            {err instanceof Error ? err.message : String(err)}
+          </div>
+        </div>
+      )}
     >
-      {strip_items.map((key) => (
-        <SnapshotCard
-          key={key}
-          title={formatKey(key)}
-          value={formatValue(key, health_endpoint[key])}
-        />
-      ))}
-    </div>
+      <div className={cn(GRID_CLASS, className)} {...props}>
+        {q.data &&
+          STRIP_ITEMS.filter((item) => !excludes.includes(item)).map((key) => (
+            <SnapshotCard
+              key={key}
+              title={formatKey(key)}
+              value={formatValue(key, q.data[key])}
+            />
+          ))}
+      </div>
+
+    </QueryBoundary>
   );
 }
