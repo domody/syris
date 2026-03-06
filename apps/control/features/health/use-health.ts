@@ -17,3 +17,5 @@ export function useHealth() {
     retry: 0,
   });
 }
+
+export type HealthQuery = ReturnType<typeof useHealth>

@@ -32,9 +32,13 @@ import { data as navData } from "./nav-data";
 import { usePathname } from "next/navigation";
 import { VERSION } from "../../../version";
 import { StatusDot } from "../status-dot";
+import { useHealth } from "@/features/health/use-health";
+import { getSystemState } from "@/features/health/system-state";
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const healthQuery = useHealth();
+  const systemState = getSystemState(healthQuery);
 
   return (
     <Sidebar>
@@ -55,7 +59,14 @@ export function AppSidebar() {
                       <p className="text-sm">syris-controls</p>
                     </div>
                     {/* <Badge className="ml-auto">v{VERSION}</Badge> */}
-                    <StatusDot className="size-3" pulse />
+                    <StatusDot
+                      className="size-3"
+                      pulse={
+                        systemState.uiStatus === "partial_outage" ||
+                        systemState.uiStatus === "major_outage"
+                      }
+                      status={systemState.uiStatus}
+                    />
                   </SidebarMenuButton>
                 }
               />
@@ -74,10 +85,17 @@ export function AppSidebar() {
                   <div className="w-full flex flex-col gap-4 pb-2 px-2">
                     <div className="w-full flex gap-2 items-start justify-start">
                       <div className="pt-1.5 h-full">
-                        <StatusDot pulse />
+                        <StatusDot
+                          className="size-3"
+                          pulse={
+                            systemState.uiStatus === "partial_outage" ||
+                            systemState.uiStatus === "major_outage"
+                          }
+                          status={systemState.uiStatus}
+                        />
                       </div>
                       <div className="flex-1 grid grid-cols-1">
-                        <p className="text-sm font-medium">Online</p>
+                        <p className="text-sm font-medium">{systemState.title}</p>
                         <p className="text-xs text-muted-foreground">
                           Current SYRIS Status
                         </p>
@@ -137,8 +155,9 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <div className="flex justify-between items-center">
-        <p className="text-xs text-muted-foreground">v{VERSION}</p>
-        <Badge variant={"outline"}>dev</Badge></div>
+          <p className="text-xs text-muted-foreground">v{VERSION}</p>
+          <Badge variant={"outline"}>dev</Badge>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

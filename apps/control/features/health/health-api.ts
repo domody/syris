@@ -1,7 +1,7 @@
 import { request } from "@/lib/http/http-client"
 
 export type HealthResponse = {
-  status: "healthy" | "unhealthy" | string;
+  status: "ok" | "degraded" | string;
   service: string;
   version: string;
   env: string;

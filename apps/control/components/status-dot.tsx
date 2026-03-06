@@ -1,14 +1,8 @@
 import { cn } from "@/lib/utils";
 import { Badge } from "./ui/badge";
+import { SystemStateKey } from "@/features/health/system-state";
 
-export type SystemStatus =
-  | "unknown"
-  | "healthy"
-  | "degraded"
-  | "partial_outage"
-  | "major_outage";
-
-export const statusColor: Record<SystemStatus, string> = {
+export const statusColor: Record<SystemStateKey, string> = {
   unknown: "bg-neutral-300 dark:bg-neutral-700",
   healthy: "bg-green-500",
   degraded: "bg-amber-500",
@@ -23,7 +17,7 @@ export function StatusDot({
   ...props
 }: React.ComponentProps<"div"> & {
   pulse?: boolean;
-  status?: SystemStatus;
+  status?: SystemStateKey;
 }) {
   const color = statusColor[status];
 
