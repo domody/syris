@@ -51,15 +51,14 @@ export function QueryCard<TData, TError = unknown>({
 
   return (
     <Card size={size} className={className}>
-      <CardHeader>
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            {title && <CardTitle>{title}</CardTitle>}
-            {description && <CardDescription>{description}</CardDescription>}
-          </div>
+      {(title || description || actions) && (
+        <CardHeader>
+          {title && <CardTitle>{title}</CardTitle>}
+          {description && <CardDescription>{description}</CardDescription>}
+
           {actions}
-        </div>
-      </CardHeader>
+        </CardHeader>
+      )}
 
       <CardContent className={contentClassName}>
         <QueryBoundary

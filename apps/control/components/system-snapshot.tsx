@@ -111,6 +111,31 @@ export function SystemSnapshot({
   className,
   ...props
 }: { excludes?: HealthKey[] } & React.ComponentProps<"div">) {
+  const q = useHealth();
+  return (
+    <div className={cn(GRID_CLASS, className)}>
+      {STRIP_ITEMS.filter((item) => !excludes.includes(item)).map((key) => (
+        <QueryCard
+          query={q}
+          description={formatKey(key)}
+          loading={
+            <CardTitle className="text-2xl truncate">
+              <span className="inline-block h-6 w-32 rounded bg-muted animate-pulse" />
+            </CardTitle>
+          }
+        >
+          {q.data && <CardHeader>{formatValue(key, q.data[key])}</CardHeader>}
+        </QueryCard>
+      ))}
+    </div>
+  );
+}
+
+export function SystemSnapshot2({
+  excludes = [],
+  className,
+  ...props
+}: { excludes?: HealthKey[] } & React.ComponentProps<"div">) {
   // const containerKeys = STRIP_ITEMS.filter((item) => !excludes.includes(item))
   const q = useHealth();
 

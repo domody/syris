@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "../ui/card";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { TriangleAlertIcon } from "lucide-react";
+import { GlobeOffIcon, TriangleAlertIcon } from "lucide-react";
 
 type QueryBoundaryProps<TError = unknown> = {
   query: {
@@ -52,12 +52,15 @@ export function QueryBoundary<TError = unknown>({
       return (
         <>
           {offline ?? (
-            <div className="rounded-md border p-3 text-sm">
-              API unavailable.
-              <div className="mt-1 opacity-70">
-                {getErrorSummary(query.error)}
-              </div>
+            // <Alert variant={"destructive"}>
+            <div className="flex items-center justify-start *:[svg:not([class*='size-'])]:size-4 gap-2 text-destructive">
+              <GlobeOffIcon />
+              <AlertTitle>API not reachable</AlertTitle>
             </div>
+            // <AlertDescription>
+            // {getErrorSummary(query.error)}
+            // </AlertDescription>
+            // </Alert>
           )}
         </>
       );
@@ -66,11 +69,15 @@ export function QueryBoundary<TError = unknown>({
     return (
       <>
         {errorFallback?.(query.error!) ?? (
-          <Alert variant={"destructive"}>
+          <div className="flex items-center justify-start *:[svg:not([class*='size-'])]:size-4 gap-2 text-destructive">
             <TriangleAlertIcon />
             <AlertTitle>Failed to load</AlertTitle>
-            <AlertDescription>{getErrorSummary(query.error)}</AlertDescription>
-          </Alert>
+          </div>
+          // <Alert variant={"destructive"}>
+          //   <TriangleAlertIcon />
+          //   <AlertTitle>Failed to load</AlertTitle>
+          //   <AlertDescription>{getErrorSummary(query.error)}</AlertDescription>
+          // </Alert>
         )}
       </>
     );
