@@ -11,60 +11,53 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { TriangleAlertIcon } from "lucide-react";
 
-type Props = {
-  className?: string;
-
-  isLoading: boolean;
-  isError: boolean;
-  error: unknown;
-  hasData: boolean;
-
-  // what to show while loading
-  loading: React.ReactNode;
-
-  // what to show when server is down / network failed
+type QueryBoundaryProps<TError = unknown> = {
+  query: {
+    data: unknown;
+    error: TError | null;
+    isLoading: boolean;
+    isError: boolean;
+  };
+  loading?: React.ReactNode;
   offline?: React.ReactNode;
-
-  // what to show for server-side errors (4xx/5xx)
-  errorFallback?: (err: unknown) => React.ReactNode;
-
-  // if true, render children but visually disabled when offline/error
+  errorFallback?: (error: TError) => React.ReactNode;
   softDisable?: boolean;
-
+  className?: string;
   children: React.ReactNode;
 };
 
-export function QueryBoundary({
-  className,
-  isLoading,
-  isError,
-  error,
-  hasData,
+export function QueryBoundary<TError = unknown>({
+  query,
   loading,
   offline,
   errorFallback,
   softDisable = false,
+  className,
   children,
-}: Props) {
-  if (isLoading && !hasData) return <>{loading}</>;
+}: QueryBoundaryProps<TError>) {
+  const hasData = query.data != null;
+  const loadingOnly = query.isLoading && !hasData;
+  const failedWithoutData = query.isError && !hasData;
+  const degraded = query.isError && hasData;
 
-  if (isError && !hasData) {
-    if (isNetworkError(error)) {
+  if (loadingOnly) {
+    return <>{loading ?? null}</>;
+  }
+
+  if (failedWithoutData) {
+    if (isNetworkError(query.error)) {
       return (
         <>
           {offline ?? (
-            <Card size="sm">
-              <CardHeader>
-                <CardDescription className="text-foreground font-medium">
-                  API unavailable (server down / blocked / offline). You can
-                  still navigate the app.
-                </CardDescription>
-              </CardHeader>
-              <CardFooter>
-                <CardDescription>{getErrorSummary(error)}</CardDescription>
-              </CardFooter>
-            </Card>
+            <div className="rounded-md border p-3 text-sm">
+              API unavailable.
+              <div className="mt-1 opacity-70">
+                {getErrorSummary(query.error)}
+              </div>
+            </div>
           )}
         </>
       );
@@ -72,26 +65,24 @@ export function QueryBoundary({
 
     return (
       <>
-        {errorFallback?.(error) ?? (
-          <div className="p-3 rounded-md border text-sm">
-            Failed to load.
-            <div className="mt-1 opacity-70">{getErrorSummary(error)}</div>
-          </div>
+        {errorFallback?.(query.error!) ?? (
+          <Alert variant={"destructive"}>
+            <TriangleAlertIcon />
+            <AlertTitle>Failed to load</AlertTitle>
+            <AlertDescription>{getErrorSummary(query.error)}</AlertDescription>
+          </Alert>
         )}
       </>
     );
   }
 
-  // If we have data but a background refetch fails, we still want to show the stale data.
-  // softDisable can indicate degraded state without bricking UI.
-  const degraded = isError && hasData;
-
-  if (softDisable && degraded)
+  if (softDisable && degraded) {
     return (
-      <div className={cn("opacity-60 pointer-events-none", className)}>
+      <div className={cn("pointer-events-none opacity-60", className)}>
         {children}
       </div>
     );
+  }
 
   return <>{children}</>;
 }

@@ -8,6 +8,7 @@ import { QueryBoundary } from "./query/query-boundary";
 import { UptimeBars } from "./uptime-bars";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { GlobeOffIcon } from "lucide-react";
+import { QueryCard } from "./query/query-card";
 
 type HealthKey = keyof HealthResponse;
 
@@ -110,15 +111,17 @@ export function SystemSnapshot({
   className,
   ...props
 }: { excludes?: HealthKey[] } & React.ComponentProps<"div">) {
+  // const containerKeys = STRIP_ITEMS.filter((item) => !excludes.includes(item))
   const q = useHealth();
 
   return (
     <QueryBoundary
       className={cn("w-full", className)}
-      isLoading={q.isLoading}
-      isError={q.isError}
-      error={q.error}
-      hasData={!!q.data}
+      query={q}
+      // isLoading={q.isLoading}
+      // isError={q.isError}
+      // error={q.error}
+      // hasData={!!q.data}
       loading={
         <div className={cn(GRID_CLASS, className)}>
           <SystemSnapshotLoading excludes={excludes} />
@@ -126,28 +129,19 @@ export function SystemSnapshot({
       }
       softDisable
       offline={
-        <Alert variant={"destructive"} className="col-span-2">
-          <GlobeOffIcon />
-          <AlertTitle>API not reachable</AlertTitle>
-          <AlertDescription>
-            System Snapshot unavailable. Check the backend is running and try
-            again.
-          </AlertDescription>
-          {/* <CardHeader>
-            <CardDescription className="text-foreground font-medium">
-              API not reachable. Snapshot unavailable, but the app still works.
-            </CardDescription>
-          </CardHeader> */}
-        </Alert>
+        <>
+          {STRIP_ITEMS.filter((item) => !excludes.includes(item)).map((key) => (
+            <Alert key={key} variant={"destructive"}>
+              <GlobeOffIcon />
+              <AlertTitle>API not reachable</AlertTitle>
+              <AlertDescription>
+                System Snapshot unavailable. Check the backend is running and
+                try again.
+              </AlertDescription>
+            </Alert>
+          ))}
+        </>
       }
-      errorFallback={(err) => (
-        <div className="w-full rounded-md border p-3 text-sm">
-          Snapshot failed to load.
-          <div className="mt-1 opacity-70">
-            {err instanceof Error ? err.message : String(err)}
-          </div>
-        </div>
-      )}
     >
       <div className={cn(GRID_CLASS, className)} {...props}>
         {q.data &&
