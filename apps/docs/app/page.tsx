@@ -62,9 +62,9 @@ const art = String.raw`
 
 export default function Page() {
   return (
-    <>
+    
       <div className="w-screen overflow-x-hidden min-h-screen pt-4 pb-6 md:pb-12 flex flex-col">
-        <Alert className="mb-4 rounded-xl">
+        <Alert className="mb-4 rounded-xl container">
           <AlertCircleIcon />
           <AlertTitle>Mobile view issues</AlertTitle>
           <AlertDescription>
@@ -73,7 +73,7 @@ export default function Page() {
             this issue is resolved. Thank you for your patience.
           </AlertDescription>
         </Alert>
-        <div className="relative isolate flex min-h-[600px] h-[70vh] max-h-[900px] border rounded-2xl overflow-hidden mx-auto w-ful max-w-svw l container bg-origin-border">
+        <div className="relative isolate flex min-h-[600px] h-[70vh] max-h-[900px] border rounded-2xl overflow-hidden mx-auto w-full container bg-origin-border">
           <BackgroundLayers />
           {/* <div
           aria-hidden="true"
@@ -123,8 +123,8 @@ export default function Page() {
             </div>
           </div>
         </div>
-      </div>{" "}
-    </>
+      </div>
+    
   );
 }
 
