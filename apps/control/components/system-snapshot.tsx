@@ -30,6 +30,51 @@ const KEY_LABELS: Partial<Record<HealthKey, string>> = {
   db: "Database",
 };
 
+export function SystemSnapshot({
+  excludes = [],
+  className,
+  ...props
+}: { excludes?: HealthKey[] } & React.ComponentProps<"div">) {
+  const q = useHealth();
+  return (
+    <div className={cn(GRID_CLASS, className)}>
+      {STRIP_ITEMS.filter((item) => !excludes.includes(item)).map((key) => (
+        <QueryCard
+          key={key}
+          query={q}
+          description={formatKey(key)}
+          loading={
+            <CardTitle className="text-2xl truncate">
+              <span className="inline-block h-6 w-32 rounded bg-muted animate-pulse" />
+            </CardTitle>
+          }
+        >
+          {q.data && <CardHeader>{formatValue(key, q.data[key])}</CardHeader>}
+        </QueryCard>
+      ))}
+    </div>
+  );
+}
+
+// TODO: Remove when cards that make use of this component can be
+// overriden by query card when their respective hook becomes available
+export function SnapshotCard({
+  title,
+  value,
+  className,
+  ...props
+}: { title: string; value: string } & React.ComponentProps<"div">) {
+  return (
+    <Card className={cn("w-full", className)} {...props}>
+      <CardHeader>
+        <CardDescription className="text-xs">{title}</CardDescription>
+        <CardTitle className="text-2xl truncate">{value}</CardTitle>
+      </CardHeader>
+    </Card>
+  );
+}
+
+
 function formatKey(key: HealthKey) {
   return (
     KEY_LABELS[key] ??
@@ -63,121 +108,4 @@ function formatValue(key: HealthKey, value: HealthResponse[HealthKey]) {
         .replace(/_/g, " ")
         .replace(/\b\w/g, (c) => c.toUpperCase());
   }
-}
-
-export function SnapshotCard({
-  title,
-  value,
-  className,
-  ...props
-}: { title: string; value: string } & React.ComponentProps<"div">) {
-  return (
-    <Card className={cn("w-full", className)} {...props}>
-      <CardHeader>
-        <CardDescription className="text-xs">{title}</CardDescription>
-        <CardTitle className="text-2xl truncate">{value}</CardTitle>
-      </CardHeader>
-    </Card>
-  );
-}
-
-export function SnapshotCardSkeleton() {
-  return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardDescription className="text-xs">
-          <span className="inline-block h-3 w-24 rounded bg-muted animate-pulse" />
-        </CardDescription>
-        <CardTitle className="text-2xl truncate">
-          <span className="inline-block h-7 w-32 rounded bg-muted animate-pulse" />
-        </CardTitle>
-      </CardHeader>
-    </Card>
-  );
-}
-
-function SystemSnapshotLoading({ excludes = [] }: { excludes?: HealthKey[] }) {
-  return (
-    <>
-      {STRIP_ITEMS.filter((item) => !excludes.includes(item)).map((key) => (
-        <SnapshotCardSkeleton key={key} />
-      ))}
-    </>
-  );
-}
-
-export function SystemSnapshot({
-  excludes = [],
-  className,
-  ...props
-}: { excludes?: HealthKey[] } & React.ComponentProps<"div">) {
-  const q = useHealth();
-  return (
-    <div className={cn(GRID_CLASS, className)}>
-      {STRIP_ITEMS.filter((item) => !excludes.includes(item)).map((key) => (
-        <QueryCard
-          query={q}
-          description={formatKey(key)}
-          loading={
-            <CardTitle className="text-2xl truncate">
-              <span className="inline-block h-6 w-32 rounded bg-muted animate-pulse" />
-            </CardTitle>
-          }
-        >
-          {q.data && <CardHeader>{formatValue(key, q.data[key])}</CardHeader>}
-        </QueryCard>
-      ))}
-    </div>
-  );
-}
-
-export function SystemSnapshot2({
-  excludes = [],
-  className,
-  ...props
-}: { excludes?: HealthKey[] } & React.ComponentProps<"div">) {
-  // const containerKeys = STRIP_ITEMS.filter((item) => !excludes.includes(item))
-  const q = useHealth();
-
-  return (
-    <QueryBoundary
-      className={cn("w-full", className)}
-      query={q}
-      // isLoading={q.isLoading}
-      // isError={q.isError}
-      // error={q.error}
-      // hasData={!!q.data}
-      loading={
-        <div className={cn(GRID_CLASS, className)}>
-          <SystemSnapshotLoading excludes={excludes} />
-        </div>
-      }
-      softDisable
-      offline={
-        <>
-          {STRIP_ITEMS.filter((item) => !excludes.includes(item)).map((key) => (
-            <Alert key={key} variant={"destructive"}>
-              <GlobeOffIcon />
-              <AlertTitle>API not reachable</AlertTitle>
-              <AlertDescription>
-                System Snapshot unavailable. Check the backend is running and
-                try again.
-              </AlertDescription>
-            </Alert>
-          ))}
-        </>
-      }
-    >
-      <div className={cn(GRID_CLASS, className)} {...props}>
-        {q.data &&
-          STRIP_ITEMS.filter((item) => !excludes.includes(item)).map((key) => (
-            <SnapshotCard
-              key={key}
-              title={formatKey(key)}
-              value={formatValue(key, q.data[key])}
-            />
-          ))}
-      </div>
-    </QueryBoundary>
-  );
 }

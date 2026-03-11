@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Item, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { UptimeBars } from "@/components/uptime-bars";
 import { UptimeChart } from "@/components/uptime-chart";
+import { SystemHealthBadge } from "@/features/health/components/system-health-badge";
 import { CheckCircle, CheckCircle2 } from "lucide-react";
 
 export default function SystemHealthPage() {
@@ -13,9 +14,7 @@ export default function SystemHealthPage() {
     <div className="flex flex-col flex-1 items-start justify-start">
       <Topbar className="g">
         <h1 className="text-base font-medium">System Health</h1>
-        <Badge className="bg-green-600 dark:bg-green-500 ml-auto">
-          All Systems Operational
-        </Badge>
+        <SystemHealthBadge className="ml-auto mr-2" />
       </Topbar>
       <div className="flex flex-1 flex-col gap-2 w-full p-4 items-start justify-start">
         <SystemSnapshot />

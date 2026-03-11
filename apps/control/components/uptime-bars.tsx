@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Separator } from "./ui/separator";
+import { SYSTEM_STATES } from "@/features/health/system-state";
 
 const timeframeOptions = [
   { label: "30 days", value: "30_days", number: 30 },
@@ -172,28 +172,28 @@ function normalizeUptimeData(data: UptimeDay[], days: number): UptimeDay[] {
 const STATUS_RULES = [
   {
     test: (uptimePct: number | null) => uptimePct === null,
-    color: "bg-accent",
-    title: "No data",
+    color: SYSTEM_STATES.unknown.color,
+    title: SYSTEM_STATES.unknown.title,
   },
   {
     test: (uptimePct: number | null) => uptimePct === 100,
-    color: "bg-green-500",
-    title: "All systems operational",
+    color: SYSTEM_STATES.healthy.color,
+    title: SYSTEM_STATES.healthy.title,
   },
   {
     test: (uptimePct: number | null) => uptimePct !== null && uptimePct >= 99,
-    color: "bg-amber-400",
-    title: "Degraded performance",
+    color: SYSTEM_STATES.degraded.color,
+    title: SYSTEM_STATES.degraded.title,
   },
   {
     test: (uptimePct: number | null) => uptimePct !== null && uptimePct >= 95,
-    color: "bg-orange-400",
-    title: "Partial systems outage",
+    color: SYSTEM_STATES.partial_outage.color,
+    title: SYSTEM_STATES.partial_outage.title,
   },
   {
     test: (_uptimePct: number | null) => true,
-    color: "bg-red-400",
-    title: "Major systems outage",
+    color: SYSTEM_STATES.major_outage.color,
+    title: SYSTEM_STATES.major_outage.title,
   },
 ] as const;
 

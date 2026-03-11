@@ -1,4 +1,5 @@
 // import { SystemStatus } from "@/components/status-dot";
+import { stat } from "fs";
 import { HealthQuery } from "./use-health";
 
 export type SystemStateKey =
@@ -14,16 +15,26 @@ type SystemState = {
   description: string;
   shortLabel: string;
   severity: "neutral" | "success" | "warning" | "danger";
+  color: string;
   reason?: string;
 };
 
-const SYSTEM_STATES: Record<SystemStateKey, SystemState> = {
+export const statusColor: Record<SystemStateKey, string> = {
+  unknown: "bg-neutral-300 dark:bg-neutral-700",
+  healthy: "bg-green-500",
+  degraded: "bg-amber-500",
+  partial_outage: "bg-orange-500",
+  major_outage: "bg-destructive",
+};
+
+export const SYSTEM_STATES: Record<SystemStateKey, SystemState> = {
   unknown: {
     uiStatus: "unknown",
     title: "System status unknown",
     description: "We can't determine the current system health yet.",
     shortLabel: "Unknown",
     severity: "neutral",
+    color: statusColor["unknown"],
   },
   healthy: {
     uiStatus: "healthy",
@@ -31,6 +42,7 @@ const SYSTEM_STATES: Record<SystemStateKey, SystemState> = {
     description: "Everything is working normally.",
     shortLabel: "Operational",
     severity: "success",
+    color: statusColor["healthy"],
   },
   degraded: {
     uiStatus: "degraded",
@@ -39,6 +51,7 @@ const SYSTEM_STATES: Record<SystemStateKey, SystemState> = {
       "Some parts of the system are slower or less reliable than usual.",
     shortLabel: "Degraded",
     severity: "warning",
+    color: statusColor["degraded"],
   },
   partial_outage: {
     uiStatus: "partial_outage",
@@ -46,6 +59,7 @@ const SYSTEM_STATES: Record<SystemStateKey, SystemState> = {
     description: "Some system components are currently unavailable.",
     shortLabel: "Partial outage",
     severity: "danger",
+    color: statusColor["partial_outage"],
   },
   major_outage: {
     uiStatus: "major_outage",
@@ -53,23 +67,9 @@ const SYSTEM_STATES: Record<SystemStateKey, SystemState> = {
     description: "The system is currently unavailable.",
     shortLabel: "Major outage",
     severity: "danger",
+    color: statusColor["major_outage"],
   },
 };
-
-function getSystemStateKey(query: HealthQuery): SystemStateKey {
-  if (query.isPending || query.isLoading) return "unknown";
-  if (query.isError) return "major_outage";
-
-  const data = query.data;
-  if (!data) return "unknown";
-
-  // data.status here is the API field
-  if (data.status === "ok" && data.db?.ok) return "healthy";
-  if (data.status === "degraded") return "degraded";
-  if (!data.db?.ok) return "partial_outage";
-
-  return "unknown";
-}
 
 export function getSystemState(query: HealthQuery): SystemState {
   if (query.isPending || query.isLoading) {

@@ -45,7 +45,7 @@ export default function Page() {
         <div className="w-full grid grid-cols-2 gap-2">
           <UptimeBars />
         </div>
-        <div className="w-full grid grid-cols-4 gap-2">
+        <div className="w-full grid grid-cols-3 gap-2">
           {row4.map((item) => {
             return (
               <Card key={item} className="min-h-24" size="sm">
