@@ -39,8 +39,8 @@ export function Topbar({ children }: { children?: React.ReactNode }) {
         >
           Documentation
         </Link>
-        <Separator className={"ml-auto"} orientation="vertical" />
-        <MobileNav tree={pageTree} className="flex lg:hidden" />
+        {/* <Separator className={"ml-auto"} orientation="vertical" /> */}
+        <MobileNav tree={pageTree} className="flex lg:hidden ml-auto" />
         <GitHubLink />
       </div>
     </header>
