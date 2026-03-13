@@ -27,6 +27,13 @@ export function MobileNav({
   const pathname = usePathname();
   const currentBase = getCurrentBase(pathname);
 
+  React.useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+  }, [open]);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
@@ -62,7 +69,7 @@ export function MobileNav({
         }
       />
       <PopoverContent
-        className="no-scrollbar h-(--available-height) w-(--available-width) overflow-y-auto rounded-none border-none bg-background/90 p-0 shadow-none backdrop-blur duration-100 data-open:animate-none!"
+        className="no-scrollbar h-(--available-height) w-(--available-width) overflow-y-auto rounded-none border-none ring-0 bg-background/90 p-0 shadow-none backdrop-blur duration-100 data-open:animate-none!"
         align="start"
         side="bottom"
         alignOffset={-16}
