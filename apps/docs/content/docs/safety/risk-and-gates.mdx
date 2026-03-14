@@ -1,0 +1,76 @@
+---
+title: Risk and Gates
+description: How SYRIS assigns risk levels, applies safety overrides, and routes tool calls through approval gates.
+---
+
+## Risk levels
+
+Each tool and action SYRIS can execute has an assigned risk both at the tool level and the action level (as certain tools are more dangerous under certain actions). This risk helps SYRIS understand whether or not it's allowed to make use of certain tools and which actions it must follow.
+
+| Risk     | Examples                                                                            | Typical gate                         |
+| -------- | ----------------------------------------------------------------------------------- | ------------------------------------ |
+| Low      | Read-only queries, status checks, local notes                                       | Usually allowed in A2+               |
+| Medium   | Controlling a single device, sending to private channel, creating calendar event    | Often requires approval in A1/A2     |
+| High     | Deleting data, controlling many devices, sending broadly, quiet-hours notifications | Approval required                    |
+| Critical | Purchases, public posting, irreversible actions, wide “blast radius”                | Strong gate + explicit operator flow |
+
+### Risk Adjusters
+
+Adjusters can be applied to each tool call at runtime that can only increase the risk. These adjusters help more accurately determine a tools risk based on what it intends to do.
+
+```bash
+  +1 level if target is a broadcast/group channel (not private)
+  +1 level if action is destructive (delete, wipe, reset)
+  +1 level if blast_radius > threshold (e.g. all-home device control)
+```
+
+## Confirmation gates
+
+There are 4 possible confirmation gates throughout which a tool can be gated through.
+
+| Gate       | Description                                                     |
+| ---------- | --------------------------------------------------------------- |
+| ALLOW      | Execute immediately                                             |
+| CONFIRM    | Request approval; block exeuction until the operator confirms   |
+| PREVIEW    | Generate dry-run preview; no exeuction                          |
+| HARD BLOCK | Refuse outright; critical actions are blocked for system safety |
+
+<Accordion>
+  <AccordionItem value="faq-1" className="border-none">
+    <AccordionTrigger>
+      Potentially outdated content below
+    </AccordionTrigger>
+    <AccordionContent>
+> A gate is a persisted `Approval` request that includes:
+>
+> - why it’s gated (risk/autonomy/policy)
+> - the exact payload to execute (no “surprises”)
+> - how to approve/deny (dashboard or explicit reply)
+> - expiry window
+>
+> Approvals are **audited** and **trace-linked** to the originating event/task.
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
+
+## Dry-run previews
+
+For risky tools, SYRIS should generate a preview:
+
+- message render preview
+- device state diffs (before &gt; after)
+- patch previews for code changes
+- “what will happen” summary
+
+Execution must re-use the same idempotency key as the preview.
+
+## Hard safety overrides
+
+Hard safety overrides are always applied before the gate matrix. This is to catch, prevent, and alert the user about any unsafe actions as soon as possible.
+
+> These overrides are always suspect to change and updates.
+
+- Secrets scope: if a tool call requires any secret-access scope, always CONFIRM (never ALLOW, even at A4)
+- Quiet hours & Medium+ risk: if within quiet hours, but a tool call has above a medium risk, CONFIRM
+- Anti-flap: if the same tool, action, and target are fired within a certain cooldown window, BLOCk with reason "anti-flap cooldown"; emit an AuditEvent("gate.antiflap_block")
+- Notification storm: if outbound notifications in the last hour exceed a specified maximum, BLOCK for notification tools; emit AuditEvent("gate.storm_block")

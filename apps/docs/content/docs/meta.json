@@ -1,3 +1,3 @@
 {
-  "pages": ["overview", "architecture", "safety", "dev", "ops", "adr", "..."]
+  "pages": ["overview", "architecture", "safety", "dev", "ops", "adr", "...", "archive"]
 }

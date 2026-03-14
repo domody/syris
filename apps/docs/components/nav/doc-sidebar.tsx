@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Badge } from "../ui/badge";
 
 export function DocSidebar({
   tree,
