@@ -38,7 +38,6 @@ export async function generateMetadata(props: {
   }
 
   const doc = page.data;
-  console.log(doc);
 
   if (!doc.title || !doc.description) {
     notFound();
