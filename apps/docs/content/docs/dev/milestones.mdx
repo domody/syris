@@ -1,0 +1,153 @@
+---
+title: Milestones
+description: All 8 implementation milestones with deliverables and done-when criteria.
+---
+
+Eight milestones sequence the implementation. Each milestone builds on the previous and has a specific "done when" criterion that is testable, not aspirational.
+
+## Milestone 0: Skeleton
+
+**Timeline:** Day 1–2  
+**Goal:** A running process with DB, API, and audit writer. No pipeline yet.
+
+Deliverables:
+
+- Repo structure, `pyproject.toml` with deps (fastapi, uvicorn, sqlalchemy, alembic, pydantic)
+- SQLite DB + Alembic migration 0001: `audit_events`, `system_health` tables
+- `AuditWriter` implemented and unit-tested
+- `GET /health` returns a hardcoded heartbeat
+- `GET /audit` returns audit events (empty list)
+
+**Done when:** `uv run syris-api` → hit `/health` → get response. Write an audit event manually → see it at `/audit`. All tested.
+
+## Milestone 1: Pipeline skeleton with real audit output
+
+**Timeline:** Week 1  
+**Goal:** An event flows end-to-end through Normalize → Route → Execute (fast only) and every stage emits a queryable audit event.
+
+Deliverables:
+
+- `schemas/` package: `MessageEvent`, `RoutingDecision`, `AuditEvent` (Pydantic v2)
+- `storage/models.py` + repos for events, audit, routing_decisions
+- `normalizer.py`: accepts raw dict + channel, returns `MessageEvent`, persists + audits
+- `router.py`: hard filter + one fast path (timer intent), returns `RoutingDecision`
+- `pipeline/executor.py`: fast lane only, calls `NoopTool`, audits
+- `tools/executor.py`: scope check + idempotency + `NoopTool` + audit
+- `GET /events`, `GET /audit`, `GET /audit?trace_id=X` working
+
+**Done when:** POST a raw event → watch it traverse pipeline → query full trace at `/audit?trace_id=X` showing 4 audit events (`event.ingested`, `routing.decided`, `tool_call.attempted`, `tool_call.succeeded`). Zero log-spelunking.
+
+## Milestone 2: Task engine
+
+**Timeline:** Week 2  
+**Goal:** Multi-step workflows with checkpointing, retries, and crash recovery.
+
+Deliverables:
+
+- `schemas/tasks.py`: `Task`, `Step`, `RetryPolicy`
+- `storage/repos/tasks.py`
+- `tasks/engine.py`: claim → execute → checkpoint loop with `FOR UPDATE SKIP LOCKED`
+- `tasks/step_runner.py`: run step, handle retries, write checkpoint
+- `tasks/state.py`: state machine enforcement (illegal transitions blocked at DB level)
+- `tasks/recovery.py`: startup reconciliation
+- `GET /tasks`, `GET /tasks/{id}`, `POST /tasks/{id}/cancel|pause|resume`
+
+**Done when:** Create 3-step task → kill process mid-step-2 → restart → observe task resumes from step 2. Audit shows interruption and recovery. No duplicated side effects.
+
+## Milestone 3: Safety layer + Approvals
+
+**Timeline:** Week 3  
+**Goal:** Autonomy levels, risk classification, and approval gates working end-to-end.
+
+Deliverables:
+
+- `safety/autonomy.py`: read/write current level, persist history
+- `safety/risk.py`: classify tool action → risk level
+- `safety/gates.py`: gate decision logic per autonomy × risk matrix
+- `safety/dryrun.py`: preview protocol
+- `schemas/approvals.py` + `storage/repos/approvals.py`
+- `GET /approvals`, `POST /approvals/{id}/approve|deny`
+- `POST /controls/autonomy`
+
+**Done when:** With `autonomy = A1`, medium-risk tool call creates `Approval` at `/approvals`, blocks execution. Operator approves via API. Tool executes. Full trace queryable.
+
+## Milestone 4: Scheduler + Watchers
+
+**Timeline:** Week 4  
+**Goal:** Timers and scheduled events flow through the pipeline proactively.
+
+Deliverables:
+
+- `scheduler/scheduler.py`: cron + interval + one-shot loop
+- `storage/repos/schedules.py`
+- `scheduler/watchers/base.py` + `HeartbeatWatcher`
+- `GET /schedules`, `POST /schedules`, `PATCH /schedules/{id}`
+- `GET /watchers`, `PATCH /watchers/{id}`
+- `GET /health` now uses real heartbeat data
+
+**Done when:** Create 30-second interval schedule → observe firing in `/audit`. Heartbeat appears in `/health`. Disable watcher via API → confirm it stops ticking in `/audit`.
+
+## Milestone 5: Rules Engine
+
+**Timeline:** Week 5  
+**Goal:** IFTTT-style rules fire, suppress correctly, and emit child events.
+
+Deliverables:
+
+- `scheduler/rules/engine.py` + condition evaluator
+- `storage/repos/rules.py` (rules stored in DB)
+- Debounce + dedupe tracking in `WatcherState`
+- Quiet hours enforcement
+- `GET /rules`, `PATCH /rules/{id}`
+
+**Done when:** Rule matching `ha_event` fires → emits child event with `parent_event_id` set → both in audit with same `trace_id`. Same event fired 5× within debounce window → 1 `rule.triggered` + 4 `rule.suppressed` in audit.
+
+## Milestone 6: MCP Integration
+
+**Timeline:** Week 6–7  
+**Goal:** An MCP server's tools appear in the tool registry and execute with full SYRIS gating.
+
+Deliverables:
+
+- `integrations/mcp/connection.py`: persistent connection + reconnect
+- `integrations/mcp/provider.py`: tool discovery + registry sync
+- `integrations/mcp/adapter.py`: `MCPToolAdapter(BaseTool)`
+- `integrations/mcp/trust.py`: `TrustPolicy` schema + loader
+- `GET /integrations` showing MCP server health
+- MCP connection lifecycle audit events
+
+**Done when:** Connect real MCP server → tools appear in `GET /integrations`. Execute one tool → full audit trail (scope check, risk, idempotency, gate, result). Disconnect → health degrades in dashboard within 30 seconds.
+
+## Milestone 7: Worker Skeleton
+
+**Timeline:** Week 8  
+**Goal:** A gated job submission and status reporting mechanism exists.
+
+Deliverables:
+
+- `workers/manager.py`: job table, spawn/progress/cancel
+- `workers/runtimes/process.py`: OS process isolation
+- `GET /state` shows job count
+
+**Done when:** Submit stub long-running job via API → observe in `/state` → cancel → see cancellation in audit.
+
+## Milestone 8: First real integrations
+
+**Timeline:** Week 9+  
+**Goal:** A Home Assistant adapter or email adapter working end-to-end with live data.
+
+Deliverables:
+
+- First inbound adapter (e.g. webhook receiver for Home Assistant events)
+- First outbound tool (e.g. HA service call or email send)
+- Secrets store wired to real credentials
+- Approval flow exercised with a real risky action (e.g. device control)
+
+**Done when:** A real-world event flows in from HA or email, routes correctly, executes a tool with full audit trail, and requires/passes approval if risk demands it. SYRIS is useful.
+
+## Related
+
+- [dev/repo-structure](/docs/dev/repo-structure)
+- [dev/testing-strategy](/docs/dev/testing-strategy)
+- [dev/outstanding-decisions](/docs/dev/outstanding-decisions)
+- [architecture/component-map](/docs/architecture/component-map)

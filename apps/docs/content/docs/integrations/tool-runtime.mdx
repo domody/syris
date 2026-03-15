@@ -1,0 +1,105 @@
+---
+title: Tool Runtime
+description: ToolRegistry structure, BaseTool interface, the tool executor flow, and the secrets boundary.
+---
+ 
+The tool runtime is the single enforcement point for all tool invocations. No code calls a tool directly — everything goes through `tools/executor.py`.
+ 
+## Tool Registry
+ 
+`ToolRegistry` maintains a dict of registered tools keyed by `tool_name`.
+ 
+```yaml
+ToolRegistry
+  _tools:             dict[str, RegisteredTool]
+ 
+  register(tool: BaseTool, config: ToolConfig) → None
+  get(tool_name: str) → RegisteredTool | None
+  list_healthy() → list[RegisteredTool]
+  update_health(tool_name, health: ToolHealth) → None
+```
+ 
+```yaml
+RegisteredTool
+  tool_name:          str
+  connector_id:       str
+  capabilities:       list[str]
+  scopes:             list[str]
+  risk_default:       RiskLevel
+  risk_map:           dict[str, RiskLevel]    — action-level overrides
+  supports_preview:   bool
+  provider_type:      ProviderType            — native | mcp
+  health:             ToolHealth
+  config_ref:         str                     — DB ref; no secrets inline
+ 
+ToolHealth
+  status:             HealthStatus            — healthy | degraded | unavailable
+  last_success_at:    datetime | None
+  last_error:         str | None
+  consecutive_errors: int
+  rate_limit_resets_at: datetime | None
+```
+ 
+## BaseTool interface
+ 
+All tool adapters implement `BaseTool`:
+ 
+```py title="base_tool.py"
+class BaseTool(ABC):
+ 
+    @property
+    def tool_name(self) -> str: ...
+ 
+    @property
+    def capabilities(self) -> list[str]: ...
+ 
+    @property
+    def scopes_required(self) -> list[str]: ...
+ 
+    def execute(
+        self,
+        action: str,
+        request: dict,
+        context: ToolCallContext,    # trace_id, task_id, step_id,
+                                     # idempotency_key, autonomy_level,
+                                     # granted_scopes
+    ) -> ToolResult: ...
+ 
+    def preview(
+        self,
+        action: str,
+        request: dict,
+        context: ToolCallContext,
+    ) -> PreviewResult | None: ...   # None = tool does not support preview
+```
+ 
+`ToolCallContext` carries all cross-cutting concerns; the tool implementation does not read system state directly.
+ 
+## Tool executor flow
+ 
+`tool_executor.call(tool_name, action, request, context)` runs the following sequence. Every step that fails emits an `AuditEvent` before raising.
+ 
+1. **Registry lookup** — fail fast if the tool is not registered or is unavailable.
+2. **Scope check** — assert all `tool.scopes_required` are present in `context.granted_scopes`. Failure raises `ScopeViolation`; not retried.
+3. **Risk classification** — `risk = tool.risk_map.get(action, tool.risk_default)`, then adjusters applied. See [safety/risk-and-gates](/docs/safety/risk-and-gates).
+4. **Gate check** — query gate matrix with `(autonomy_level, risk_level)`. If `CONFIRM`: create `Approval` record, emit `gate.required`, raise `ApprovalRequired`. If `PREVIEW`: run `tool.preview()`, raise `PreviewRequired`.
+5. **Idempotency check** — query `idempotency_outcomes` for `context.idempotency_key`. If found: emit `tool_call.deduped`, return cached result.
+6. **Execute** — emit `tool_call.attempted`, call `tool.execute()`. On success: write outcome, emit `tool_call.succeeded`. On retryable error: emit `tool_call.failed`. On transport failure: write `unknown` outcome, emit `tool_call.unknown`.
+ 
+## Secrets boundary
+ 
+The tool runtime enforces a strict secrets boundary. See [ops/secrets](/docs/ops/secrets) for the full contract.
+ 
+- Tool adapters receive a `SecretsStore` instance injected at construction.
+- They call `get_secret(connector_id, key)` inside `execute()`, immediately before use.
+- The returned value is never stored beyond the call.
+- `config_ref` on `RegisteredTool` is a DB reference only — no credentials inline.
+ 
+## Related
+ 
+- [integrations/mcp](/docs/integrations/mcp)
+- [integrations/inbound-adapters](/docs/integrations/inbound-adapters)
+- [safety/risk-and-gates](/docs/safety/risk-and-gates)
+- [safety/autonomy-levels](/docs/safety/autonomy-levels)
+- [ops/secrets](/docs/ops/secrets)
+- [architecture/data-contracts](/docs/architecture/data-contracts)

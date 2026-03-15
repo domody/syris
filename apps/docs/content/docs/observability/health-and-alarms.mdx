@@ -1,0 +1,78 @@
+---
+title: Health and Alarms
+description: SystemHealth record, write cadence, alarm lifecycle, trigger conditions, and the minimum operator control API.
+---
+
+## System health
+
+`HeartbeatWatcher` writes a `SystemHealth` record to `system_health` every **30 seconds**.
+
+```yaml
+SystemHealth
+  status:               HealthStatus  — healthy | degraded | down
+  uptime_seconds:       int
+  version:              str
+  restart_reason:       str | None
+  last_heartbeat_at:    datetime
+  next_expected_at:     datetime      — if now > this, heartbeat is missed
+  degraded_subsystems:  list[str]     — names of unhealthy subsystems
+```
+
+`GET /health` returns the most recent record. `next_expected_at` is used by the alarm system to detect missed heartbeats without requiring a log scan.
+
+## Alarm lifecycle
+
+Alarms are persisted entities with three states:
+
+```text
+open ──► acked ──► resolved
+```
+
+- **open:** the condition that triggered the alarm is still active.
+- **acked:** an operator has acknowledged the alarm; it remains open.
+- **resolved:** the condition is cleared and the operator has confirmed resolution.
+
+Alarms use a `dedupe_key` to prevent storms: if an open alarm already exists for the same `dedupe_key`, a new trigger does not create a duplicate alarm — it updates the existing one.
+
+## Alarm trigger conditions
+
+| Trigger type              | Condition                                                  | Severity |
+| ------------------------- | ---------------------------------------------------------- | -------- |
+| Missed heartbeat          | `now > system_health.next_expected_at + grace_period`      | critical |
+| Integration auth failed   | Consecutive auth errors ≥ threshold                        | error    |
+| Integration auth expiring | Credential expiry within warning window                    | warning  |
+| Repeated tool errors      | `tool.consecutive_errors ≥ threshold`                      | error    |
+| Stuck task                | `status = running AND updated_at < now - threshold`        | warning  |
+| Rule storm                | `triggered_count_per_minute > threshold`                   | warning  |
+| Schedule backlog          | `next_run_at < now - threshold AND enabled = 1`            | warning  |
+| Notification storm        | Outbound notifications/hour > `MAX_NOTIFICATIONS_PER_HOUR` | warning  |
+| Secret in audit payload   | Redaction miss detected                                    | critical |
+
+## Operator control endpoints
+
+All controls endpoints emit `operator.action.*` audit events. See [observability/api-reference](/docs/observability/api-reference) for the full endpoint list.
+
+| Endpoint                       | Action                           |
+| ------------------------------ | -------------------------------- |
+| `POST /controls/pause`         | Pause all pipeline processing    |
+| `POST /controls/resume`        | Resume pipeline processing       |
+| `POST /controls/autonomy`      | Change autonomy level            |
+| `POST /tasks/{id}/cancel`      | Cancel a running or paused task  |
+| `POST /tasks/{id}/pause`       | Pause a running task             |
+| `POST /tasks/{id}/resume`      | Resume a paused task             |
+| `POST /tasks/{id}/retry`       | Retry a failed task              |
+| `PATCH /watchers/{id}`         | Enable or disable a watcher      |
+| `PATCH /rules/{id}`            | Enable or disable a rule         |
+| `PATCH /integrations/{id}`     | Enable or disable an integration |
+| `POST /approvals/{id}/approve` | Approve a pending gate           |
+| `POST /approvals/{id}/deny`    | Deny a pending gate              |
+| `POST /alarms/{id}/ack`        | Acknowledge an open alarm        |
+| `POST /alarms/{id}/resolve`    | Resolve an alarm                 |
+
+## Related
+
+- [observability/projections](/docs/observability/projections)
+- [observability/audit-log](/docs/observability/audit-log)
+- [observability/api-reference](/docs/observability/api-reference)
+- [proactive/watchers](/docs/proactive/watchers)
+- [ops/failure-modes](/docs/ops/failure-modes)

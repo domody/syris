@@ -1,0 +1,145 @@
+---
+title: Rules Engine
+description: Condition DSL reference, action types, debounce and dedupe behaviour, and the rule caching strategy.
+---
+
+Rules are IFTTT-style condition → action mappings stored in the DB. They are evaluated on every `MessageEvent` by the router. Rules are data, not code — no runtime eval.
+
+## Condition DSL
+
+Conditions are JSON structures stored in `rules.conditions`. The evaluator in `routing/rules_eval.py` processes them against a flattened view of `MessageEvent`.
+
+### Logical combinators
+
+```json
+{ "all":  [condition, ...] }
+{ "any":  [condition, ...] }
+{ "none": [condition, ...] }
+```
+
+`all` = AND (all must match); `any` = OR (at least one); `none` = NOR (none must match). Combinators nest up to `MAX_NESTING_DEPTH = 5`.
+
+### Field comparison operators
+
+```json
+{ "field": "dotted.path", "op": "eq",          "value": "string"     }
+{ "field": "dotted.path", "op": "neq",         "value": "string"     }
+{ "field": "dotted.path", "op": "in",          "value": ["a", "b"]   }
+{ "field": "dotted.path", "op": "not_in",      "value": ["a", "b"]   }
+{ "field": "dotted.path", "op": "contains",    "value": "substring"  }
+{ "field": "dotted.path", "op": "not_contains","value": "substring"  }
+{ "field": "dotted.path", "op": "matches",     "value": "glob*pattern" }
+{ "field": "dotted.path", "op": "lt",          "value": 100          }
+{ "field": "dotted.path", "op": "lte",         "value": 100          }
+{ "field": "dotted.path", "op": "gt",          "value": 100          }
+{ "field": "dotted.path", "op": "gte",         "value": 100          }
+{ "field": "dotted.path", "op": "exists"   }
+{ "field": "dotted.path", "op": "not_exists" }
+```
+
+**`matches` uses glob patterns only — no regex.** This is a hard constraint. Glob patterns (`*`, `?`, `[...]`) bound evaluation complexity and eliminate ReDoS risk. Regex is not supported and will be rejected by the evaluator.
+
+### System-state conditions
+
+```json
+{ 
+  "time_window": 
+    { 
+      "days": ["Mon","Tue"], 
+      "start": "09:00",
+      "end": "17:00", "timezone": "Europe/London" 
+    } 
+}
+{ "autonomy_gte": "A2" }
+{ "system_status": "healthy" }
+```
+
+### Field path syntax
+
+Dot notation resolves against a flattened dict view of `MessageEvent`. Maximum 5 path segments.
+
+```text
+"source.channel"               → event.source.channel
+"content.structured.device_id" → event.content.structured["device_id"]
+"actor.actor_type"             → event.actor.actor_type
+"context.device_id"            → event.context.device_id
+```
+
+### Worked example
+
+```json
+{
+  "all": [
+    { "field": "source.channel", "op": "eq", "value": "ha_event" },
+    {
+      "field": "content.structured.device_id",
+      "op": "eq",
+      "value": "sensor_1"
+    },
+    { "field": "content.structured.state", "op": "eq", "value": "on" }
+  ]
+}
+```
+
+## Action types
+
+When a rule matches, it dispatches one or more actions:
+
+### EmitEventAction
+
+Injects a new `MessageEvent` as a child of the triggering event. The child event carries `parent_event_id` and shares `trace_id`.
+
+```yaml
+EmitEventAction
+  channel:      str       — source.channel of the emitted event
+  structured:   dict      — payload
+  text:         str | None
+```
+
+### StartTaskAction
+
+Instantiates a named task template.
+
+```yaml
+StartTaskAction
+  template_id:   str      — references a registered TaskTemplate
+  input_mapping: dict     — maps event fields to task inputs
+```
+
+### NotifyAction
+
+Shorthand `EmitEventAction` targeting a notification tool.
+
+```yaml
+NotifyAction
+  message_template: str   — simple {variable} substitution only; no eval
+  channel:          str
+  urgency:          str   — normal | high
+```
+
+## Debounce, dedupe, and quiet hours
+
+Before dispatching actions, the evaluator checks:
+
+1. **Debounce:** if `now - last_fired_at < debounce_ms`, suppress and emit `AuditEvent("rule.suppressed", reason="debounce")`.
+2. **Dedupe:** if `dedupe_key` matches the stored `last_dedupe_key` and is within `dedupe_window_ms`, suppress and emit `AuditEvent("rule.suppressed", reason="dedupe")`.
+3. **Quiet hours:** if a `quiet_hours_policy_id` is set and the current time falls within the window, suppress and emit `AuditEvent("rule.suppressed", reason="quiet_hours")`.
+
+A suppressed rule still appears in the audit log with a `suppressed` outcome and the reason.
+
+## Rule caching
+
+Rules are loaded from DB and cached in memory. The cache is invalidated:
+
+- Immediately on any rule create, update, or delete via the API.
+- Every 5 minutes as a fallback TTL.
+
+Evaluation safety limits enforced by `ConditionEvaluator`: `MAX_NESTING_DEPTH = 5`, `MAX_CONDITIONS = 20`, `EVAL_TIMEOUT_MS = 10`.
+
+## Related
+
+- [proactive/scheduler](/docs/proactive/scheduler)
+- [proactive/watchers](/docs/proactive/watchers)
+- [architecture/pipeline](/docs/architecture/pipeline)
+- [dev/fast-path-intents](/docs/dev/fast-path-intents)
+- [ops/db-schema](/docs/ops/db-schema)

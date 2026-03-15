@@ -1,0 +1,65 @@
+---
+title: Database Schema
+description: SQLite configuration, table summary with indexes, the Postgres migration rules, and the audit append-only constraint.
+---
+
+SYRIS uses SQLite in WAL mode as the default database. The schema is designed to be Postgres-compatible with three trivial changes.
+
+## SQLite configuration
+
+The following PRAGMAs must be applied on every connection:
+
+```sql
+PRAGMA journal_mode = WAL;       -- Write-Ahead Logging: concurrent reads + one writer
+PRAGMA synchronous  = NORMAL;    -- Safe with WAL; avoids fsync on every commit
+PRAGMA foreign_keys = ON;        -- Enforce referential integrity
+PRAGMA busy_timeout = 5000;      -- ms; prevents "database is locked" under load
+```
+
+`WAL` is required because the API server and background loops read the DB concurrently while the pipeline writes it. `synchronous = NORMAL` is safe with WAL because WAL itself provides crash safety. `busy_timeout` prevents lock errors during brief write contention.
+
+## Table summary
+
+| Table                  | Purpose                                                        | Key indexes                                                                      |
+| ---------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `events`               | Inbound events after normalisation                             | `trace_id`, `ingested_at`, `channel`, `dedupe_key` (unique partial)              |
+| `routing_decisions`    | Routing outcome per event chain (1:1 with trace)               | `event_id`, `decided_at`                                                         |
+| `tasks`                | Persisted workflow instances                                   | `status`, `trace_id`, `next_wake_time` (partial), `updated_at`                   |
+| `steps`                | Individual resumable units within tasks                        | `task_id`, `status`, `idempotency_key` (partial)                                 |
+| `tool_calls`           | Record of every tool invocation                                | `trace_id`, `idempotency_key`, `created_at`                                      |
+| `tool_results`         | Final outcome per tool call (FK to tool_calls)                 | PK = `tool_call_id`                                                              |
+| `idempotency_outcomes` | Stable outcome store for dedup on retry/restart                | PK = `idempotency_key`                                                           |
+| `audit_events`         | Append-only operational history — never updated or deleted     | `trace_id`, `timestamp`, `type`, `outcome`, `tool_name`, `ref_task_id` (partial) |
+| `approvals`            | Pending and resolved gate decisions                            | `status`, `trace_id`, `expires_at`                                               |
+| `schedules`            | Persistent schedule definitions                                | `next_run_at` (partial, `enabled = 1` only)                                      |
+| `watcher_state`        | Per-watcher tick, error, and dedup state                       | PK = `watcher_id`                                                                |
+| `rules`                | IFTTT-style condition → action rules                           | `enabled`, `priority`                                                            |
+| `system_health`        | Periodic heartbeat records from HeartbeatWatcher               | `recorded_at`                                                                    |
+| `alarms`               | Open and resolved incidents                                    | `dedupe_key` (unique partial, open only), `status`                               |
+| `artifacts`            | Encrypted, redacted audit payloads referenced by `payload_ref` | `ref_id`, `created_at`                                                           |
+
+Field-level schemas for `events`, `audit_events`, and `approvals` are in [architecture/data-contracts](/docs/architecture/data-contracts). Full DDL lives in `storage/migrations/`.
+
+## Append-only constraint on audit_events
+
+`audit_events` must never be updated or deleted by application code. This is enforced by convention at the application layer: `AuditWriter` is the only code that writes to this table, and it only issues `INSERT`.
+
+At the DB level, no cascade deletes reference `audit_events`. If enforcement at the DB level is required, a trigger that raises on `UPDATE` or `DELETE` of `audit_events` can be added as a migration step.
+
+## Postgres migration rules
+
+The SQLite schema above is valid Postgres SQL with exactly three changes:
+
+1. `INTEGER PRIMARY KEY AUTOINCREMENT` → `SERIAL PRIMARY KEY`
+2. `INTEGER` boolean columns (`0`/`1`) → `BOOLEAN`
+3. Partial index `WHERE` syntax is identical in Postgres — no change required
+
+Use Alembic with `render_as_batch = True` during SQLite development for `ALTER TABLE` compatibility. When migrating to Postgres, use `alembic --sql` to generate reviewed DDL rather than migrating a live database directly.
+
+## Related
+
+- [architecture/data-contracts](/docs/architecture/data-contracts)
+- [observability/audit-log](/docs/observability/audit-log)
+- [architecture/task-engine](/docs/architecture/task-engine)
+- [dev/repo-structure](/docs/dev/repo-structure)
+- [dev/outstanding-decisions](/docs/dev/outstanding-decisions)

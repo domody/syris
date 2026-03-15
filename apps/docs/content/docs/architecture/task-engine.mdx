@@ -1,0 +1,130 @@
+---
+title: Task Engine
+description: State machines, engine loop, idempotency, crash recovery, and the approval-wait loop.
+---
+ 
+The task engine manages multi-step, checkpointed workflows. It is the execution path for events routed to the `task` lane.
+ 
+## State machines
+ 
+### Task state machine
+ 
+```bash
+           CREATE
+              │
+              ▼
+          [pending] ──► [running] ──────────────► [succeeded]
+                            │
+                            ├── operator pause ──► [paused]
+                            │        └── resume ──────────────► [running]
+                            │
+                            ├── operator cancel ──────────────► [canceled]
+                            │
+                            └── retries exhausted ────────────► [failed]
+```
+ 
+Terminal states: `succeeded`, `failed`, `canceled`. No transitions out of terminal states.
+ 
+### Step state machine
+ 
+```bash
+[pending] ─► [running] ─► [succeeded]
+                 │
+                 ├── retryable error ─► [pending]  (attempt++)
+                 ├── non-retryable  ─► [failed]
+                 └── operator pause ─► [paused] ─► [running]
+```
+ 
+Steps have no `canceled` state. Task cancellation abandons the current step in place.
+ 
+## Engine loop
+ 
+The task engine runs on a configurable poll interval:
+ 
+```sql
+-- Claim runnable tasks (safe for future multi-worker via SKIP LOCKED)
+SELECT * FROM tasks
+WHERE status = 'running'
+  AND (next_wake_time IS NULL OR next_wake_time <= now())
+LIMIT batch_size
+FOR UPDATE SKIP LOCKED
+```
+ 
+For each claimed task:
+ 
+1. Load the current step.
+2. Call `step_runner.run(task, step)`.
+3. `step_runner` returns one of: `succeeded`, `retry`, `failed`, `waiting`, `paused`.
+4. Based on outcome:
+   - `succeeded` → advance `current_step_id` or mark task `succeeded`
+   - `retry` → increment `attempt`, set `next_wake_time` with computed backoff
+   - `failed` → mark task `failed`
+   - `waiting` → set `task.next_wake_time` to `wait_until`
+   - `paused` → mark step `paused`
+ 
+Each step execution and outcome is persisted in a single DB transaction. See [architecture/data-contracts](/docs/architecture/data-contracts) for the full `Step` schema.
+ 
+## Idempotency key generation
+ 
+Every effectful step must have an `idempotency_key`. Generation strategy:
+ 
+```bash
+idempotency_key = SHA-256(task_id + step_id + attempt + action + stable_request_hash)
+```
+ 
+The key incorporates `attempt` so that each retry attempt generates a distinct key, preventing a previously-stored `unknown` outcome from blocking a legitimate retry.
+ 
+Outcomes are stored in the `idempotency_outcomes` table:
+ 
+```bash
+idempotency_outcomes
+  idempotency_key:  str  PK   — the key
+  tool_call_id:     str       — associated tool call
+  status:           str       — succeeded | failed | unknown
+  response_hash:    str | None
+  resolved_at:      datetime | None
+```
+ 
+## Crash recovery
+ 
+On every startup, `tasks/recovery.py` runs before the pipeline loop starts:
+ 
+1. Load all `Approval` records with `status = pending` — restore approval-wait state.
+2. Find tasks with `status = running`:
+   - For each, load the current step.
+   - If `step.status = running`:
+     - Check `idempotency_outcomes` for the step's `idempotency_key`.
+     - If outcome found: mark step with that outcome and advance or fail accordingly.
+     - If no outcome found: outcome is `unknown`. Reset step to `pending`, increment attempt, emit `AuditEvent("tool_call.unknown")`.
+     - **Never assume success from absence of failure.**
+3. Resume the scheduler: recompute `next_run_at`, apply `catch_up_policy` for missed schedules.
+4. Restore watcher dedupe state from DB.
+5. Start pipeline loop.
+ 
+## Approval-wait loop
+ 
+An approval-wait loop runs alongside the main engine loop every 5 seconds:
+ 
+```sql
+SELECT tasks WHERE status = 'running'
+  AND current step checkpoint contains approval_id
+```
+ 
+For each waiting task, load the `Approval` by `approval_id` from the step checkpoint:
+ 
+- `approved` → resume step (mark `running`, re-invoke with approval in context)
+- `denied` → `StepOutcome("failed", error="approval denied")`
+- `expired` → per configuration: fail the step, or create a new `Approval` and notify operator
+- `pending` → wait for next loop iteration
+ 
+This loop is crash-safe: on restart, the engine reloads all waiting tasks, re-reads their checkpoints, and re-enters the loop automatically.
+ 
+## Related
+ 
+- [architecture/data-contracts](/docs/architecture/data-contracts)
+- [architecture/pipeline](/docs/architecture/pipeline)
+- [safety/autonomy-levels](/docs/safety/autonomy-levels)
+- [safety/risk-and-gates](/docs/safety/risk-and-gates)
+- [integrations/tool-runtime](/docs/integrations/tool-runtime)
+- [ops/db-schema](/docs/ops/db-schema)
+- [ops/failure-modes](/docs/ops/failure-modes)

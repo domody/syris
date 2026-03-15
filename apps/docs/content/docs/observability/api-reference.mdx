@@ -1,0 +1,68 @@
+---
+title: API Reference
+description: All dashboard API endpoints grouped by category with descriptions and key parameters.
+---
+
+All endpoints are served by the FastAPI application in `api/`. All controls endpoints emit `operator.action.*` audit events.
+
+## Status
+
+| Method | Path      | Description                                                                              |
+| ------ | --------- | ---------------------------------------------------------------------------------------- |
+| `GET`  | `/health` | Current `SystemHealth` record: status, uptime, version, `next_expected_at`               |
+| `GET`  | `/state`  | System summary: autonomy level, task counts, schedule count, watcher status, alarm count |
+
+## Query
+
+| Method | Path              | Description                           | Key parameters                                               |
+| ------ | ----------------- | ------------------------------------- | ------------------------------------------------------------ |
+| `GET`  | `/events`         | List ingested `MessageEvent`s         | `channel`, `trace_id`, `since`, `until`                      |
+| `GET`  | `/audit`          | List `AuditEvent`s                    | `trace_id`, `type`, `outcome`, `tool_name`, `since`, `until` |
+| `GET`  | `/tasks`          | List tasks                            | `status`, `trace_id`, `since`                                |
+| `GET`  | `/tasks/{id}`     | Single task with its steps            | —                                                            |
+| `GET`  | `/schedules`      | List all schedules                    | `enabled`                                                    |
+| `GET`  | `/watchers`       | List all watchers with `WatcherState` | —                                                            |
+| `GET`  | `/rules`          | List all rules                        | `enabled`                                                    |
+| `GET`  | `/integrations`   | List integrations with health         | —                                                            |
+| `GET`  | `/approvals`      | List approvals                        | `status`                                                     |
+| `GET`  | `/alarms`         | List alarms                           | `status`, `severity`                                         |
+| `GET`  | `/artifacts/{id}` | Retrieve a redacted audit payload     | —                                                            |
+
+## Controls
+
+All controls emit `operator.action.*` audit events with `actor = operator`.
+
+| Method  | Path                      | Description                                      |
+| ------- | ------------------------- | ------------------------------------------------ |
+| `POST`  | `/controls/pause`         | Pause all pipeline processing                    |
+| `POST`  | `/controls/resume`        | Resume pipeline processing                       |
+| `POST`  | `/controls/autonomy`      | Set autonomy level; body: `{ "level": "A2" }`    |
+| `POST`  | `/tasks/{id}/cancel`      | Cancel a task; body: `{ "reason": "..." }`       |
+| `POST`  | `/tasks/{id}/pause`       | Pause a running task                             |
+| `POST`  | `/tasks/{id}/resume`      | Resume a paused task                             |
+| `POST`  | `/tasks/{id}/retry`       | Retry a failed task from its last checkpoint     |
+| `PATCH` | `/watchers/{id}`          | Enable or disable; body: `{ "enabled": true }`   |
+| `PATCH` | `/rules/{id}`             | Enable or disable; body: `{ "enabled": true }`   |
+| `PATCH` | `/integrations/{id}`      | Enable or disable; body: `{ "enabled": true }`   |
+| `POST`  | `/approvals/{id}/approve` | Approve a pending gate                           |
+| `POST`  | `/approvals/{id}/deny`    | Deny a pending gate; body: `{ "reason": "..." }` |
+| `POST`  | `/alarms/{id}/ack`        | Acknowledge an open alarm                        |
+| `POST`  | `/alarms/{id}/resolve`    | Resolve an alarm; body: `{ "note": "..." }`      |
+
+## Debugging workflow
+
+To reconstruct what SYRIS did for any event:
+
+1. Find the `trace_id` on the originating event (`GET /events`).
+2. Query `GET /audit?trace_id={trace_id}` — returns the full chain in timestamp order.
+3. Follow `ref_task_id` or `ref_tool_call_id` to the relevant entity if needed.
+4. Retrieve a specific payload with `GET /artifacts/{payload_ref}` if available.
+
+No log file access required.
+
+## Related
+
+- [observability/audit-log](/docs/observability/audit-log)
+- [observability/projections](/docs/observability/projections)
+- [observability/health-and-alarms](/docs/observability/health-and-alarms)
+- [safety/autonomy-levels](/docs/safety/autonomy-levels)

@@ -1,0 +1,169 @@
+---
+title: Failure Modes
+description: Catalogue of known failure modes with detection, system response, operator signal, and recovery path.
+---
+
+Every failure mode has a detection method, a system response, an operator signal, and a recovery path. "Check the logs" is not an acceptable detection method for any of these.
+
+## Pipeline failures
+
+### F-01: Normalizer receives malformed adapter payload
+
+|                     |                                                                             |
+| ------------------- | --------------------------------------------------------------------------- |
+| **Detection**       | Pydantic validation error raised in `normalizer.py`                         |
+| **System response** | Discard raw payload; emit `AuditEvent("event.ingested", outcome="failure")` |
+| **Operator signal** | Alarm raised after repeated failures from same `connector_id`               |
+| **Recovery**        | Fix adapter payload format; re-submit event if required                     |
+
+### F-02: Spurious dedup suppression (hash collision)
+
+|                     |                                                                                    |
+| ------------------- | ---------------------------------------------------------------------------------- |
+| **Detection**       | User reports missing event; `GET /audit?type=event.deduped` shows unexpected entry |
+| **System response** | Event discarded silently; `event.deduped` audit event emitted                      |
+| **Operator signal** | Visible in audit log; no alarm by default                                          |
+| **Recovery**        | Clear `dedupe_key` from `events` table; re-submit the event                        |
+
+### F-03: LLM fallback timeout
+
+|                     |                                                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Detection**       | Timeout exception in `routing/llm_fallback.py`                                                                 |
+| **System response** | Emit `AuditEvent("routing.decided", outcome="failure")`; route to "clarification needed" task; notify operator |
+| **Operator signal** | Task visible at `GET /tasks`; alarm on repeated failures                                                       |
+| **Recovery**        | Automatic retry is not applied; operator reviews and re-submits if appropriate                                 |
+
+## Task engine failures
+
+### F-04: Step function raises unexpected exception
+
+|                     |                                                                           |
+| ------------------- | ------------------------------------------------------------------------- |
+| **Detection**       | Unhandled exception caught by `step_runner.run()`                         |
+| **System response** | Emit `task.step_unexpected_error`; mark step `failed`; mark task `failed` |
+| **Operator signal** | Task visible at `GET /tasks/{id}` with error detail; alarm if stuck       |
+| **Recovery**        | Fix step implementation; `POST /tasks/{id}/retry`                         |
+
+### F-05: Task stuck (no step progress)
+
+|                     |                                                                           |
+| ------------------- | ------------------------------------------------------------------------- |
+| **Detection**       | Alarm trigger: `status = running AND updated_at < now - threshold`        |
+| **System response** | Alarm raised; task remains in `running` state                             |
+| **Operator signal** | Alarm at `GET /alarms`; visible in `proj_active_tasks`                    |
+| **Recovery**        | `POST /tasks/{id}/cancel` or `POST /tasks/{id}/retry` after investigation |
+
+### F-06: Crash mid-step; unknown outcome
+
+|                     |                                                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Detection**       | On startup reconciliation: step with `status = running` and no entry in `idempotency_outcomes`        |
+| **System response** | Store `unknown` outcome; reset step to `pending`; increment attempt counter; emit `tool_call.unknown` |
+| **Operator signal** | Visible in audit log at `GET /audit?trace_id={trace_id}`                                              |
+| **Recovery**        | Automatic: task engine re-attempts step on next loop iteration                                        |
+
+### F-07: Task deadlocked on expired approval
+
+|                     |                                                                                  |
+| ------------------- | -------------------------------------------------------------------------------- |
+| **Detection**       | Approval-wait loop finds `approval.status = expired` for a waiting task          |
+| **System response** | Per configuration: fail the step, or create a new `Approval` and notify operator |
+| **Operator signal** | Approval visible at `GET /approvals`; task blocked at `GET /tasks/{id}`          |
+| **Recovery**        | `POST /approvals/{id}/approve` on new approval, or `POST /tasks/{id}/cancel`     |
+
+## Tool runtime failures
+
+### F-08: Tool unavailable (integration down)
+
+|                     |                                                                                    |
+| ------------------- | ---------------------------------------------------------------------------------- |
+| **Detection**       | `tool.health.status = unavailable` in `ToolRegistry`                               |
+| **System response** | Fail fast on tool executor lookup; emit `tool_call.failed`                         |
+| **Operator signal** | Integration health at `GET /integrations`; alarm if consecutive errors ≥ threshold |
+| **Recovery**        | Fix or re-enable integration; `PATCH /integrations/{id}` to re-enable              |
+
+### F-09: Rate limited by provider (429)
+
+|                     |                                                                                                            |
+| ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Detection**       | 429 response from provider                                                                                 |
+| **System response** | Set `rate_limit_resets_at` on `ToolHealth`; retry after reset; emit `tool_call.failed` with retryable flag |
+| **Operator signal** | Visible via `GET /integrations`; tool calls fail with `retryable` error until window clears                |
+| **Recovery**        | Automatic: task engine backs off to `rate_limit_resets_at`                                                 |
+
+### F-10: Idempotency key collision (different calls, same key)
+
+|                     |                                                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Detection**       | `idempotency_outcomes` returns a prior result for a genuinely different call                                                   |
+| **System response** | Return prior result without re-executing; emit `tool_call.deduped`                                                             |
+| **Operator signal** | Unexpected `tool_call.deduped` visible in audit                                                                                |
+| **Recovery**        | Investigate key generation strategy; see [architecture/task-engine](/docs/architecture/task-engine) for key construction rules |
+
+### F-11: MCP server disconnects mid-call
+
+|                     |                                                                                                           |
+| ------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Detection**       | Transport exception in `MCPConnectionManager` during an active call                                       |
+| **System response** | Store `unknown` outcome in `idempotency_outcomes`; emit `tool_call.unknown`; begin reconnect with backoff |
+| **Operator signal** | `mcp.disconnected` in audit; integration health degrades within 30 seconds                                |
+| **Recovery**        | Automatic reconnect; on reconnect, startup reconciliation handles the `unknown` outcome                   |
+
+## Scheduler and watcher failures
+
+### F-12: Schedule fires during process downtime
+
+|                     |                                                                  |
+| ------------------- | ---------------------------------------------------------------- |
+| **Detection**       | On startup: `next_run_at < now` for enabled schedules            |
+| **System response** | Apply `catch_up_policy`; emit `schedule.missed` per skipped slot |
+| **Operator signal** | `schedule.missed` events in audit; visible in `proj_schedules`   |
+| **Recovery**        | Automatic; configurable via `catch_up_policy` per schedule       |
+
+### F-13: Watcher tick raises exception
+
+|                     |                                                                                         |
+| ------------------- | --------------------------------------------------------------------------------------- |
+| **Detection**       | Exception from `tick()` caught by watcher loop                                          |
+| **System response** | Increment `consecutive_errors`; emit `watcher.error`; raise alarm if threshold exceeded |
+| **Operator signal** | Alarm at `GET /alarms`; watcher state at `GET /watchers`                                |
+| **Recovery**        | Fix watcher implementation; `PATCH /watchers/{id}` to re-enable                         |
+
+### F-14: Rule storm (rule firing too frequently)
+
+|                     |                                                                         |
+| ------------------- | ----------------------------------------------------------------------- |
+| **Detection**       | Alarm trigger: `triggered_count_per_minute > threshold`                 |
+| **System response** | Suppress further notifications; emit `gate.storm_block`; raise alarm    |
+| **Operator signal** | Alarm at `GET /alarms`; rule hit count at `GET /rules`                  |
+| **Recovery**        | `PATCH /rules/{id}` to disable or increase `debounce_ms`; resolve alarm |
+
+## Observability failures
+
+### F-15: Audit write fails (DB error)
+
+|                     |                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------- |
+| **Detection**       | DB exception on `AuditWriter.emit()`                                                  |
+| **System response** | Pipeline operation fails; transaction rolls back; error logged to stderr              |
+| **Operator signal** | Process error log; `GET /health` returns `degraded` if DB is consistently unavailable |
+| **Recovery**        | Resolve DB issue; the event that failed to audit may need to be re-submitted          |
+
+### F-16: Secret exposed in audit payload (redaction miss)
+
+|                     |                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------- |
+| **Detection**       | Redaction policy evaluation raises a detection alarm on known secret patterns         |
+| **System response** | Alarm raised immediately with `critical` severity                                     |
+| **Operator signal** | Alarm at `GET /alarms`; type = `secret_leak_detected`                                 |
+| **Recovery**        | Rotate exposed credential immediately; patch redaction policy; audit affected records |
+
+## Related
+
+- [architecture/task-engine](/docs/architecture/task-engine)
+- [integrations/tool-runtime](/docs/integrations/tool-runtime)
+- [integrations/mcp](/docs/integrations/mcp)
+- [observability/audit-log](/docs/observability/audit-log)
+- [observability/health-and-alarms](/docs/observability/health-and-alarms)
+- [ops/secrets](/docs/ops/secrets)

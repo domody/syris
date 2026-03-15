@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Badge } from "../ui/badge";
+import { cn } from "@/lib/utils";
 
 export function DocSidebar({
   tree,
@@ -26,23 +27,33 @@ export function DocSidebar({
   const currentBase = getCurrentBase(pathname);
 
   return (
-    <Sidebar className="sticky top-[calc(var(--header-height)+0.6rem)] z-30 hidden h-[calc(100svh-10rem)] overscroll-none bg-transparent lg:flex" collapsible="none" {...props}>
+    <Sidebar
+      className="sticky top-[calc(var(--header-height)+0.6rem)] z-30 hidden h-[calc(100svh-10rem)] overscroll-none bg-transparent lg:flex"
+      collapsible="none"
+      {...props}
+    >
       <SidebarContent className="no-scrollbar w-(--sidebar-menu-width) overflow-x-hidden pl-0">
         {tree.children.map((item) => {
           return (
             <SidebarGroup className="w-full" key={item.$id}>
               <SidebarGroupLabel className="text-muted-foreground font-medium">
-                {item.name} 
+                {item.name}
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 {item.type === "folder" && (
                   <SidebarMenu className="gap-0.5">
                     {getPagesFromFolder(item, currentBase).map((page) => {
+                      console.log(item.name);
                       return (
                         <SidebarMenuItem key={page.url}>
                           <SidebarMenuButton
                             isActive={page.url === pathname}
-                            className="w-full data-[active=true]:bg-accent data-[active=true]:border-accent 3xl:fixed:w-full 3xl:fixed:max-w-48 relative h-[30px] overflow-visible border border-transparent text-[0.8rem] font-medium after:absolute after:inset-x-0 after:-inset-y-1 after:z-0 after:rounded-md"
+                            className={cn(
+                              "w-full data-[active=true]:bg-accent data-[active=true]:border-accent 3xl:fixed:w-full 3xl:fixed:max-w-48 relative h-[30px] overflow-visible border border-transparent text-[0.8rem] font-medium after:absolute after:inset-x-0 after:-inset-y-1 after:z-0 after:rounded-md",
+                              item.name == "Archive"
+                                ? "text-muted-foreground"
+                                : "",
+                            )}
                             render={
                               <Link href={page.url}>
                                 <span className="absolute inset-0 flex w-(--sidebar-menu-width)" />

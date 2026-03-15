@@ -1,39 +1,59 @@
 ---
 title: Glossary
-description: Shared vocabulary for SYRIS concepts, components, and data contracts.
+description: Canonical definitions for all SYRIS concepts, schemas, and terms.
 ---
+
+Shared vocabulary for SYRIS concepts, components, and data contracts.
 
 **SYRIS stays maintainable by using consistent language. This page is the canonical dictionary.**
 
 ## Core concepts
 
-| Term | Meaning |
-|------|---------|
-| **Stimulus** | Any inbound input: user message, webhook, device event, schedule tick, rule trigger, etc. |
-| **MessageEvent** | The unified, versioned internal schema representing a stimulus after normalization. |
-| **SystemEvent** | A system-emitted event (scheduler/watchers/rules/health) that still becomes a `MessageEvent`. |
-| **Normalize &gt; Route &gt; Plan/Execute** | The three-stage pipeline every event passes through. |
-| **Router** | Chooses deterministic fast paths first; uses model fallback only when needed. Produces a `RoutingDecision`. |
-| **Fast lane** | Immediate, single-step actions (e.g., “turn off lights”), designed for near real-time latency. |
-| **Work lane** | Multi-step tasks/workflows with checkpoints (resumable). |
-| **Task** | A persisted, long-lived workflow created by routing/planning. |
-| **Step** | Smallest resumable unit of work inside a Task. |
-| **Tool** | An executable capability exposed via a strict interface (send, read, control device, etc.). |
-| **Integration** | A configured connector instance (e.g., Home Assistant, Gmail) that provides tools and/or events. |
-| **InboundAdapter** | Converts raw events from external systems into normalized inputs / `MessageEvent`s. |
-| **OutboundAdapter** | Executes effectful actions against an external system (tools). |
-| **Capability** | Declarative description of what a tool can do (features, limits, threading support, etc.). |
-| **Scope** | Permission boundary for tools (least privilege). |
-| **Idempotency key** | Stable key that prevents duplicate side effects on retries/restarts. |
-| **AuditEvent** | Append-only record of decisions/actions/outcomes with trace correlation. |
-| **Trace ID** | Correlates the entire chain from the initial event to all tool calls/outcomes. |
-| **Approval** | A pending decision required by safety/autonomy policy (approve/deny). |
-| **Risk level** | Classification for actions (low/medium/high/critical) driving gates and policies. |
-| **Autonomy level** | System mode describing what actions can be executed automatically vs requiring confirmation. |
-| **Watcher** | Proactive component that periodically checks something and emits events (inbox, health, device state). |
-| **Scheduler** | Executes timers/alarms/cron schedules and emits events (durable, visible). |
-| **Rule** | IFTTT-style condition &gt; action mapping. Rules emit events or start tasks. |
-| **Projection** | Query-optimized “views” derived from audit/event logs for dashboard APIs. |
-| **Control plane** | The always-on core process that ingests events, routes them, runs tasks, and serves APIs. |
-| **Worker** | Optional isolated runtime for long-running jobs (sandbox), report progress and artifacts. |
-| **Artifact** | Output produced by jobs/tasks (reports, patches, files), linked to trace/task/job. |
+| Term                            | Meaning                                                                                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Stimulus**                    | Any inbound input: user message, webhook, device event, schedule tick, rule trigger, etc.                                                             |
+| **MessageEvent**                | The unified, versioned internal schema representing a stimulus after normalisation. Every stimulus becomes one.                                       |
+| **SystemEvent**                 | A system-emitted event (scheduler/watchers/rules/health) that enters the pipeline as a `MessageEvent`.                                                |
+| **Normalize > Route > Execute** | The three stages every event passes through. See [architecture/pipeline](/docs/architecture/pipeline).                                                |
+| **Router**                      | Chooses deterministic fast paths first; uses LLM fallback only when no deterministic match exists. Produces a `RoutingDecision`.                      |
+| **RoutingDecision**             | The schema produced by the router: execution mode, intent, risk level, required scopes, and any gate specs.                                           |
+| **ExecutionMode**               | One of `fast`, `task`, `gated`, or `sandbox`. Determines which branch of the executor handles the event.                                              |
+| **Fast lane**                   | Immediate, single-tool execution via `tools/executor.py`. Designed for near-real-time latency.                                                        |
+| **Task lane**                   | Multi-step, checkpointed workflows managed by the task engine. Used when execution is too complex for a single tool call.                             |
+| **Gated lane**                  | Execution blocked pending an operator `Approval`. Triggered when the gate matrix returns `CONFIRM` or `HARD BLOCK`.                                   |
+| **Task**                        | A persisted, long-lived workflow created by the router or rules engine. Has a state machine: `pending → running → succeeded/failed/canceled`.         |
+| **Step**                        | Smallest resumable unit of work inside a `Task`. A registered Python callable with idempotency enforcement.                                           |
+| **StepOutcome**                 | The result returned by a step function: one of `succeeded`, `retry`, `failed`, `waiting`, or `paused`.                                                |
+| **Tool**                        | An executable capability conforming to the `BaseTool` interface.                                                                                      |
+| **Integration**                 | A configured connector instance (e.g., Home Assistant, Gmail) providing tools or events or both.                                                      |
+| **InboundAdapter**              | Converts raw events from external systems into `MessageEvent`s.                                                                                       |
+| **BaseTool**                    | The abstract base class all tool adapters implement. Defines `execute()` and `preview()` contracts.                                                   |
+| **Capability**                  | A declarative string describing what a tool can do. Declared by the tool; stored in `RegisteredTool`.                                                 |
+| **Scope**                       | A permission boundary for tool invocations (least-privilege). Checked before every tool call.                                                         |
+| **trace_id**                    | A UUID generated once at normalisation. Propagated unchanged through every subsequent operation. Enables end-to-end tracing across audit events.      |
+| **idempotency_key**             | A stable, deterministic key attached to every effectful tool call. Prevents duplicate side effects on retries or restarts.                            |
+| **dedupe_key**                  | A hash computed by the normaliser. If the same key appears within the dedup window, the event is discarded and `event.deduped` is emitted.            |
+| **AuditEvent**                  | An append-only record of a pipeline decision or action. Never updated or deleted. Queryable by `trace_id`.                                            |
+| **payload_ref**                 | A reference to a redacted, encrypted payload stored in the artifact store. Avoids embedding sensitive data inline in `AuditEvent`.                    |
+| **Approval**                    | A persisted gate decision request. Contains the exact payload to execute, the reason for gating, and how to approve via API.                          |
+| **GateAction**                  | The outcome of the gate matrix lookup: `ALLOW`, `CONFIRM`, `PREVIEW`, or `HARD BLOCK`.                                                                |
+| **RiskLevel**                   | Classification of an action's potential impact: `low`, `medium`, `high`, or `critical`. Set in the tool registry and adjusted by the risk classifier. |
+| **AutonomyLevel**               | System operating mode (`A0`–`A4`). Combined with `RiskLevel` to determine `GateAction` via the gate matrix.                                           |
+| **FastPathIntent**              | A registered intent in the fast-path DSL. Has patterns, required scopes, risk level, and an extractor function.                                       |
+| **WatcherState**                | Per-watcher persistence record: last tick time, last outcome, dedupe window, suppression count, and consecutive error count.                          |
+| **catch_up_policy**             | Determines scheduler behaviour when missed firings are detected at startup or after downtime. One of `skip`, `run_once`, or `run_all_capped`.         |
+| **artifact store**              | Encrypted file store for redacted tool request/response payloads. Referenced by `payload_ref` on `AuditEvent`.                                        |
+| **Projection**                  | A query-optimised read model derived from audit and event records. Updated synchronously in the same DB transaction as the record that triggers it.   |
+| **TrustPolicy**                 | Per-MCP-server policy defining risk override, scope mapping, idempotency contract, and preview support.                                               |
+| **compensation**                | An optional `compensate()` function on a `StepDefinition`. Called on task cancellation if the step's `fn()` already ran in the current attempt.       |
+| **Control plane**               | The always-on core process: ingestion loops, scheduler, watcher loop, task engine loop, and API server.                                               |
+| **Worker**                      | Optional isolated runtime for heavy or long-running jobs. Gated behind an explicit `sandbox` execution mode.                                          |
+| **Artifact**                    | Output produced by a job or task (reports, patches, files). Linked to a trace, task, or job ID.                                                       |
+| **SystemHealth**                | A record written every 30 seconds by `HeartbeatWatcher` containing status, uptime, version, and next expected heartbeat.                              |
+
+## Related
+
+- [architecture/data-contracts](/docs/architecture/data-contracts)
+- [architecture/pipeline](/docs/architecture/pipeline)
+- [safety/autonomy-levels](/docs/safety/autonomy-levels)
+- [dev/naming-conventions](/docs/dev/naming-conventions)

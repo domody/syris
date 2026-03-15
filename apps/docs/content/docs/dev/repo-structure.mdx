@@ -1,13 +1,13 @@
 ---
 title: Repo Structure
-description: The monorepo layout for core, apps, shared packages, and archive modules (with boundary rules).
+description: The monorepo layout for core, apps, shared packages, and archive modules, with boundary rules.
 ---
 
-**This repo is a monorepo on purpose: core stays stable, apps iterate fast, and shared packages form the only legal bridge.**
+**This repo is a monorepo: core stays stable, apps iterate fast, and shared packages form the only legal bridge.**
 
 ## Top-level layout
 
-```txt
+```bash
 syris/
 ├── core/
 │   └── syris_core/                 # SYRIS core (Python, uv)
@@ -24,67 +24,120 @@ syris/
 │   └── ui/                         # optional shared UI primitives
 ├── archive/                        # deprecated modules (read-only)
 └── ops/                            # deployment and ops artifacts
-````
+```
+
+## syris_core internal layout
+
+```bash
+src/syris_core/
+├── main.py                         # Boot: wire loops + API
+├── schemas/                        # Pure Pydantic v2 — no DB, no logic
+│   ├── events.py                   # MessageEvent, RoutingDecision
+│   ├── tasks.py                    # Task, Step
+│   ├── tools.py                    # ToolCall, ToolResult
+│   ├── audit.py                    # AuditEvent
+│   ├── approvals.py                # Approval
+│   ├── safety.py                   # AutonomyLevel, RiskLevel enums
+│   └── common.py                   # shared value types
+├── pipeline/                       # Thin stage orchestrators
+│   ├── normalizer.py
+│   ├── router.py
+│   ├── executor.py
+│   └── runner.py                   # Main pipeline loop
+├── routing/                        # Router internals (separate from pipeline/)
+│   ├── filters.py                  # Hard filters: spam, quiet hours
+│   ├── fastpath.py                 # Deterministic intent DSL
+│   ├── rules_eval.py               # Rules engine evaluation
+│   └── llm_fallback.py             # LLM — last resort only
+├── tasks/                          # Task engine
+│   ├── engine.py
+│   ├── step_runner.py
+│   ├── state.py                    # State machine enforcement
+│   └── recovery.py                 # Restart reconciliation
+├── tools/                          # Tool runtime
+│   ├── registry.py
+│   ├── executor.py                 # Gates + idempotency + audit
+│   ├── idempotency.py
+│   ├── adapter.py                  # BaseTool ABC
+│   └── builtin/noop.py
+├── integrations/
+│   ├── inbound/base.py             # InboundAdapter ABC
+│   ├── outbound/base.py            # OutboundAdapter ABC
+│   └── mcp/                        # Milestone 6
+│       ├── connection.py
+│       ├── provider.py
+│       ├── adapter.py
+│       └── trust.py
+├── scheduler/
+│   ├── scheduler.py
+│   ├── watchers/
+│   │   ├── base.py
+│   │   └── heartbeat.py
+│   └── rules/
+│       ├── engine.py
+│       └── models.py
+├── safety/
+│   ├── autonomy.py
+│   ├── risk.py
+│   ├── gates.py
+│   └── dryrun.py
+├── observability/
+│   ├── audit.py                    # AuditWriter — sole emit point
+│   ├── projections.py              # Sync updaters (in-transaction)
+│   ├── health.py
+│   └── alarms.py
+├── secrets/store.py                # get_secret() only
+├── storage/
+│   ├── db.py
+│   ├── models.py                   # ORM models (separate from schemas/)
+│   ├── repos/                      # One repo per aggregate root
+│   └── migrations/                 # Alembic
+├── api/
+│   ├── app.py
+│   ├── auth.py
+│   └── routes/
+└── workers/                        # Milestone 7 skeleton
+```
+
+`schemas/` contains Pydantic v2 data contracts only — no DB access, no logic. ORM models live in `storage/models.py`. `routing/` is separate from `pipeline/` so that `fastpath.py` and `rules_eval.py` can be unit-tested without instantiating the full pipeline.
 
 ## Boundary rules
 
 ### Apps are sandboxed
 
-Anything under `apps/*` is a standalone app and must **not** import from `core/*`.
+Anything under `apps/*` is a standalone application and must **not** import from `core/*`.
 
-Allowed:
+Allowed: `apps/*` → `packages/*`
 
-* `apps/*` &gt; `packages/*`
-
-Not allowed:
-
-* `apps/*` &gt; `core/*`
-
-This keeps core stable and prevents “UI app quietly depending on core internals.”
+Not allowed: `apps/*` → `core/*`
 
 ### Core owns integrations
 
-Core integrations and tools live under `core/syris_core/src/syris_core/…` because:
+All integration code lives under `core/syris_core/` because integrations deploy together with the control plane, share the secrets and scopes policy, and participate in the same audit and trace runtime.
 
-* they deploy together
-* they share secrets/scopes policy
-* they participate in the same audit/trace runtime
+### Storage layer access
 
-## Where SYRIS v3 lives
+`storage/repos/` contains one repository object per aggregate root. Pipeline and task engine code imports from repos, not from the ORM directly. This is load-bearing for the Postgres migration path: swap repo internals, callers do not change.
 
-All SYRIS runtime code belongs in:
-
-* `core/syris_core/src/syris_core/`
-
-Including:
-
-* pipeline (normalize/route/execute)
-* task engine
-* scheduler/watchers/rules
-* tool runtime + integrations registry
-* observability (audit, projections, telemetry)
-* API server and operator controls
-* worker/sandbox manager
-
-## Running locally (intent)
+## Running locally
 
 Core:
 
-* `uv sync`
-* `uv run syris` (control plane)
-* `uv run syris-api` (API server)
-* `uv run syris-worker` (workers/sandbox)
+```bash
+uv sync
+uv run syris       # control plane
+uv run syris-api   # API server
+```
 
 Apps:
 
-* `bun dev` in each app (dashboard/docs/nutrition)
+```bash
+bun run dev            # in each app directory (dashboard / docs / nutrition)
+```
 
-## Docs as a product
+## Related
 
-Docs are treated as an app because:
-
-* they need navigation/search
-* they should be easy to keep updated
-* they become the “living memory” of the system
-
-The docs app reads its content from local `content/docs/*` within the app, avoiding cross-boundary filesystem hacks.
+- [architecture/component-map](/docs/architecture/component-map)
+- [dev/naming-conventions](/docs/dev/naming-conventions)
+- [dev/milestones](/docs/dev/milestones)
+- [adr/0001-modular-monolith](/docs/adr/0001-modular-monolith)

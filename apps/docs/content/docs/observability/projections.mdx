@@ -1,0 +1,58 @@
+---
+title: Projections
+description: What projections are, the synchronous update model, the projection tables, and the async extraction seam.
+---
+
+Projections are query-optimised read models derived from audit and event records. They exist so that dashboard queries do not require log spelunking or complex audit-log aggregations at read time.
+
+## What projections are
+
+Without projections, answering "what is the current state of all running tasks?" would require scanning and aggregating audit records. Projections maintain pre-computed views updated as events are written. They trade a small write overhead for fast, indexed reads.
+
+## Synchronous update model
+
+Projection updates run **in the same DB transaction** as the primary record write. `projections.py` exposes pure functions called within the DB session:
+
+```python
+# Called inside the transaction that writes a Task status update:
+projections.on_task_status_changed(session, task)
+
+# Called inside the transaction that writes an AuditEvent:
+projections.on_audit_event(session, event)
+```
+
+If the projection update fails, the entire transaction rolls back — including the primary record. The projection is always consistent with the audit log; there is no eventual consistency lag.
+
+## Projection tables
+
+| Table                   | Contains                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| `proj_active_tasks`     | Running and paused tasks with current step, status, and `next_wake_time`             |
+| `proj_schedules`        | All enabled schedules with `next_run_at`, `last_run_at`, and missed-run count        |
+| `proj_watchers`         | All watchers with `enabled`, `last_tick_at`, `last_outcome`, and `suppression_count` |
+| `proj_rules`            | All rules with `enabled`, hit count, last suppression reason                         |
+| `proj_integrations`     | Integration health, auth status, `last_success_at`, `last_error`, rate-limit state   |
+| `proj_approvals`        | Pending approvals with context and expiry                                            |
+| `proj_queue_depth`      | Runnable task count, schedule backlog size, tool queue depth                         |
+| `proj_autonomy_history` | Current autonomy level and its change history                                        |
+| `proj_alarms`           | Open, acked, and recently resolved alarms                                            |
+
+The API layer reads from projection tables, not from `audit_events` or raw entity tables, for all dashboard queries.
+
+## Extraction seam
+
+The synchronous model is correct and sufficient for a single-process system. The seam for moving to async projections later is explicit:
+
+- `projections.py` functions take a `session` argument and are pure with respect to the DB.
+- Callers do not know whether projection updates are sync or async — they call the same function.
+- Migration path: replace the `projections.py` call sites with an event queue publish; a separate projector process consumes the queue and writes the same projection tables.
+
+Callers do not change. The projection tables do not change. Only the write path changes.
+
+## Related
+
+- [observability/audit-log](/docs/observability/audit-log)
+- [observability/health-and-alarms](/docs/observability/health-and-alarms)
+- [observability/api-reference](/docs/observability/api-reference)
+- [architecture/pipeline](/docs/architecture/pipeline)
+- [adr/0001-modular-monolith](/docs/adr/0001-modular-monolith)

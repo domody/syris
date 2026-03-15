@@ -1,0 +1,77 @@
+---
+title: Testing Strategy
+description: Three-layer test pyramid, key fixtures, and invariant test specifications.
+---
+
+## Test pyramid
+
+```text
+         ┌───────────────────────────────────┐
+         │   Contract / E2E tests            │  Few; slow; real tool calls
+         ├───────────────────────────────────┤
+         │   Integration tests               │  SQLite in-memory; no real tools
+         ├───────────────────────────────────┤
+         │   Unit tests                      │  Pure functions; no DB; no I/O
+         └───────────────────────────────────┘
+```
+
+**Unit tests** cover pure functions with no infrastructure dependencies: schema validation, condition evaluator, fast-path pattern matching, risk classifier, state machine transitions, and idempotency key generation.
+
+**Integration tests** use an in-memory SQLite database and recording tool stubs. They cover complete pipeline flows (event in → audit out), task engine lifecycle (claim → step → checkpoint → recovery), scheduler and watcher loops, rules evaluation end-to-end, and gate/approval flows.
+
+**Contract / E2E tests** are few and slow. They test against real external tool call targets and are not run on every commit.
+
+## Key fixtures (conftest.py)
+
+```python
+@pytest.fixture
+def db_session():
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        yield session
+
+@pytest.fixture
+def recording_noop_tool():
+    """Records all execute() calls for assertion."""
+    class RecordingTool(BaseTool):
+        calls: list = []
+        def execute(self, action, request, context):
+            self.calls.append((action, request, context))
+            return ToolResult(status="succeeded")
+        def preview(self, action, request, context): return None
+    return RecordingTool()
+
+@pytest.fixture
+def pipeline(db_session, recording_noop_tool):
+    """Wires full pipeline with in-memory DB and recording tool."""
+    registry = ToolRegistry()
+    registry.register(recording_noop_tool, ToolConfig(risk_default=RiskLevel.LOW))
+    audit = AuditWriter(db_session)
+    normalizer = Normalizer(db_session, audit)
+    router = Router(db_session, audit)
+    executor = PipelineExecutor(ToolExecutor(registry, audit), db_session, audit)
+    return Pipeline(normalizer, router, executor)
+```
+
+## Invariant tests
+
+Invariant tests are labelled `@pytest.mark.invariant` and run in CI on every commit. They assert that system-wide guarantees hold regardless of which code path was exercised.
+
+> **Note:** The full invariant test list and assertions are specified in Volume 2 Section 14.5 of the design document. The six test assertions could not be fully extracted from the source document format. This page should be updated with the verbatim test assertions when Section 14.5 is available in text form.
+
+Six invariant tests are specified, covering:
+
+1. Every emitted `AuditEvent` has a non-null `trace_id`.
+2. Every effectful `Step` has a non-null `idempotency_key` before execution proceeds.
+3. The `audit_events` table is never modified after insert (no UPDATE or DELETE).
+4. `unknown` is stored in `idempotency_outcomes` on transport failure, never `success`.
+5. Task state transitions only follow valid edges in the state machine.
+6. All `ScopeViolation` errors are audited before the exception propagates.
+
+## Related
+
+- [architecture/principles](/docs/architecture/principles)
+- [architecture/task-engine](/docs/architecture/task-engine)
+- [integrations/tool-runtime](/docs/integrations/tool-runtime)
+- [dev/repo-structure](/docs/dev/repo-structure)

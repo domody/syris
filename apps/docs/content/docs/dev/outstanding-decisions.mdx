@@ -1,0 +1,23 @@
+---
+title: Outstanding Decisions
+description: Unresolved design decisions with milestone deadlines and current recommendations.
+---
+
+> When a decision is resolved, it becomes an ADR in `adr/` and is removed from this page.
+
+| ID    | Decision                                                                                                                                              | Needed by                               | Recommendation                                                                                                                                                                |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OD-01 | **Task template storage format.** Code-defined templates (Python dataclasses registered at startup) or data-defined templates (JSON workflows in DB)? | Milestone 2                             | Code-defined templates: simpler, fully typed, no runtime eval risk. Redeploy required to add templates.                                                                       |
+| OD-02 | **Approval notification channel.** How does the operator learn that an `Approval` is pending?                                                         | Milestone 3                             | Polling first (`GET /approvals`); push via originating channel as enhancement.                                                                                                |
+| OD-03 | **LLM prompt versioning.** If the routing prompt changes, which version produced a given `RoutingDecision`?                                           | Before LLM fallback is enabled          | Store `prompt_version` (hash of prompt template) on `RoutingDecision`.                                                                                                        |
+| OD-04 | **Secrets store upgrade path.** When and how to integrate OS keyring or Vault?                                                                        | When Fernet file is insufficient        | Upgrade to OS keyring via the `keyring` library first; Vault as a later option. Both are drop-in swaps via the `SecretsStore` protocol. See [ops/secrets](/docs/ops/secrets). |
+| OD-05 | **Event and audit retention.** How long to keep raw events, audit events, and tool call records?                                                      | ~3 months after first deployment        | Per-table configurable `retention_days`; tiered archival to file/S3 as a later option.                                                                                        |
+| OD-06 | **Multi-step task definition API.** How does the planner specify steps when creating a `Task`?                                                        | First real multi-step workflow          | `TaskTemplate` as a registered Python dataclass with a list of `StepDefinition` names and input mappings.                                                                     |
+| OD-07 | **Quiet hours policy management.** How does the operator create and manage quiet hours policies?                                                      | Milestone 4 or first watcher deployment | Config file only for the initial implementation; API-managed `quiet_hours_policies` table as a later enhancement.                                                             |
+
+## Related
+
+- [dev/milestones](/docs/dev/milestones)
+- [ops/secrets](/docs/ops/secrets)
+- [architecture/task-engine](/docs/architecture/task-engine)
+- [proactive/scheduler](/docs/proactive/scheduler)

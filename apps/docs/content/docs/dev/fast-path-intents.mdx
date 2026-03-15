@@ -1,0 +1,129 @@
+---
+title: Fast-Path Intents
+description: FastPathIntent structure, core intents, miss handling, and the LLM fallback contract.
+---
+
+The fast path is the first evaluation in the router. It matches common commands deterministically, without any DB reads or LLM calls, in under 10ms.
+
+## FastPathIntent structure
+
+Intents are defined in `routing/fastpath.py` as registered `FastPathIntent` instances:
+
+```yaml
+FastPathIntent
+  name:            str               — e.g. "timer.set"
+  patterns:        list[re.Pattern]  — tried in order; first fullmatch wins
+  required_scopes: list[str]
+  risk_level:      RiskLevel
+  extract:         Callable[[re.Match, MessageEvent], dict]
+  execution_mode:  ExecutionMode     — always "fast" for fast-path intents
+```
+
+Matching is case-insensitive fullmatch against `event.content.text.strip().lower()`. The first pattern across all intents that matches wins.
+
+## Core intents
+
+### timer.set
+
+|                      |                                                                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Patterns**         | `r"(?:set (?:a )?)?timer (?:for )?(\d+)\s*(s\|sec\|seconds?\|m\|min\|minutes?\|h\|hr\|hours?)"` / `r"remind me in (\d+)\s*(s\|m\|h\|min\|sec\|hour\|minute)\s*(?:to\s+.+)?"` |
+| **Extracted params** | `duration_seconds: int`, `label: str \| None`                                                                                                                                |
+| **Required scopes**  | `["scheduler.write"]`                                                                                                                                                        |
+| **Risk**             | low                                                                                                                                                                          |
+
+### alarm.set
+
+|                      |                                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
+| **Patterns**         | `r"(?:set (?:an )?alarm\|wake me(?: up)?) (?:at\|for) (\d{1,2})(?::(\d{2}))?\s*(am\|pm)?"`     |
+| **Extracted params** | `hour: int`, `minute: int`, `period: am\|pm\|None` (resolved against `event.context.timezone`) |
+| **Required scopes**  | `["scheduler.write"]`                                                                          |
+| **Risk**             | low                                                                                            |
+
+### schedule.list
+
+|                      |                                                                                                                                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Patterns**         | `r"(?:show\|list\|what are) (?:my )?(?:timers?\|alarms?\|schedules?\|reminders?)"` / `r"(?:what's\|what is) (?:my )?next (?:alarm\|timer\|reminder)"` |
+| **Extracted params** | none (read-only)                                                                                                                                      |
+| **Required scopes**  | `["scheduler.read"]`                                                                                                                                  |
+| **Risk**             | low                                                                                                                                                   |
+
+### ha.device.control
+
+|                      |                                                                                                                                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Patterns**         | `r"turn (on\|off) (?:the )?(.+?)(?:\s+lights?)?$"` / `r"(?:switch\|toggle) (?:the )?(.+?)(?:\s+lights?)?(?: (on\|off))?$"` / `r"(dim\|brighten) (?:the )?(.+?)(?:\s+lights?)?(?: to (\d{1,3})%)?$"` |
+| **Extracted params** | `action: on\|off\|toggle\|dim\|brighten`, `target: str`, `brightness: int \| None`                                                                                                                  |
+| **Required scopes**  | `["ha.device.control"]`                                                                                                                                                                             |
+| **Risk**             | medium (single device)                                                                                                                                                                              |
+
+### system.status
+
+|                      |                                                                                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Patterns**         | `r"(?:system )?status"` / `r"what(?:'s\| is) (?:syris\|the system) (?:doing\|running\|up to)"` / `r"(?:show\|list) (?:active )?tasks?"` |
+| **Extracted params** | none                                                                                                                                    |
+| **Required scopes**  | `[]` — always permitted                                                                                                                 |
+| **Risk**             | low                                                                                                                                     |
+
+### autonomy.set
+
+|                      |                                                    |
+| -------------------- | -------------------------------------------------- |
+| **Patterns**         | `r"(?:set )?autonomy (?:level )?(?:to )?(a[0-4])"` |
+| **Extracted params** | `level: AutonomyLevel`                             |
+| **Required scopes**  | `["system.control"]`                               |
+| **Risk**             | high — audited; requires gate at A0/A1             |
+
+### watcher.control
+
+|                      |                                                                                                            |
+| -------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Patterns**         | `r"(?:pause\|disable\|stop) (?:the )?(.+) watcher"` / `r"(?:resume\|enable\|start) (?:the )?(.+) watcher"` |
+| **Extracted params** | `watcher_id: str`, `action: pause\|resume`                                                                 |
+| **Required scopes**  | `["system.control"]`                                                                                       |
+| **Risk**             | low                                                                                                        |
+
+## Fast-path miss handling
+
+If no intent pattern matches:
+
+1. The **rules engine** evaluates the event — it always runs regardless of fast-path outcome.
+2. If one or more rules fire → route to their declared actions.
+3. If no rules match → **LLM fallback** in `routing/llm_fallback.py`.
+
+## LLM fallback contract
+
+The LLM is called with a strict system prompt enforcing JSON-only output. It receives a `LLMRoutingRequest` and must return a `LLMRoutingResponse`.
+
+```yaml
+LLMRoutingRequest
+  event_text:          str
+  event_channel:       str
+  event_structured:    dict
+  registered_intents:  list[str]    — known fast-path intent names
+  current_autonomy:    str
+  context_hint:        str          — e.g. "last 3 events in this thread"
+
+LLMRoutingResponse
+  intent:                  str      — known intent name | "task" | "unknown"
+  confidence:              float    — 0.0–1.0
+  extracted_params:        dict
+  requires_clarification:  bool
+  clarification_question:  str | None
+  risk_assessment:         str      — low | medium | high | critical
+  reasoning:               str      — written to audit; NOT shown to user
+```
+
+**Confidence threshold:** if `confidence < 0.5`, the system does not execute. Instead, it asks the user for clarification via the originating channel.
+
+**LLM failure behaviour:** if the LLM call times out or returns an error, the system emits an `AuditEvent`, routes to a "clarification needed" task, and notifies the operator. Events are never silently dropped.
+
+## Related
+
+- [architecture/pipeline](/docs/architecture/pipeline)
+- [proactive/rules-engine](/docs/proactive/rules-engine)
+- [safety/autonomy-levels](/docs/safety/autonomy-levels)
+- [dev/naming-conventions](/docs/dev/naming-conventions)

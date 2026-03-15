@@ -1,0 +1,233 @@
+---
+title: Data Contracts
+description: Canonical schemas for MessageEvent, RoutingDecision, Task, Step, ToolCall, AuditEvent, and Approval.
+---
+ 
+Data contracts are the stable spine of SYRIS. Implementations can change; contracts evolve slowly and deliberately. Breaking changes require an ADR and a migration plan.
+ 
+All schemas are Pydantic v2. Fields use the format: `name: Type — notes`.
+ 
+## Event schemas
+ 
+### MessageEvent
+ 
+```yaml
+MessageEvent:
+  event_id:              UUID       — Generated at ingestion; stable identity
+  schema_version:        str        — "1.0"; bump for breaking changes
+ 
+  occurred_at:           datetime   — Source timestamp (UTC)
+  ingested_at:           datetime   — Set by normaliser; used for latency metrics
+ 
+  source:
+    channel:             ChannelEnum  — email | sms | webhook | ha_event |
+                                        scheduler | rule_engine | watcher | vision
+    connector_id:        str          — Which integration instance
+    thread_id:           str | None   — Native thread/conversation ID
+    message_id:          str | None   — Native message ID for dedup
+ 
+  actor:
+    actor_type:          ActorType  — user | system | integration
+    actor_id:            str        — Stable identity string
+ 
+  content:
+    text:                str | None
+    structured:          dict       — Parsed payload or intent hints
+    attachment_refs:     list[str]  — IDs of stored attachments; never inline bytes
+                                      (Renamed from attachments in original spec)
+    links:               list[str]
+ 
+  context:
+    timezone:            str        — IANA timezone string
+    locale:              str        — BCP-47
+    device_id:           str | None
+ 
+  correlation:
+    trace_id:            UUID       — Created at ingestion; NEVER changes
+    parent_event_id:     UUID | None — Set when triggered by another event
+    dedupe_key:          str | None  — Derived by normaliser from stable hash
+ 
+  security:
+    sensitivity:         Sensitivity  — low | med | high
+    redaction_policy_id: str
+```
+ 
+### RoutingDecision
+ 
+```yaml
+RoutingDecision:
+  trace_id:              UUID
+  event_id:              UUID
+  decided_at:            datetime
+ 
+  execution_mode:        ExecutionMode  — fast | task | gated | sandbox
+ 
+  match:
+    matched_fastpath:    str | None     — e.g. "timer.set"
+    matched_rule_ids:    list[str]
+    used_llm:            bool
+ 
+  intent:                str | None     — Normalised intent label
+  confidence:            float | None   — None for deterministic matches
+ 
+  required_scopes:       list[str]
+  risk_level:            RiskLevel      — low | medium | high | critical
+ 
+  gates:                 list[GateSpec]
+  notes:                 str | None     — Human-readable routing explanation
+ 
+GateSpec
+  gate_type:             GateType       — approval | dryrun | scope_check
+  reason:                str
+  expires_in_seconds:    int
+```
+ 
+## Task and Step schemas
+ 
+### Task
+ 
+```yaml
+Task:
+  task_id:               UUID
+  created_at:            datetime
+  updated_at:            datetime
+  status:                TaskStatus     — pending | running | paused | succeeded |
+                                          failed | canceled
+  trigger_event_id:      UUID
+  trace_id:              UUID
+  current_step_id:       UUID | None
+  autonomy_level_at_start: AutonomyLevel  — Snapshot; never changes mid-task
+  labels:                list[str]
+  next_wake_time:        datetime | None
+  cancel_reason:         str | None
+  error:                 ErrorDetail | None
+```
+ 
+### Step
+ 
+```yaml
+Step:
+  step_id:               UUID
+  task_id:               UUID
+  name:                  str
+  status:                StepStatus     — pending | running | succeeded | failed | paused
+  attempt:               int            — 0-indexed
+  max_attempts:          int
+ 
+  retry_policy:          RetryPolicy
+ 
+  input:                 dict           — Immutable at creation
+  checkpoint:            dict           — Mutable; written mid-step for resumability
+  output:                dict | None    — Written on success
+ 
+  idempotency_key:       str | None     — Required for effectful steps
+ 
+  started_at:            datetime | None
+  ended_at:              datetime | None
+  error:                 ErrorDetail | None
+ 
+RetryPolicy:
+  strategy:              RetryStrategy  — exponential | fixed | none
+  base_delay_ms:         int
+  max_delay_ms:          int
+  jitter:                bool           — Always true for exponential
+```
+ 
+## Tool schemas
+ 
+### ToolCall + ToolResult
+ 
+```yaml
+ToolCall:
+  tool_call_id:          UUID
+  created_at:            datetime
+  trace_id:              UUID
+  task_id:               UUID | None    — None for fast-lane calls
+  step_id:               UUID | None
+  event_id:              UUID | None
+  connector_id:          str
+  tool_name:             str
+  action:                str
+  request_hash:          str            — SHA-256 of redacted request
+  idempotency_key:       str            — REQUIRED; no exceptions
+  status:                ToolCallStatus — attempted | succeeded | failed | unknown
+  latency_ms:            int | None
+  risk_level:            RiskLevel
+  autonomy_level:        AutonomyLevel
+ 
+ToolResult:
+  tool_call_id:          UUID
+  status:                ResultStatus   — succeeded | failed
+  response_hash:         str            — SHA-256; payload stored in artifact store
+  error:                 ErrorDetail | None
+  resolved_at:           datetime
+```
+ 
+## Observability schemas
+ 
+### AuditEvent
+ 
+```yaml
+AuditEvent:
+  audit_id:              UUID
+  timestamp:             datetime       — UTC; set by AuditWriter, never by caller
+  trace_id:              UUID           — Required; positional argument to AuditWriter
+  stage:                 PipelineStage  — normalize | route | execute | tool_call |
+                                          gate | operator | scheduler | watcher | rule
+ 
+  refs:
+    event_id:            UUID | None
+    task_id:             UUID | None
+    step_id:             UUID | None
+    tool_call_id:        UUID | None
+    approval_id:         UUID | None
+ 
+  type:                  str            — e.g. "tool_call.succeeded"
+  summary:               str            — Human-readable; indexed for search
+  outcome:               AuditOutcome   — success | failure | suppressed | info
+  latency_ms:            int | None
+ 
+  tool_name:             str | None
+  connector_id:          str | None
+  risk_level:            RiskLevel | None
+  autonomy_level:        AutonomyLevel | None
+  payload_ref:           str | None     — Artifact store ID; None if no payload
+                                          (Added; inline payloads not stored)
+```
+ 
+### Approval
+ 
+```yaml
+Approval:
+  approval_id:           UUID
+  created_at:            datetime
+  expires_at:            datetime
+  status:                ApprovalStatus — pending | approved | denied | expired
+  trace_id:              UUID
+ 
+  refs:
+    event_id:            UUID | None
+    task_id:             UUID | None
+    step_id:             UUID | None
+ 
+  risk_level:            RiskLevel
+  autonomy_level:        AutonomyLevel  — Snapshot at gate decision time
+ 
+  what:                  dict           — Exact serialised action payload
+  why:                   str            — Human-readable gate reason (Added)
+  how_to_approve:        str            — e.g. "POST /approvals/{id}/approve" (Added)
+ 
+  decision:
+    by:                  str | None     — "operator"
+    at:                  datetime | None
+    reason:              str | None
+```
+ 
+## Related
+ 
+- [architecture/pipeline](/docs/architecture/pipeline)
+- [architecture/task-engine](/docs/architecture/task-engine)
+- [observability/audit-log](/docs/observability/audit-log)
+- [safety/autonomy-levels](/docs/safety/autonomy-levels)
+- [ops/db-schema](/docs/ops/db-schema)
+- [dev/naming-conventions](/docs/dev/naming-conventions)

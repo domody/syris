@@ -1,0 +1,82 @@
+---
+title: Architecture Principles
+description: Design philosophy and non-negotiable invariants that govern all SYRIS implementation decisions.
+---
+
+The principles on this page govern every implementation decision in SYRIS. They are ordered by priority: when two principles conflict, the higher one wins.
+
+## Design philosophy
+
+SYRIS optimises for, in strict priority order:
+
+1. **Correctness > cleverness** — a working simple system beats a clever broken one.
+2. **Traceability > throughput** — every decision and action must be queryable; throughput is secondary.
+3. **Deterministic fast paths > LLM everywhere** — rule-based and pattern-based routing must handle the common case; the model is a fallback of last resort.
+4. **Modular monolith > microservices** — start with a single deployable control plane; design extraction seams but do not extract until necessary.
+5. **Idempotency by default > best-effort retries** — every effectful action must be safe to replay.
+6. **APIs for everything > "check logs"** — the operator must never need to read log files to understand system state.
+
+## Core invariants
+
+Invariants are non-negotiable. Violating one is either a bug or requires a redesign and an ADR.
+
+### Pipeline invariants
+
+| Invariant                                                                                                                       | What breaks if violated                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Everything becomes a `MessageEvent`. Every stimulus normalises into a versioned `MessageEvent` before any routing or execution. | The router and audit system cannot treat events uniformly; tracing breaks.                         |
+| Single pipeline, three separable stages: `Normalize → Route → Execute`. Each stage is independently testable.                   | Stage-level testing becomes impossible; debugging a broken pipeline requires full end-to-end runs. |
+| Rules-first routing. Deterministic fast paths and rules engine run before any LLM call.                                         | Latency becomes unpredictable; common operations incur unnecessary model costs.                    |
+
+### Traceability invariants
+
+| Invariant                                                                                                                      | What breaks if violated                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| Every chain has a `trace_id`. Generated once at normalisation; propagated unchanged to every audit event, tool call, and task. | Cross-component correlation breaks; "what caused this?" cannot be answered by API query. |
+| Every meaningful action emits an `AuditEvent`. Tool calls, gate decisions, suppressions, operator actions — all audited.       | The audit log becomes incomplete; operator cannot reconstruct what the system did.       |
+| Audit is queryable via API. No operation should require reading log files.                                                     | The "observable by design" guarantee fails; ops reverts to log spelunking.               |
+
+### Safety invariants
+
+| Invariant                                                                                                                                      | What breaks if violated                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Autonomy level is always explicit. A current `AutonomyLevel` exists, is persisted, and is changeable via operator controls.                    | Gate decisions become non-deterministic; the operator cannot control system behaviour. |
+| Risk gating exists. Effectful actions are classified by risk and may require `Approval` before execution.                                      | High-risk actions execute without operator visibility or control.                      |
+| Dry-run exists for risky tools. Tools with `supports_preview = True` must produce a preview before execution when the gate matrix requires it. | Operators cannot verify what will happen before irreversible actions execute.          |
+
+### Idempotency invariants
+
+| Invariant                                                                                                                                                           | What breaks if violated                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Every effectful tool call has an `idempotency_key`. No exceptions.                                                                                                  | Retries after crash or transient failure cause duplicate side effects.                |
+| Retries never duplicate side effects. On retry or restart, the previous outcome is returned from `idempotency_outcomes` if present.                                 | A crash between tool call and outcome persistence causes the action to execute twice. |
+| `unknown` is a valid persisted outcome. When outcome cannot be determined (transport failure mid-call), `unknown` is stored and reconciled — never assumed success. | Unknown outcomes silently succeed; actual duplicates go undetected.                   |
+
+### Operator control invariants
+
+| Invariant                                                                                                                                 | What breaks if violated                                                    |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Operator can always intervene: pause/resume system, cancel/retry tasks, toggle autonomy, approve/deny gates, enable/disable integrations. | The operator loses the ability to stop, correct, or override the system.   |
+| All operator actions emit audit events with `actor = operator`.                                                                           | Operator changes are invisible in the audit trail; accountability is lost. |
+
+### Secrets invariants
+
+| Invariant                                                                                                                | What breaks if violated                                                 |
+| ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| Secrets are only accessible via `get_secret()`. No direct DB access, no list/dump, no inline storage in schemas or logs. | Credentials appear in audit payloads or logs; rotation is insufficient. |
+| Audit payloads are redacted before storage. Sensitive data is replaced with a `payload_ref` to an encrypted artifact.    | Secrets or PII leak into the queryable audit log.                       |
+
+### Restart invariants
+
+| Invariant                                                                                                                         | What breaks if violated                                                       |
+| --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Crash recovery is deterministic. On restart, tasks reconcile from persisted state; schedules and watchers resume from DB records. | State diverges from reality after every crash; operator must manually triage. |
+| In-flight uncertainty is handled. Unknown tool outcomes are detected at startup and reconciled rather than silently dropped.      | Half-executed actions are missed; side effects occur without audit evidence.  |
+
+## Related
+
+- [architecture/pipeline](/docs/architecture/pipeline)
+- [architecture/task-engine](/docs/architecture/task-engine)
+- [safety/autonomy-levels](/docs/safety/autonomy-levels)
+- [safety/risk-and-gates](/docs/safety/risk-and-gates)
+- [adr/0001-modular-monolith](/docs/adr/0001-modular-monolith)

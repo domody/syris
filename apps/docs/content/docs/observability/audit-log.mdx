@@ -1,0 +1,111 @@
+---
+title: Audit Log
+description: Append-only guarantee, AuditEvent schema, event types by stage, payload_ref pattern, and trace_id queries.
+---
+
+The audit log is the source of truth for everything SYRIS has done. It is append-only: no `UPDATE`, no `DELETE`, ever.
+
+## Append-only guarantee
+
+`AuditWriter` in `observability/audit.py` is the **sole** point of audit emission. No code writes to `audit_events` directly. `AuditWriter.emit()` requires `trace_id` as a positional argument — omitting it is a type error.
+
+The `audit_events` table has no update path in the application. At the DB level, the table is designed without update triggers or cascade rules. Any application code that attempts to update or delete an audit record is a bug.
+
+If the audit write fails, the pipeline operation fails. Losing an audit record is worse than losing a pipeline event.
+
+## AuditEvent schema
+
+See [architecture/data-contracts](/docs/architecture/data-contracts) for the full Pydantic schema. DB representation:
+
+```yaml
+audit_events table
+  audit_id:          TEXT    PK
+  timestamp:         TEXT    NOT NULL   — ISO-8601 UTC; set by AuditWriter only
+  trace_id:          TEXT    NOT NULL
+  stage:             TEXT    NOT NULL   — normalize | route | execute | tool_call |
+                                          gate | operator | scheduler | watcher | rule
+  ref_event_id:      TEXT    nullable
+  ref_task_id:       TEXT    nullable
+  ref_step_id:       TEXT    nullable
+  ref_tool_call_id:  TEXT    nullable
+  ref_approval_id:   TEXT    nullable
+  type:              TEXT    NOT NULL   — e.g. "tool_call.succeeded"
+  summary:           TEXT    NOT NULL   — human-readable; indexed for search
+  outcome:           TEXT    NOT NULL   — success | failure | suppressed | info
+  latency_ms:        INTEGER nullable
+  tool_name:         TEXT    nullable
+  connector_id:      TEXT    nullable
+  risk_level:        TEXT    nullable
+  autonomy_level:    TEXT    nullable
+  payload_ref:       TEXT    nullable   — artifact store ID; null if no payload
+```
+
+Indexes: `trace_id`, `timestamp`, `type`, `outcome`, `tool_name`, `ref_task_id` (partial).
+
+## Audit event types by stage
+
+| Stage     | Type                         | Outcome    |
+| --------- | ---------------------------- | ---------- |
+| normalize | `event.ingested`             | info       |
+| normalize | `event.deduped`              | suppressed |
+| route     | `routing.decided`            | info       |
+| execute   | `gate.required`              | info       |
+| execute   | `gate.approved`              | success    |
+| execute   | `gate.denied`                | info       |
+| execute   | `gate.antiflap_block`        | suppressed |
+| execute   | `gate.storm_block`           | suppressed |
+| tool_call | `tool_call.attempted`        | info       |
+| tool_call | `tool_call.succeeded`        | success    |
+| tool_call | `tool_call.failed`           | failure    |
+| tool_call | `tool_call.deduped`          | suppressed |
+| tool_call | `tool_call.unknown`          | failure    |
+| task      | `task.step_started`          | info       |
+| task      | `task.step_completed`        | success    |
+| task      | `task.step_failed`           | failure    |
+| task      | `task.step_unexpected_error` | failure    |
+| scheduler | `schedule.fired`             | success    |
+| scheduler | `schedule.skipped`           | suppressed |
+| scheduler | `schedule.missed`            | info       |
+| watcher   | `watcher.tick`               | success    |
+| watcher   | `watcher.error`              | failure    |
+| watcher   | `watcher.suppressed`         | suppressed |
+| rule      | `rule.triggered`             | success    |
+| rule      | `rule.suppressed`            | suppressed |
+| operator  | `operator.action.*`          | success    |
+| mcp       | `mcp.connected`              | info       |
+| mcp       | `mcp.disconnected`           | info       |
+| mcp       | `mcp.tools_synced`           | info       |
+
+## payload_ref pattern
+
+Tool request and response payloads are **not** stored inline in `audit_events`. Instead:
+
+1. The payload is redacted according to `security.redaction_policy_id`.
+2. The redacted, encrypted blob is written to the artifact store.
+3. The artifact ID is stored in `audit_events.payload_ref`.
+
+This keeps the audit table compact and scannable. Full payload retrieval goes through `GET /artifacts/{id}` with appropriate access controls.
+
+`payload_ref` is `NULL` for events with no meaningful payload (e.g. `event.ingested`, status checks).
+
+## Querying by trace_id
+
+Every audit event for a complete request chain shares a `trace_id`. To reconstruct the full history of any event:
+
+```sql
+SELECT * FROM audit_events
+WHERE trace_id = :trace_id
+ORDER BY timestamp ASC;
+```
+
+The API equivalent: `GET /audit?trace_id={trace_id}`.
+
+This query covers the full chain: ingestion → routing decision → tool calls → task steps → gate decisions → operator actions — all with the same `trace_id`.
+
+## Related
+
+- [architecture/data-contracts](/docs/architecture/data-contracts)
+- [architecture/pipeline](/docs/architecture/pipeline)
+- [observability/projections](/docs/observability/projections)
+- [observability/api-reference](/docs/observability/api-reference)
+- [ops/db-schema](/docs/ops/db-schema)

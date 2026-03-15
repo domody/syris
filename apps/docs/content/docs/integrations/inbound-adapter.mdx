@@ -1,0 +1,65 @@
+---
+title: Inbound Adapters
+description: InboundAdapter interface, planned channels, and provenance requirements. Implementations pending.
+---
+ 
+> **Status: pending.** No inbound adapter implementations exist yet. This page documents the interface contract and planned channels. Implementations will follow Milestone 8.
+ 
+Inbound adapters convert raw events from external systems into `MessageEvent`s and hand them to the normaliser. They contain no business logic.
+ 
+## InboundAdapter interface
+ 
+All inbound adapters implement the `InboundAdapter` ABC in `integrations/inbound/base.py`:
+ 
+```py
+InboundAdapter (ABC):
+ 
+  def capabilities(self) -> list[str]:
+    # Declares what this adapter can receive
+ 
+  def connect(self) -> None:
+    # Establish connection / register webhook (long-lived adapters)
+ 
+  def poll(self) -> list[RawEvent]:
+    # Return any new events since last poll (polling adapters)
+ 
+  def webhook_handler(self, payload: dict) -> RawEvent:
+    # Handle a single inbound webhook payload (push adapters)
+ 
+  def normalize(self, raw: RawEvent) -> dict:
+    # Convert raw adapter payload to a normaliser-compatible input dict
+```
+ 
+An adapter implements either `poll()` or `webhook_handler()`, not both, depending on its channel type.
+ 
+## Provenance requirements
+ 
+Every adapter must preserve:
+ 
+- **Source IDs:** native message ID and thread/conversation ID must be passed through unchanged.
+- **Timestamps:** the source `occurred_at` timestamp from the external system (not the ingestion time).
+- **Thread linkage:** `thread_id` must be set for channels with thread context so parent/reply relationships are preserved.
+ 
+The normaliser uses these fields to compute `dedupe_key` and to set `parent_event_id` on child events.
+ 
+## Planned channels
+ 
+| Channel | `source.channel` value | Notes |
+|---|---|---|
+| Email | `email` | IMAP polling or SMTP webhook |
+| Inbound webhook | `webhook` | Generic JSON payload receiver |
+| Home Assistant event | `ha_event` | HA websocket or webhook |
+| Scheduler | `scheduler` | Emitted by the scheduler loop directly |
+| Rules engine | `rule_engine` | Emitted by the rules engine as child events |
+| Watcher | `watcher` | Emitted by watcher tick functions |
+| Vision | `vision` | Pluggable visual event source (deferred) |
+ 
+The `scheduler`, `rule_engine`, and `watcher` channels are not external adapters — they are emitted directly by their respective subsystems into the normaliser. External adapter implementations are pending.
+ 
+## Related
+ 
+- [integrations/tool-runtime](/docs/integrations/tool-runtime)
+- [architecture/pipeline](/docs/architecture/pipeline)
+- [proactive/scheduler](/docs/proactive/scheduler)
+- [proactive/watchers](/docs/proactive/watchers)
+- [proactive/rules-engine](/docs/proactive/rules-engine)

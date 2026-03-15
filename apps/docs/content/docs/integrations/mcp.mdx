@@ -1,0 +1,91 @@
+---
+title: MCP Integration
+description: MCP architecture, the four components, TrustPolicy schema, default posture, and connection lifecycle.
+---
+ 
+MCP (Model Context Protocol) is an integration provider layer that sits beneath the SYRIS Tool Runtime. MCP servers appear in the tool registry as normal `RegisteredTool` entries; the full SYRIS safety, gating, idempotency, and audit stack applies before any MCP tool invocation.
+ 
+For the decision to adopt this architecture, see [adr/0002-mcp-integration](/docs/adr/0002-mcp-integration).
+ 
+## Architecture position
+ 
+```text
+[Tool Runtime / ToolRegistry]
+        │
+        └── [MCPProvider] ─── registers MCP tools as RegisteredTool entries
+                │
+                └── [MCPConnectionManager] ─── per-server persistent connection
+                        │
+                        └── MCP server (external, JSON-RPC)
+```
+ 
+The gate matrix, scope checks, idempotency, and audit emit in `tools/executor.py` run before any call reaches the MCP layer. MCP does not bypass SYRIS safety controls.
+ 
+## Four components
+ 
+### MCPConnectionManager
+ 
+Located in `integrations/mcp/connection.py`.
+ 
+- Maintains a persistent connection to one MCP server.
+- Reconnects with exponential backoff on disconnect.
+- Caches the tool list; refreshes on reconnect or explicit sync.
+- Emits `AuditEvent` on all connection lifecycle events.
+ 
+### MCPProvider
+ 
+Located in `integrations/mcp/provider.py`.
+ 
+- Registers all tools from a connected MCP server into `ToolRegistry`.
+- Handles tool list drift between restarts: adds new tools, removes stale entries.
+- Applies `TrustPolicy` to assign risk levels, scopes, and idempotency contracts to each tool.
+ 
+### MCPToolAdapter
+ 
+Located in `integrations/mcp/adapter.py`.
+ 
+- Implements `BaseTool` for a single MCP tool.
+- `execute()` calls `MCPConnectionManager.call(tool_name, args)` and translates the response to `ToolResult`.
+- Handles "unknown outcome" explicitly when the transport drops mid-call — stores `unknown` in `idempotency_outcomes` rather than assuming success or failure.
+ 
+### TrustPolicy
+ 
+Located in `integrations/mcp/trust.py`. Per-server and per-tool policy.
+ 
+```yaml
+TrustPolicy
+  risk_override:          RiskLevel | None      — Overrides MCP annotations (untrusted)
+  scopes_mapping:         dict[str, list[str]]  — Maps MCP tool name → SYRIS scopes
+  idempotency_contract:   IdempotencyContract   — none | provider_managed | syris_managed
+  supports_preview:       bool
+```
+ 
+MCP tool annotations are treated as **untrusted** by default. `risk_override` in `TrustPolicy` is the authoritative source for risk level; MCP metadata is ignored unless the server is explicitly trusted via policy.
+ 
+## Default posture
+ 
+All MCP tools are classified as **high risk** until explicitly allowlisted in `TrustPolicy`. This means:
+ 
+- A new MCP server's tools require `CONFIRM` before execution in A2 and below.
+- Operators must configure `TrustPolicy` entries to lower risk levels for trusted tools.
+- Risk level can only be changed via `TrustPolicy`; MCP server-provided annotations are ignored.
+ 
+## Connection lifecycle
+ 
+| Event | Audit type | Notes |
+|---|---|---|
+| Connection established | `mcp.connected` | Includes tool count from initial discovery |
+| Tools list synced | `mcp.tools_synced` | Includes added/removed tool diff |
+| Connection lost | `mcp.disconnected` | Triggers reconnect with backoff |
+| Tool call mid-disconnect | `tool_call.unknown` | Outcome stored as `unknown`; reconciled on reconnect |
+| Consecutive errors ≥ threshold | Alarm raised | Integration health degrades in dashboard |
+ 
+When an MCP server disconnects, `tool.health.status` transitions to `unavailable`. The dashboard reflects this within 30 seconds via the `GET /integrations` endpoint.
+ 
+## Related
+ 
+- [integrations/tool-runtime](/docs/integrations/tool-runtime)
+- [safety/risk-and-gates](/docs/safety/risk-and-gates)
+- [safety/autonomy-levels](/docs/safety/autonomy-levels)
+- [observability/audit-log](/docs/observability/audit-log)
+- [adr/0002-mcp-integration](/docs/adr/0002-mcp-integration)

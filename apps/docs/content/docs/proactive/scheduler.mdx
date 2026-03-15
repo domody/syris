@@ -1,0 +1,73 @@
+---
+title: Scheduler
+description: Cron, interval, and one-shot schedule types; the scheduler loop; catch-up policies; and the schedules DB schema.
+---
+ 
+The scheduler emits `MessageEvent`s on a durable, persistent schedule. All schedule state lives in the DB — nothing is held in memory only.
+ 
+## Schedule types
+ 
+| Type | `spec` field | Behaviour |
+|---|---|---|
+| `cron` | Cron expression (e.g. `"0 9 * * 1-5"`) | Fires at each matching time |
+| `interval` | Integer seconds (e.g. `"30"`) | Fires every N seconds from last run |
+| `one_shot` | ISO-8601 datetime | Fires once at the specified time; disables itself after |
+ 
+## Scheduler loop
+ 
+The scheduler runs every 5 seconds:
+ 
+```sql
+SELECT * FROM schedules
+WHERE enabled = 1 AND next_run_at <= now()
+FOR UPDATE SKIP LOCKED
+```
+ 
+For each due schedule:
+ 
+1. Check quiet hours policy — if suppressed: emit `AuditEvent("schedule.skipped")`, advance `next_run_at`, commit.
+2. Apply `catch_up_policy` if `last_run_at` is stale (indicates missed firings).
+3. Emit `MessageEvent` with `source.channel = "scheduler"` and `source.connector_id = schedule_id`.
+4. Update `last_run_at`; compute new `next_run_at`.
+5. Commit atomically.
+ 
+`FOR UPDATE SKIP LOCKED` ensures safe operation if multiple workers are ever introduced.
+ 
+## Catch-up policies
+ 
+| Policy | Behaviour on missed firings |
+|---|---|
+| `skip` | Advance to the next future slot. Emit one `AuditEvent("schedule.missed")` per skipped slot. |
+| `run_once` | Fire once for the entire missed window. Note the slot count in audit. |
+| `run_all_capped` | Fire up to N times for the missed window; skip the remainder. N is configurable. |
+ 
+The catch-up policy is evaluated on startup (crash recovery) and whenever `last_run_at` diverges from expected. See [architecture/task-engine](/docs/architecture/task-engine) for the startup reconciliation sequence.
+ 
+## Schedules table schema
+ 
+```yaml
+schedules
+  schedule_id:           str     PK
+  name:                  str
+  enabled:               bool
+  type:                  str     — cron | interval | one_shot
+  spec:                  str     — cron expression or interval_seconds
+  next_run_at:           datetime
+  last_run_at:           datetime | None
+  timezone:              str     — IANA timezone; default UTC
+  quiet_hours_policy_id: str | None
+  catch_up_policy:       str     — skip | run_once | run_all_capped; default skip
+  payload:               str     — JSON: MessageEvent template to emit
+  created_at:            datetime
+  updated_at:            datetime
+```
+ 
+Key index: `idx_schedules_next_run ON schedules(next_run_at) WHERE enabled = 1` — partial index; only active schedules are scanned.
+ 
+## Related
+ 
+- [proactive/watchers](/docs/proactive/watchers)
+- [proactive/rules-engine](/docs/proactive/rules-engine)
+- [architecture/pipeline](/docs/architecture/pipeline)
+- [ops/db-schema](/docs/ops/db-schema)
+- [dev/outstanding-decisions](/docs/dev/outstanding-decisions)

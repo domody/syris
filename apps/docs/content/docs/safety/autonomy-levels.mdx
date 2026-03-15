@@ -1,45 +1,148 @@
 ---
 title: Autonomy Levels
-description: How SYRIS decides what it can do automatically vs what requires confirmation, based on risk and policy.
+description: How SYRIS decides what it executes automatically versus what requires confirmation, and the full gate matrix.
 ---
-
-**Autonomy exists so SYRIS can be useful without being dangerous.**
-
-Autonomy is always interpreted together with **risk level** and **tool scopes**. The same action may be allowed or gated depending on the autonomy level and policy.
-
+ 
+Autonomy level is the system-wide operating mode that, combined with risk level, determines whether an action executes immediately, requires operator approval, or is blocked outright.
+ 
+Autonomy is always interpreted together with **risk level** and **tool scopes**. The same action may produce different gate outcomes at different autonomy levels.
+ 
 ## Autonomy levels (A0–A4)
-
-| Level | Name             | Default behavior                       | Effectful actions                                               |
-| ----: | ---------------- | -------------------------------------- | --------------------------------------------------------------- |
-|    A0 | Suggest-only     | Drafts, previews, explanations         | Never executes effectful actions                                |
-|    A1 | Confirm required | Can prepare actions + ask to confirm   | Executes only after explicit approval for anything effectful    |
-|    A2 | Scoped autonomy  | Automates low-risk actions             | Low-risk auto; medium/high requires approval                    |
-|    A3 | High autonomy    | Operates broadly within granted scopes | Most actions auto; high/critical gated                          |
-|    A4 | Full autonomy    | Dangerous; usually disabled            | Nearly all actions auto; still respects hard safety constraints |
-
-## Gate matrix table
-
-| Autonomy\Risk         | Low     | Medium  | High    | Critical   |
-| --------------------- | ------- | ------- | ------- | ---------- |
-| A0 (Suggest-only)     | PREVIEW | PREVIEW | PREVIEW | HARD BLOCK |
-| A1 (Confirm Required) | CONFIRM | CONFIRM | CONFIRM | HARD BLOCK |
-| A2 (Scoped autonomy)  | ALLOW   | CONFIRM | CONFIRM | CONFIRM    |
-| A3 (High autonomy)    | ALLOW   | ALLOW   | CONFIRM | CONFIRM    |
-| A4 (Full autonomy)    | ALLOW   | ALLOW   | ALLOW   | CONFIRM    |
-
-## Fast lane vs work lane (and gating heavy work)
-
-- **Fast lane** is default for simple commands (e.g., “turn off lights”).
-- **Work lane** is reserved for multi-step tasks.
-- **Sandbox work** is reserved for heavy jobs and should be gated:
-  - explicit `/sandbox` intent
-  - or explicit operator confirmation when SYRIS wants to escalate
-
-## Hard safety constraints (always enforced)
-
-Regardless of autonomy level:
-
-- least privilege scopes are enforced
-- secrets are never exposed
-- redaction is applied to audit payloads
-- anti-spam / anti-flap policies remain active
+ 
+| Level | Name | Effectful actions |
+|---|---|---|
+| A0 | Suggest-only | Never executes effectful actions. All actions produce a dry-run preview. |
+| A1 | Confirm required | Executes effectful actions only after explicit operator approval. |
+| A2 | Scoped autonomy | Low-risk actions execute automatically. Medium and high require approval. |
+| A3 | High autonomy | Low and medium actions execute automatically. High requires approval. |
+| A4 | Full autonomy | Low, medium, and high execute automatically. Critical requires approval. |
+ 
+`A4` is dangerous and typically disabled. All levels still respect hard safety overrides. See [safety/risk-and-gates](/docs/safety/risk-and-gates).
+ 
+## Risk levels
+ 
+| Risk | Examples | Typical gate at A2 |
+|---|---|---|
+| Low | Read-only queries, status checks, local notes | ALLOW |
+| Medium | Controlling a single device, sending to a private channel, creating a calendar event | CONFIRM |
+| High | Deleting data, controlling many devices, sending broadly, quiet-hours notifications | CONFIRM |
+| Critical | Purchases, public posting, irreversible actions, wide blast radius | HARD BLOCK |
+ 
+## Confirmation gates
+ 
+A gate creates a persisted `Approval` record containing:
+ 
+- `why` — the human-readable reason the action was gated
+- `what` — the exact serialised payload that will execute on approval (no surprises)
+- `how_to_approve` — the API call required: e.g. `POST /approvals/{id}/approve`
+- `expires_at` — the deadline; expired approvals are handled per operator configuration
+ 
+Approvals are audited and `trace_id`-linked to the originating event or task. See [architecture/data-contracts](/docs/architecture/data-contracts) for the full `Approval` schema.
+ 
+## Gate decision matrix
+ 
+The matrix is a lookup table in `safety/gates.py`. Hard overrides are applied before the matrix lookup. See [safety/risk-and-gates](/docs/safety/risk-and-gates) for override details.
+ 
+**Key:** ALLOW = execute immediately; CONFIRM = create Approval and block; PREVIEW = dry-run only (A0 suggest mode); HARD BLOCK = refuse outright regardless of approval.
+ 
+| | LOW | MEDIUM | HIGH | CRITICAL |
+|---|---|---|---|---|
+| **A0** | PREVIEW | PREVIEW | PREVIEW | PREVIEW |
+| **A1** | CONFIRM | CONFIRM | CONFIRM | HARD BLOCK |
+| **A2** | ALLOW | CONFIRM | CONFIRM | HARD BLOCK |
+| **A3** | ALLOW | ALLOW | CONFIRM | HARD BLOCK |
+| **A4** | ALLOW | ALLOW | ALLOW | CONFIRM |
+ 
+## Dry-run previews
+ 
+For tools that declare `supports_preview = True`, the gate matrix `PREVIEW` action (and opt-in CONFIRM flow) triggers a dry-run before execution:
+ 
+- Message render preview
+- Device state diff (before → after)
+- Patch previews for code changes
+- "What will happen" summary
+ 
+Execution reuses the same `idempotency_key` as the preview to ensure no duplication.
+ 
+## Hard safety constraints
+ 
+These apply at every autonomy level without exception:
+ 
+- Least-privilege scopes are enforced on every tool call.
+- Secrets are never exposed in audit payloads or logs.
+- Redaction is applied to all stored payloads.
+- Anti-spam and anti-flap policies remain active.
+ 
+See [safety/risk-and-gates](/docs/safety/risk-and-gates) for the full override specification.
+ 
+## Related
+ 
+- [safety/risk-and-gates](/docs/safety/risk-and-gates)
+- [architecture/data-contracts](/docs/architecture/data-contracts)
+- [integrations/tool-runtime](/docs/integrations/tool-runtime)
+- [observability/audit-log](/docs/observability/audit-log)
+```
+ 
+```md safety/risk-and-gates
+---
+title: Risk Classification and Gates
+description: How risk level is determined, the four hard safety overrides, and the dry-run preview protocol.
+---
+ 
+Risk level and gate decisions are computed in `safety/risk.py` and `safety/gates.py`. This page covers risk classification and the overrides that apply before the gate matrix. The matrix itself is in [safety/autonomy-levels](/docs/safety/autonomy-levels).
+ 
+## Risk classification
+ 
+Risk is assigned at two levels: a default for the tool, and per-action overrides in `risk_map`. The classifier in `safety/risk.py` starts from the base risk and applies adjusters that can **only increase** it:
+ 
+```
+base_risk = tool.risk_map.get(action, tool.risk_default)
+ 
+Adjusters (applied in order; each can raise risk by one level):
+  +1 if target is a broadcast or group channel (not private)
+  +1 if action is destructive (delete, wipe, reset)
+  +1 if blast_radius > threshold (e.g. all-home device control)
+  +1 if current time is within quiet hours
+ 
+final_risk = min(base_risk + sum(adjusters), RiskLevel.CRITICAL)
+```
+ 
+Adjusters can never lower risk. `CRITICAL` is the ceiling.
+ 
+## Hard safety overrides
+ 
+These four overrides are evaluated **before** the gate matrix. They can only increase the gate action — they never lower it to `ALLOW`.
+ 
+### 1. Secrets scope
+ 
+If a tool call requires any secret-access scope, the gate action is always `CONFIRM` — even at `A4` with `low` risk. Secrets access is never silently permitted.
+ 
+### 2. Quiet hours + medium/high risk
+ 
+If the current time falls within a configured quiet hours window **and** `risk >= medium`, the gate action escalates to `CONFIRM`. This prevents automated medium/high-risk actions during off-hours regardless of autonomy level.
+ 
+### 3. Anti-flap
+ 
+If the same tool, action, and target fired within the anti-flap cooldown window, the gate action is `BLOCK`. An `AuditEvent("gate.antiflap_block")` is emitted with the reason. This prevents rapid repeated executions from device event storms.
+ 
+### 4. Notification storm
+ 
+If outbound notifications in the past hour exceed `MAX_NOTIFICATIONS_PER_HOUR`, all further notification tool calls are blocked. An `AuditEvent("gate.storm_block")` is emitted. The alarm subsystem raises an alarm when this threshold is hit.
+ 
+## Dry-run preview protocol
+ 
+When the gate matrix returns `PREVIEW` (A0 suggest-only) or the gate flow requests a preview before `CONFIRM`:
+ 
+1. The tool executor calls `tool.preview(action, request, context)`.
+2. `PreviewResult` is returned to the caller without executing the action.
+3. If the operator proceeds, execution uses the **same** `idempotency_key` as the preview call to prevent duplicate side effects.
+4. Tools that do not support preview return `None` from `preview()`; the gate flow handles this gracefully (no preview shown, execution still blocked if `CONFIRM` required).
+ 
+For the full gate matrix, see [safety/autonomy-levels](/docs/safety/autonomy-levels).
+ 
+## Related
+ 
+- [safety/autonomy-levels](/docs/safety/autonomy-levels)
+- [integrations/tool-runtime](/docs/integrations/tool-runtime)
+- [architecture/data-contracts](/docs/architecture/data-contracts)
+- [ops/secrets](/docs/ops/secrets)

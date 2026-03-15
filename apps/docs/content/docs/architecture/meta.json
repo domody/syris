@@ -1,3 +1,10 @@
 {
-  "pages": ["system-design-v3", "invariants", "data-contracts", "component-map", "..."]
+  "pages": [
+    "principles",
+    "component-map",
+    "pipeline",
+    "task-engine",
+    "data-contracts",
+    "..."
+  ]
 }
