@@ -11,9 +11,9 @@ import {
 import { SidebarMenuButton } from "@/components/ui/sidebar";
 import { StatusDot } from "@/components/status-dot";
 import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 
-import { BrainCircuit } from "lucide-react";
+import { BrainCircuit, RefreshCwIcon } from "lucide-react";
 import { getSystemState } from "@/features/health/system-state";
 import { HealthQuery } from "@/features/health/use-health";
 
@@ -93,19 +93,34 @@ export function SystemHealthDropdown({
                     <p className="mt-auto">58 BPM</p>
                   </div>
                 </div>
-                <div className="w-full">
-                  <p className="text-[10px] text-muted-foreground font-mono">
-                    Last heartbeat: 11:07:42 PM
-                  </p>
-                </div>
               </>
             ) : (
-                <div className="w-full">
-                    <p className="text-xs text-muted-foreground">
-                        No data available, reconnect to backend to view stats.
-                    </p>
-                </div>
+              <div className="w-full">
+                <p className="text-xs text-muted-foreground">
+                  No data available, reconnect to backend to view stats.
+                </p>
+              </div>
             )}
+
+            <Button
+              size={"sm"}
+              variant={"secondary"}
+              onClick={() => {
+                console.log("Reloading");
+                window.location.reload();
+              }}
+            >
+              <RefreshCwIcon
+                className="group-active/button:animate-spin"
+                data-icon="inline-start"
+              />
+              Reload
+            </Button>
+            <div className="w-full">
+              <p className="text-[10px] text-muted-foreground font-mono">
+                Last heartbeat: 11:07:42 PM
+              </p>
+            </div>
           </div>
         </DropdownMenuGroup>
       </DropdownMenuContent>

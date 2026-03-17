@@ -49,7 +49,7 @@ export function SystemSnapshot({
             </CardTitle>
           }
         >
-          {q.data && <CardHeader>{formatValue(key, q.data[key])}</CardHeader>}
+          {q.data && <CardTitle className="group-data-[size=sm]/card:text-2xl line-clamp-1">{formatValue(key, q.data[key])}</CardTitle>}
         </QueryCard>
       ))}
     </div>
