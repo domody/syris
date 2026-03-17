@@ -12,6 +12,7 @@ import { SidebarTrigger } from "../ui/sidebar";
 import React from "react";
 import { MobileNav } from "./mobile-nav";
 import { source } from "@/lib/source";
+import { SearchCommand } from "./search-command";
 
 export function Topbar({ children }: { children?: React.ReactNode }) {
   const pageTree = source.pageTree;
@@ -36,15 +37,15 @@ export function Topbar({ children }: { children?: React.ReactNode }) {
             href={"/docs"}
             className={cn(
               buttonVariants({ variant: "ghost", size: "default" }),
-              "max-md:hidden",
+              "max-lg:hidden",
             )}
           >
             Documentation
           </Link>
         </div>
-        <div className="w-full flex items-center justify-end">
-          {/* <Separator className={"ml-auto"} orientation="vertical" /> */}
+        <div className="w-full flex items-center justify-end gap-4">
           <MobileNav tree={pageTree} className="flex lg:hidden" />
+          <SearchCommand tree={pageTree} className="hidden lg:flex" />
           <GitHubLink />
         </div>
       </div>
