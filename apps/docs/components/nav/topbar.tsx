@@ -19,7 +19,7 @@ export function Topbar({ children }: { children?: React.ReactNode }) {
   return (
     <header className="h-(--header-height) w-screen border-b bg-background sticky top-0 left-0 z-99 text-sm text-muted-foreground gap-4 contain-content">
       <div className="container flex items-center justify-between h-full gap-2">
-        <div className="w-full flex items-center justify-start">
+        <div className="w-min flex items-center justify-start">
           <Link
             href={"/"}
             className={cn(
@@ -32,7 +32,7 @@ export function Topbar({ children }: { children?: React.ReactNode }) {
             <Badge>v{VERSION}</Badge>
           </Link>
         </div>
-        <div className="w-full flex items-center justify-center">
+        <div className="w-full flex items-center justify-start">
           <Link
             href={"/docs"}
             className={cn(

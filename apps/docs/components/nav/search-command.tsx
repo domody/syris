@@ -154,10 +154,10 @@ export function SearchCommand({
         </Kbd>
       </Button>
 
-      <CommandDialog
+      <CommandDialog  
         open={open}
         onOpenChange={setOpen}
-        className="sm:max-w-lg w-full"
+        className="sm:max-w-lg w-full top-[15%]"
       >
         <Command shouldFilter={false}>
           {/*
@@ -188,11 +188,11 @@ export function SearchCommand({
                         onSelect={() => runCommand(() => router.push(page.url))}
                       >
                         <ArrowRight className="mr-2 size-4 text-muted-foreground" />
-                        <div className="flex items-center justify-between w-full">
+                        <div className="w-full grid grid-cols-1">
                           <span className="overflow-hidden line-clamp-1">
                             {page.name}
                           </span>
-                          <span className="pl-4 text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             {page.group}
                           </span>
                         </div>
