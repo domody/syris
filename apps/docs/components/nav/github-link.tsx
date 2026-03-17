@@ -16,13 +16,14 @@ const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export function GitHubLink() {
+export function GitHubLink({ className }: { className?: string }) {
   return (
     <Link
       href={"https://github.com/domody/syris"}
       className={cn(
-        buttonVariants({ variant: "ghost", size: "icon" }),
+        buttonVariants({ variant: "outline", size: "icon" }),
         "h-8 shadow-none",
+        className,
       )}
       target="_blank"
       rel="noreferrer"

@@ -146,7 +146,7 @@ export function SearchCommand({
 
   return (
     <div className={className}>
-      <Button onClick={() => setOpen(true)} variant="outline" className={"min-w-48 xl:min-w-64"}>
+      <Button onClick={() => setOpen(true)} variant="outline" className={"min-w-48 xl:min-w-64 rounded-xl"}>
         <Search data-icon="inline-start" />
         Search...
         <Kbd className="ml-auto">
