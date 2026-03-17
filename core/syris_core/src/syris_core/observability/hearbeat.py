@@ -8,7 +8,7 @@ from typing import Callable, Optional
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from syris_core.storage.db import session_scope
-from syris_core.storage.models import SystemHeartbeat
+from syris_core.storage.models import SystemHeartbeatRow
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ class HeartbeatService:
         now = datetime.now(timezone.utc)
         uptime_s = int((now - self._started_at).total_seconds())
 
-        row = SystemHeartbeat(
+        row = SystemHeartbeatRow(
             run_id=self._run_id,
             ts = now,
             status = self._status_provider(),

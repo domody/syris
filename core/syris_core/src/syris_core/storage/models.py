@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import uuid
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, Index
@@ -8,7 +8,7 @@ from sqlalchemy.types import DateTime
 
 from ..version import VERSION
 
-class SystemHeartbeat(SQLModel, table=True):
+class SystemHeartbeatRow(SQLModel, table=True):
     __tablename__: ClassVar[str] = "system_heartbeats"
     __table_args__: tuple = (
         Index("ix_system_heartbeats_ts", "ts"),
@@ -34,3 +34,29 @@ class SystemHeartbeat(SQLModel, table=True):
 
     service: str = Field(default="syris-core", max_length=64)
     version: str = Field(default=VERSION, max_length=64)
+
+
+class AuditEventRow(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "audit_events"
+ 
+    audit_id: str = Field(primary_key=True)
+    timestamp: str
+    trace_id: str
+    stage: str
+    type: str
+    summary: str
+    outcome: str
+ 
+    ref_event_id: Optional[str] = Field(default=None)
+    ref_task_id: Optional[str] = Field(default=None)
+    ref_step_id: Optional[str] = Field(default=None)
+    ref_tool_call_id: Optional[str] = Field(default=None)
+    ref_approval_id: Optional[str] = Field(default=None)
+ 
+    latency_ms: Optional[int] = Field(default=None)
+    tool_name: Optional[str] = Field(default=None)
+    connector_id: Optional[str] = Field(default=None)
+    risk_level: Optional[str] = Field(default=None)
+    autonomy_level: Optional[str] = Field(default=None)
+    payload_ref: Optional[str] = Field(default=None)
+ 
