@@ -1,5 +1,6 @@
 "use client";
 
+import { CardWrapper } from "@/components/card-wrapper";
 import { MilestoneCard } from "@/components/milestone-card";
 import { StatusCard } from "@/components/status-card";
 import {
@@ -64,46 +65,42 @@ const art = String.raw`
 
 export default function Page() {
   return (
-    <div className="w-screen overflow-x-hidden min-h-screen pt-4 pb-6 md:pb-12 flex flex-col space-y-4">
-      {/* <Alert className="rounded-xl container">
-        <AlertCircleIcon />
-        <AlertTitle>Mobile view issues</AlertTitle>
-        <AlertDescription>
-          We are aware of current issues viewing this site on mobile, and are
-          working on a fix. We recommend viewing this site on desktop until this
-          issue is resolved. Thank you for your patience.
-        </AlertDescription>
-      </Alert> */}
-      <div className="relative isolate flex min-h-[600px] h-[70vh] max-h-[900px] border rounded-2xl overflow-hidden mx-auto w-full container bg-origin-border">
-        <BackgroundLayers />
-        <div className="size-full z-2 flex flex-col px-4 md:p-12 max-md:items-center max-md:text-center">
-          <pre className="font-mono text-sm text-sidebar-primary leading-none tracking-tighter whitespace w-min overflow-hidden rounded absolute max-md:hidden -right-[20%] md:translate-x-0 -bottom-[10%] ">
-            {art}
-          </pre>
-          <Badge variant={"secondary"} className="mt-12">
-            v3 redesign
-          </Badge>
-          <h1 className="text-4xl my-4 mb-0 leading-tight font-medium xl:text-5xl">
-            SYRIS v3 Documentation
-          </h1>
-          <p className="text-sm text-muted-foreground max-w-3/4 my-4 xl:text-base xl:mb-8">
-            Baseline architecture, contracts, runbooks, and decisions for the
-            SYRIS core - built for fast paths, durable workflows, and
-            dashboard-first observability.
-          </p>
-          <div className="flex flex-row items-center justify-center gap-4 flex-wrap w-fit">
-            <Link href={"/docs"} className={buttonVariants({ size: "lg" })}>
-              Start Here
-            </Link>
-            <Link
-              href={"/docs/observability/api-reference"}
-              className={buttonVariants({ variant: "secondary", size: "lg" })}
-            >
-              View API Reference
-            </Link>
+    // we use max-[1432px] below as the container is full width until 1400px, and px-4
+    // adds 16px each side. to make the transition seamless between screensizes, we use:
+    // 1400 + 16 + 16 = 1432px 
+    <div className="w-screen overflow-x-hidden min-h-screen pt-4 pb-6 md:pb-12 flex flex-col gap-4 max-[1432px]:px-4"> 
+      <CardWrapper className="container">
+        <div className="relative isolate flex h-[70vh] border rounded-2xl overflow-hidden mx-auto w-full bg-origin-border bg-background">
+          <BackgroundLayers />
+          <div className="size-full z-2 flex flex-col px-4 md:p-12 max-md:items-center max-md:text-center">
+            <pre className="font-mono text-sm text-sidebar-primary leading-none tracking-tighter whitespace w-min overflow-hidden rounded absolute max-md:hidden -right-[20%] md:translate-x-0 -bottom-[10%] ">
+              {art}
+            </pre>
+            <Badge variant={"secondary"} className="mt-12">
+              v3 redesign
+            </Badge>
+            <h1 className="text-4xl my-4 mb-0 leading-tight font-medium xl:text-5xl">
+              SYRIS v3 Documentation
+            </h1>
+            <p className="text-sm text-muted-foreground max-w-3/4 my-4 xl:text-base xl:mb-8">
+              Baseline architecture, contracts, runbooks, and decisions for the
+              SYRIS core - built for fast paths, durable workflows, and
+              dashboard-first observability.
+            </p>
+            <div className="flex flex-row items-center justify-center gap-4 flex-wrap w-fit">
+              <Link href={"/docs"} className={buttonVariants({ size: "lg" })}>
+                Start Here
+              </Link>
+              <Link
+                href={"/docs/observability/api-reference"}
+                className={buttonVariants({ variant: "secondary", size: "lg" })}
+              >
+                View API Reference
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      </CardWrapper>
       <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 container">
         <StatusCard />
         <MilestoneCard />
