@@ -1,5 +1,6 @@
 "use client";
 
+import { MilestoneCard } from "@/components/milestone-card";
 import { StatusCard } from "@/components/status-card";
 import {
   Alert,
@@ -95,16 +96,17 @@ export default function Page() {
               Start Here
             </Link>
             <Link
-              href={"/docs/architecture/system-design-v3"}
+              href={"/docs/observability/api-reference"}
               className={buttonVariants({ variant: "secondary", size: "lg" })}
             >
-              View Architecture
+              View API Reference
             </Link>
           </div>
         </div>
       </div>
       <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 container">
         <StatusCard />
+        <MilestoneCard />
         {/* <div className="bg-red-500"></div> */}
       </div>
     </div>
