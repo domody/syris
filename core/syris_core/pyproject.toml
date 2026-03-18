@@ -5,12 +5,12 @@ description = "Proactive 24/7 AI Assistant"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-  "fastapi",
-  "pydantic",
-  "pydantic-settings",
-  "sqlalchemy",
-  "sqlmodel",
-  "uvicorn",
+    "fastapi>=0.135.1",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.13.1",
+    "sqlalchemy>=2.0.48",
+    "sqlmodel>=0.0.37",
+    "uvicorn>=0.42.0",
 ]
 
 [build-system]
