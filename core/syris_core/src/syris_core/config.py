@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     service_name: str = "syris-core"
     version: str = VERSION
 
-    api_host: str = "127.0.0.1"
+    api_host: str = "0.0.0.0"
     api_port: int = 8000
 
     db_url: str = "postgresql+asyncpg://syris:syris@localhost:5432/syris"

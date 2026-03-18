@@ -4,7 +4,14 @@ version = "0.1.0"
 description = "Proactive 24/7 AI Assistant"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+  "fastapi",
+  "pydantic",
+  "pydantic-settings",
+  "sqlalchemy",
+  "sqlmodel",
+  "uvicorn",
+]
 
 [build-system]
 requires = ["uv_build>=0.10.4,<0.11.0"]
