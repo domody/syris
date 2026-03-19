@@ -31,7 +31,6 @@ class AuditWriter:
     Usage::
         writer = AuditWriter(session_maker)
 
-        # Simple emit
         await writer.emit(
             trace_id,
             stage="normalize",
@@ -103,7 +102,7 @@ class AuditWriter:
 
     @asynccontextmanager
     async def span(
-                 self,
+        self,
         trace_id: UUID,
         *,
         stage: AuditStage,

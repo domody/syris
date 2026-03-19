@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: syris-postgres
+    environment:
+      POSTGRES_USER: syris
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: syris
+    volumes:
+      - syris_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U syris -d syris"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  syris-core:
+    build:
+      context: ../..          # monorepo root
+      dockerfile: ops/docker/syris-core/Dockerfile
+    container_name: syris-core
+    environment:
+      DATABASE_URL: postgresql://syris:${POSTGRES_PASSWORD}@postgres:5432/syris
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+volumes:
+  syris_pgdata:
