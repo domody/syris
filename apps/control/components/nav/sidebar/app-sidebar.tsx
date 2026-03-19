@@ -26,6 +26,7 @@ import { StatusDot } from "../../status-dot";
 import { useHealth } from "@/features/health/use-health";
 import { getSystemState } from "@/features/health/system-state";
 import { SystemHealthDropdown } from "./health-dropdown";
+import { EnvironmentSwitcher } from "./environment-switcher";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -65,6 +66,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
+        <EnvironmentSwitcher />
         <div className="flex justify-between items-center">
           <p className="text-xs text-muted-foreground">v{VERSION}</p>
           <Badge variant={"outline"}>dev</Badge>

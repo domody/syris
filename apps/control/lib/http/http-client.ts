@@ -1,3 +1,5 @@
+import { getActiveBaseUrl } from "./environments";
+
 export class HttpError extends Error {
   status: number;
   payload?: unknown;
@@ -10,8 +12,7 @@ export class HttpError extends Error {
   }
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
-
+// const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
@@ -21,7 +22,7 @@ export async function request<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const url = `${API_BASE_URL}${path}`;
+  const url = `${getActiveBaseUrl()}${path}`;
 
   const res = await fetch(url, {
     ...options,
