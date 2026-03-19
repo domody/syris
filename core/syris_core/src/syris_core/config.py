@@ -29,6 +29,6 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://syris:syris@localhost:5432/syris"
     
-    heartbeat_interval_s: int = Field(default=5, ge=1, le=3600)
+    heartbeat_interval_s: int = Field(default=30, ge=1, le=3600)
 
     log_level: str = "INFO"

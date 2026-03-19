@@ -1,0 +1,1664 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Beach volleyball prep — 10-day leg block</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0e0e0c;
+        --bg2: #181815;
+        --bg3: #222220;
+        --border: rgba(255, 255, 255, 0.08);
+        --border2: rgba(255, 255, 255, 0.14);
+        --text: #f0ede6;
+        --muted: #8a8880;
+        --dim: #5a5855;
+        --sand: #c8a96e;
+        --sand2: #a08750;
+        --teal: #2dcfb4;
+        --teal-dim: rgba(45, 207, 180, 0.12);
+        --amber: #e8a030;
+        --amber-dim: rgba(232, 160, 48, 0.12);
+        --red: #e05050;
+        --red-dim: rgba(224, 80, 80, 0.1);
+        --green: #5acd8a;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "DM Sans", sans-serif;
+        font-size: 15px;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* NAV */
+      nav {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        padding: 0 1.5rem;
+        display: flex;
+        gap: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      nav::-webkit-scrollbar {
+        display: none;
+      }
+      nav a {
+        display: block;
+        padding: 0.8rem 1rem;
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        text-decoration: none;
+        white-space: nowrap;
+        border-bottom: 2px solid transparent;
+        transition:
+          color 0.15s,
+          border-color 0.15s;
+      }
+      nav a:hover {
+        color: var(--text);
+      }
+      nav a.gym {
+        border-bottom-color: transparent;
+      }
+      nav a.gym:hover {
+        border-bottom-color: var(--teal);
+        color: var(--teal);
+      }
+      nav a.sand-link:hover {
+        border-bottom-color: var(--sand);
+        color: var(--sand);
+      }
+      nav a.overview-link {
+        border-bottom-color: var(--muted);
+        color: var(--text);
+      }
+
+      /* LAYOUT */
+      .page {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 2.5rem 1.5rem 5rem;
+      }
+
+      /* HEADER */
+      .header {
+        margin-bottom: 3rem;
+      }
+      .header-label {
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        color: var(--sand);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+      }
+      .header h1 {
+        font-family: "Barlow Condensed", sans-serif;
+        font-size: clamp(2.4rem, 6vw, 3.8rem);
+        font-weight: 700;
+        line-height: 1.05;
+        letter-spacing: -0.01em;
+        color: var(--text);
+        margin-bottom: 1rem;
+      }
+      .header h1 span {
+        color: var(--sand);
+      }
+      .header-meta {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        font-family: "DM Mono", monospace;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .header-meta b {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      /* PRIORITY STRIP */
+      .priorities {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 3rem;
+      }
+      .priority {
+        background: var(--bg2);
+        padding: 1rem 1.2rem;
+      }
+      .priority-num {
+        font-family: "Barlow Condensed", sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--dim);
+        margin-bottom: 0.3rem;
+      }
+      .priority-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text);
+        margin-bottom: 0.2rem;
+      }
+      .priority-sub {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      /* SECTION HEADERS */
+      .section-header {
+        display: flex;
+        align-items: baseline;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--border);
+      }
+      .section-header h2 {
+        font-family: "Barlow Condensed", sans-serif;
+        font-size: 1.6rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        color: var(--text);
+      }
+      .section-header .mono {
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      /* TIMELINE */
+      .timeline {
+        margin-bottom: 3.5rem;
+      }
+      .timeline-row {
+        display: grid;
+        grid-template-columns: 90px 1fr auto;
+        gap: 0 1rem;
+        align-items: start;
+        padding: 0.7rem 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .timeline-row:first-child {
+        border-top: 1px solid var(--border);
+      }
+      .tl-date {
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        color: var(--muted);
+        padding-top: 2px;
+      }
+      .tl-main {
+      }
+      .tl-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text);
+        line-height: 1.3;
+      }
+      .tl-sub {
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 1px;
+      }
+      .tl-badge {
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        font-weight: 500;
+        padding: 2px 8px;
+        border-radius: 4px;
+        white-space: nowrap;
+        align-self: center;
+      }
+      .badge-gym {
+        background: var(--teal-dim);
+        color: var(--teal);
+      }
+      .badge-game {
+        background: var(--amber-dim);
+        color: var(--amber);
+      }
+      .badge-light {
+        background: rgba(90, 205, 138, 0.1);
+        color: var(--green);
+      }
+      .badge-flight {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--muted);
+      }
+      .badge-sand {
+        background: rgba(200, 169, 110, 0.12);
+        color: var(--sand);
+      }
+      .badge-competition {
+        background: rgba(200, 169, 110, 0.2);
+        color: var(--sand);
+      }
+
+      /* SESSION CARDS */
+      .session {
+        margin-bottom: 3.5rem;
+      }
+      .session-title-row {
+        display: flex;
+        align-items: baseline;
+        gap: 1rem;
+        margin-bottom: 0.4rem;
+        flex-wrap: wrap;
+      }
+      .session-letter {
+        font-family: "Barlow Condensed", sans-serif;
+        font-size: 3.5rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--teal);
+        flex-shrink: 0;
+      }
+      .session-letter.sand-session {
+        color: var(--sand);
+      }
+      .session-title-text {
+      }
+      .session-date {
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .session-name {
+        font-family: "Barlow Condensed", sans-serif;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--text);
+        letter-spacing: 0.01em;
+      }
+      .session-focus {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 1rem;
+        line-height: 1.5;
+        padding: 0.8rem 1rem;
+        background: var(--bg2);
+        border-left: 2px solid var(--teal);
+        border-radius: 0 6px 6px 0;
+      }
+      .session-focus.sand-focus {
+        border-left-color: var(--sand);
+      }
+
+      /* WARMUP */
+      .warmup {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.9rem 1.1rem;
+        margin-bottom: 1.2rem;
+      }
+      .warmup-label {
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+      }
+      .warmup-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem 1rem;
+        font-size: 13px;
+        color: var(--text);
+      }
+      .warmup-items span {
+        color: var(--muted);
+      }
+
+      /* EXERCISE TABLE */
+      .exercise-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+      .exercise {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .exercise-header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.85rem 1.1rem;
+        cursor: pointer;
+      }
+      .exercise-header:hover {
+        background: var(--bg3);
+      }
+      .ex-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text);
+      }
+      .ex-prescription {
+        font-family: "DM Mono", monospace;
+        font-size: 12px;
+        color: var(--teal);
+        text-align: right;
+        white-space: nowrap;
+      }
+      .ex-why {
+        font-size: 13px;
+        color: var(--muted);
+        padding: 0 1.1rem 0.85rem;
+        line-height: 1.55;
+        border-top: 1px solid var(--border);
+        padding-top: 0.7rem;
+        display: none;
+      }
+      .ex-why.open {
+        display: block;
+      }
+      .ex-tag {
+        display: inline-block;
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin-right: 4px;
+        margin-bottom: 4px;
+      }
+      .tag-vertical {
+        background: rgba(45, 207, 180, 0.12);
+        color: var(--teal);
+      }
+      .tag-sand {
+        background: rgba(200, 169, 110, 0.12);
+        color: var(--sand);
+      }
+      .tag-stamina {
+        background: rgba(232, 160, 48, 0.12);
+        color: var(--amber);
+      }
+      .tag-prevention {
+        background: rgba(90, 205, 138, 0.1);
+        color: var(--green);
+      }
+
+      /* CIRCUIT BLOCK */
+      .circuit {
+        background: rgba(232, 160, 48, 0.06);
+        border: 1px solid rgba(232, 160, 48, 0.2);
+        border-radius: 8px;
+        padding: 1rem 1.1rem;
+        margin-bottom: 0.6rem;
+      }
+      .circuit-label {
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        color: var(--amber);
+        text-transform: uppercase;
+        margin-bottom: 0.6rem;
+      }
+      .circuit-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text);
+        margin-bottom: 0.3rem;
+      }
+      .circuit-detail {
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      .circuit-note {
+        font-size: 12px;
+        color: var(--amber);
+        margin-top: 0.5rem;
+        font-style: italic;
+      }
+
+      /* TAPER NOTE */
+      .taper-note {
+        background: rgba(90, 205, 138, 0.06);
+        border: 1px solid rgba(90, 205, 138, 0.15);
+        border-radius: 8px;
+        padding: 0.9rem 1.1rem;
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 1.5rem;
+        line-height: 1.55;
+      }
+      .taper-note strong {
+        color: var(--green);
+        font-weight: 500;
+      }
+
+      /* NON-GYM DAYS */
+      .rest-day {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1.4rem 1.5rem;
+        margin-bottom: 3.5rem;
+      }
+      .rest-day-date {
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 0.4rem;
+      }
+      .rest-day-title {
+        font-family: "Barlow Condensed", sans-serif;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--amber);
+        margin-bottom: 0.5rem;
+      }
+      .rest-day-body {
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      /* SAND DAY */
+      .sand-day {
+        background: var(--bg2);
+        border: 1px solid rgba(200, 169, 110, 0.2);
+        border-radius: 10px;
+        padding: 1.4rem 1.5rem;
+        margin-bottom: 2rem;
+      }
+      .sand-day-label {
+        font-family: "DM Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        color: var(--sand);
+        text-transform: uppercase;
+        margin-bottom: 0.4rem;
+      }
+      .sand-day h3 {
+        font-family: "Barlow Condensed", sans-serif;
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 0.8rem;
+      }
+      .sand-step {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 0.7rem;
+        align-items: start;
+      }
+      .sand-step-num {
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        color: var(--sand);
+        min-width: 24px;
+        padding-top: 2px;
+      }
+      .sand-step-body {
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .sand-step-body b {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      /* REST NOTE */
+      .toggle-hint {
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        color: var(--dim);
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+
+      /* FOOTER */
+      .footer {
+        padding-top: 2rem;
+        border-top: 1px solid var(--border);
+        font-family: "DM Mono", monospace;
+        font-size: 11px;
+        color: var(--dim);
+      }
+
+      @media (max-width: 500px) {
+        .priorities {
+          grid-template-columns: 1fr;
+        }
+        .session-letter {
+          font-size: 2.5rem;
+        }
+        .timeline-row {
+          grid-template-columns: 70px 1fr;
+        }
+        .tl-badge {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="#overview" class="overview-link">Overview</a>
+      <a href="#session-a" class="gym">Fri · A</a>
+      <a href="#session-b" class="gym">Sat · B</a>
+      <a href="#sunday" class="gym" style="color: var(--muted)">Sun</a>
+      <a href="#session-c" class="gym">Mon · C</a>
+      <a href="#session-d" class="gym">Tue · D</a>
+      <a href="#session-e" class="gym">Wed · E</a>
+      <a href="#session-f" class="gym">Thu · F</a>
+      <a href="#session-g" class="gym">Fri · G</a>
+      <a href="#sand-days" class="sand-link">Sand days</a>
+    </nav>
+
+    <div class="page">
+      <!-- HEADER -->
+      <div class="header" id="top">
+        <div class="header-label">10-day block · gym prep</div>
+        <h1>Beach volleyball<br /><span>leg block</span></h1>
+        <div class="header-meta">
+          <div><b>Start</b> Fri 20 Mar</div>
+          <div><b>Flight</b> Sat 28 Mar</div>
+          <div><b>Gym sessions</b> 7</div>
+          <div><b>Sand adjustment days</b> 2</div>
+        </div>
+      </div>
+
+      <!-- PRIORITIES -->
+      <div class="priorities">
+        <div class="priority">
+          <div class="priority-num">01</div>
+          <div class="priority-label">Sand resistance + stamina</div>
+          <div class="priority-sub">
+            Repeated explosive efforts on soft surface
+          </div>
+        </div>
+        <div class="priority">
+          <div class="priority-num">02</div>
+          <div class="priority-label">Repeated jump tolerance</div>
+          <div class="priority-sub">
+            Sustain power output across long rallies and sets
+          </div>
+        </div>
+        <div class="priority">
+          <div class="priority-num">03</div>
+          <div class="priority-label">Vertical improvement</div>
+          <div class="priority-sub">
+            Neural re-activation — capacity is there, timing is the unlock
+          </div>
+        </div>
+      </div>
+
+      <!-- OVERVIEW / TIMELINE -->
+      <div id="overview" class="timeline">
+        <div class="section-header">
+          <h2>Schedule</h2>
+          <span class="mono">20–30 Mar 2025</span>
+        </div>
+
+        <div class="timeline-row">
+          <div class="tl-date">Fri 20 Mar</div>
+          <div class="tl-main">
+            <div class="tl-title">Session A — neural power + contrast</div>
+            <div class="tl-sub">
+              Heavy squat · depth drop jumps · box jumps · calf work
+            </div>
+          </div>
+          <div class="tl-badge badge-gym">Gym</div>
+        </div>
+        <div class="timeline-row">
+          <div class="tl-date">Sat 21 Mar</div>
+          <div class="tl-main">
+            <div class="tl-title">Session B — stamina + unilateral load</div>
+            <div class="tl-sub">
+              Bulgarian split squat · repeated jump circuit · lateral bounds ·
+              nordics
+            </div>
+          </div>
+          <div class="tl-badge badge-gym">Gym</div>
+        </div>
+        <div class="timeline-row">
+          <div class="tl-date">Sun 22 Mar</div>
+          <div class="tl-main">
+            <div class="tl-title">Indoor away game</div>
+            <div class="tl-sub">
+              No gym — slight pre-fatigue from Saturday is intentional
+            </div>
+          </div>
+          <div class="tl-badge badge-game">Game</div>
+        </div>
+        <div class="timeline-row">
+          <div class="tl-date">Mon 23 Mar</div>
+          <div class="tl-main">
+            <div class="tl-title">Session C — power endurance</div>
+            <div class="tl-sub">
+              Front squat · trap bar deadlift · depth jump · broad jumps ·
+              cossack squat
+            </div>
+          </div>
+          <div class="tl-badge badge-gym">Gym</div>
+        </div>
+        <div class="timeline-row">
+          <div class="tl-date">Tue 24 Mar</div>
+          <div class="tl-main">
+            <div class="tl-title">Session D (AM) + volleyball (PM)</div>
+            <div class="tl-sub">
+              Short activation session in morning — hip thrust, jump squat, pogo
+              jumps
+            </div>
+          </div>
+          <div class="tl-badge badge-gym">Gym + VB</div>
+        </div>
+        <div class="timeline-row">
+          <div class="tl-date">Wed 25 Mar</div>
+          <div class="tl-main">
+            <div class="tl-title">Session E — sand stamina simulation</div>
+            <div class="tl-sub">
+              Last hard session — stamina circuit · single-leg RDL · squat
+              volume
+            </div>
+          </div>
+          <div class="tl-badge badge-gym">Gym</div>
+        </div>
+        <div class="timeline-row">
+          <div class="tl-date">Thu 26 Mar</div>
+          <div class="tl-main">
+            <div class="tl-title">Session F — taper (neural priming)</div>
+            <div class="tl-sub">
+              Heavy but low volume · maintain sharpness · no circuits
+            </div>
+          </div>
+          <div class="tl-badge badge-light">Taper</div>
+        </div>
+        <div class="timeline-row">
+          <div class="tl-date">Fri 27 Mar</div>
+          <div class="tl-main">
+            <div class="tl-title">Session G — light activation</div>
+            <div class="tl-sub">
+              ~35 min · box jumps · lateral bounds · foam roll · feel fresh
+            </div>
+          </div>
+          <div class="tl-badge badge-light">Activation</div>
+        </div>
+        <div class="timeline-row">
+          <div class="tl-date">Sat 28 Mar</div>
+          <div class="tl-main">
+            <div class="tl-title">Flight day</div>
+            <div class="tl-sub">
+              Rest · hydrate · compression socks if you have them
+            </div>
+          </div>
+          <div class="tl-badge badge-flight">Flight</div>
+        </div>
+        <div class="timeline-row">
+          <div class="tl-date">Sun 29 Mar</div>
+          <div class="tl-main">
+            <div class="tl-title">Sand day 1 — calibration</div>
+            <div class="tl-sub">
+              60–75 min · approach jumps at 50% · feel the surface · no heroics
+            </div>
+          </div>
+          <div class="tl-badge badge-sand">Sand</div>
+        </div>
+        <div class="timeline-row">
+          <div class="tl-date">Mon 30 Mar</div>
+          <div class="tl-main">
+            <div class="tl-title">Sand day 2 — ramp up</div>
+            <div class="tl-sub">
+              90–120 min · full speed approaches · competitive points · dress
+              rehearsal
+            </div>
+          </div>
+          <div class="tl-badge badge-sand">Sand</div>
+        </div>
+        <div class="timeline-row">
+          <div class="tl-date">Tue 31 Mar+</div>
+          <div class="tl-main">
+            <div class="tl-title">Competition begins</div>
+            <div class="tl-sub"></div>
+          </div>
+          <div class="tl-badge badge-competition">Tournament</div>
+        </div>
+      </div>
+
+      <div class="toggle-hint">Tap any exercise to see why it's included</div>
+
+      <!-- SESSION A -->
+      <div class="session" id="session-a">
+        <div class="section-header">
+          <h2>Session A</h2>
+          <span class="mono">Friday 20 March · ~70 min</span>
+        </div>
+        <div class="session-title-row">
+          <div class="session-letter">A</div>
+          <div class="session-title-text">
+            <div class="session-name">Neural power + contrast</div>
+            <div class="session-date">
+              The primary vertical stimulus. Contrast training (heavy lift →
+              plyometric) is the fastest way to potentiate neural output in a
+              short block. Front-load this when you have the most recovery
+              runway ahead.
+            </div>
+          </div>
+        </div>
+        <div class="session-focus">
+          <strong style="color: var(--teal)">Warm-up (10 min):</strong> 5 min
+          bike or row · leg swings front/back and lateral (15 each) · bodyweight
+          squats ×15 · glute bridges ×15 · ankle circles + calf raises ×15
+        </div>
+
+        <div class="exercise-list">
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Back squat</div>
+              <div class="ex-prescription">
+                4 × 5 @ ~80% 1RM (RPE 8) · rest 2.5 min
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Heavy squats are the best evidence-based driver of vertical jump
+              improvement. 80% 1RM keeps neural demand high without excessive
+              volume fatigue. Every set should feel demanding but controlled —
+              no grinding reps. This is the anchor of the block.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">
+                Depth drop → max vertical jump
+                <span style="font-size: 11px; color: var(--muted)"
+                  >(superset with squat)</span
+                >
+              </div>
+              <div class="ex-prescription">
+                4 × 3 · within 2 min of each squat set · rest 2 min
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              The contrast method: the heavy squat temporarily potentiates the
+              nervous system, so the jump immediately after benefits from
+              elevated neural drive. Drop from a 30–40 cm box, land, and explode
+              upward as fast as possible. Minimum ground contact time is the
+              cue. This is your most important exercise for vertical
+              re-activation.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Romanian deadlift (RDL)</div>
+              <div class="ex-prescription">3 × 6 @ RPE 7 · rest 2 min</div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              <span class="ex-tag tag-prevention">prevention</span>
+              Hamstrings and glutes generate the majority of jump force. RDL
+              also trains the eccentric loading of the hamstring under stretch —
+              critical for landing mechanics and injury tolerance on sand.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Walking lunges (dumbbells)</div>
+              <div class="ex-prescription">3 × 10/leg · rest 90 s</div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              Single-leg loaded push-off that mirrors the approach mechanics of
+              a beach volleyball jump. Unilateral work is sand-specific: on sand
+              you're pushing off one leg at a time, and the unstable surface
+              demands more hip and knee stability than a bilateral squat.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Box jumps (max height)</div>
+              <div class="ex-prescription">
+                4 × 4 · full 2 min recovery between reps · rest 2 min
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Pure vertical power output. Full recovery between reps is
+              intentional — you are training maximal intent, not stamina here.
+              Step back down rather than jumping down to protect the eccentric
+              load. Aim to beat your previous height each set.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Seated calf raises (weighted)</div>
+              <div class="ex-prescription">
+                3 × 12–15 @ moderate load · rest 60 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              Sand absorbs the elastic return of every jump, meaning your calves
+              and ankles have to generate force from scratch each time — there
+              is no free rebound. Starting calf loading on Day 1 gives the most
+              adaptation time before competition.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SESSION B -->
+      <div class="session" id="session-b">
+        <div class="section-header">
+          <h2>Session B</h2>
+          <span class="mono">Saturday 21 March · ~75 min</span>
+        </div>
+        <div class="session-title-row">
+          <div class="session-letter">B</div>
+          <div class="session-title-text">
+            <div class="session-name">Stamina + unilateral load</div>
+            <div class="session-date">
+              You'll go into Sunday's indoor game slightly pre-fatigued — this
+              is intentional. The gap to competition is large enough that there
+              is no lasting harm. Sand volleyball demands the ability to produce
+              power when already tired.
+            </div>
+          </div>
+        </div>
+        <div class="session-focus">
+          <strong style="color: var(--teal)">Warm-up (10 min):</strong> Same as
+          Session A
+        </div>
+
+        <div class="exercise-list">
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Jump squat (barbell or goblet)</div>
+              <div class="ex-prescription">
+                4 × 6 @ ~30% bodyweight · rest 90 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Rate of force development — the speed of force production matters
+              as much as peak strength for volleyball jumping. Light load allows
+              maximum acceleration. Focus on explosive triple extension (ankle,
+              knee, hip) every rep.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Bulgarian split squat</div>
+              <div class="ex-prescription">
+                4 × 8/leg · rest 90 s between legs, 2 min between sets
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              <span class="ex-tag tag-vertical">vertical</span>
+              The most sand-specific exercise in the gym. Beach volleyball
+              requires massive unilateral hip and knee stability — the sand
+              shifts under each push-off and your stabilisers compensate
+              constantly. BSS also creates the single-leg fatigue tolerance
+              needed for a full tournament day. Use challenging weight — this
+              should be hard.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Lateral bound (stick the landing)</div>
+              <div class="ex-prescription">3 × 8/side · rest 90 s</div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              Push off one leg, land and hold on the opposite leg. Beach
+              volleyball is full of lateral digs, defensive shuffles, and
+              explosive direction changes on unstable ground. This trains
+              lateral push-off strength and single-leg landing stability
+              simultaneously.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Step-up with explosive knee drive</div>
+              <div class="ex-prescription">
+                3 × 8/leg (bench height) · rest 90 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              <span class="ex-tag tag-vertical">vertical</span>
+              Drive the opposite knee up explosively at the top of each rep.
+              This mirrors the single-leg push-off mechanics of a beach
+              volleyball approach in a loaded, controlled context — especially
+              relevant for setters transitioning to full-power approach jumps.
+            </div>
+          </div>
+        </div>
+
+        <div class="circuit">
+          <div class="circuit-label">
+            Stamina circuit — core of this session
+          </div>
+          <div class="circuit-name">3 rounds · 75 s rest between rounds</div>
+          <div class="circuit-detail">
+            8 squat jumps → 8 split jumps (alternating) → 8 lateral bounds each
+            direction → rest
+          </div>
+          <div class="circuit-note">
+            Track your jump height on round 3 vs round 1. This gap is your
+            stamina benchmark — it will close over the block.
+          </div>
+        </div>
+
+        <div class="exercise-list">
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Nordic hamstring curl</div>
+              <div class="ex-prescription">
+                3 × 5–6 reps · 3–4 s eccentric · rest 2 min
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-prevention">prevention</span>
+              Kneel with feet anchored, lower yourself slowly under control. The
+              single most effective hamstring injury prevention exercise for
+              jumping athletes. Non-negotiable when ramping up jump volume on a
+              short timeline. Do not skip this.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUNDAY -->
+      <div class="rest-day" id="sunday">
+        <div class="rest-day-date">Sunday 22 March</div>
+        <div class="rest-day-title">Indoor away game</div>
+        <div class="rest-day-body">
+          No gym. You're going in slightly pre-fatigued from Saturday — play
+          through it. Light dynamic stretching post-game, hydrate well, and get
+          a good night's sleep. Your legs will feel recovered by Monday.
+        </div>
+      </div>
+
+      <!-- SESSION C -->
+      <div class="session" id="session-c">
+        <div class="section-header">
+          <h2>Session C</h2>
+          <span class="mono">Monday 23 March · ~70 min</span>
+        </div>
+        <div class="session-title-row">
+          <div class="session-letter">C</div>
+          <div class="session-title-text">
+            <div class="session-name">Power endurance</div>
+            <div class="session-date">
+              One full rest day (the game) since the last gym session. Legs will
+              feel recovered. This session adds horizontal power — often
+              neglected but crucial for beach volleyball approaches, defensive
+              dives, and lateral movement.
+            </div>
+          </div>
+        </div>
+        <div class="session-focus">
+          <strong style="color: var(--teal)">Warm-up (12 min):</strong> Foam
+          roll quads, hamstrings, calves (2 min) · hip circles · dynamic leg
+          swings · bodyweight squat to calf raise ×15 · glute bridges ×20
+        </div>
+
+        <div class="exercise-list">
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Front squat (or goblet squat)</div>
+              <div class="ex-prescription">4 × 6 · rest 2 min</div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              More quad-dominant than the back squat — better carryover to the
+              terminal extension of a vertical jump. Upright torso also trains
+              core bracing under load. Less spinal compressive force than the
+              back squat, which helps with recovery management mid-block.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Trap bar deadlift (or conventional)</div>
+              <div class="ex-prescription">
+                4 × 4 @ ~80–85% 1RM · rest 2.5 min
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Explosive hip extension is the single most direct driver of jump
+              height. The deadlift at high intensity trains this pattern under
+              load. Keep the reps low and the intent maximal — this is power,
+              not strength endurance.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Depth jump → box jump</div>
+              <div class="ex-prescription">4 × 3 · rest 2 min</div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Step off a 20–30 cm box, land with soft knees, immediately
+              redirect upward onto a higher box. This trains reactive strength —
+              the speed of the amortisation phase (ground contact between
+              landing and takeoff) is a key vertical limiter in beach
+              volleyball. The fast stretch-shortening cycle you're training here
+              is exactly what sand inhibits.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Broad jump (max distance)</div>
+              <div class="ex-prescription">
+                3 × 4 · full recovery between reps · rest 90 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              <span class="ex-tag tag-vertical">vertical</span>
+              Horizontal power is neglected but critical for beach volleyball.
+              The triple extension pattern is identical to a vertical jump —
+              you're just redirecting the force forward. Approaches, defensive
+              dives, and lateral movement all require horizontal force
+              production through soft ground.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Cossack squat (lateral squat)</div>
+              <div class="ex-prescription">3 × 8/side · rest 90 s</div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              Sand places extreme demands on hip adductors and abductors —
+              sliding, defensive wide-base positions, and lateral movement all
+              require dynamic lateral hip stability. The Cossack squat is the
+              most specific gym exercise for this range of motion. Go slow and
+              controlled.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Leg press</div>
+              <div class="ex-prescription">
+                2 × 12 @ moderate load · rest 90 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-stamina">stamina</span>
+              Volume accumulation at the end of the session without additional
+              spinal load. Flushes the quads with blood and adds training
+              stimulus without meaningful CNS cost.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SESSION D -->
+      <div class="session" id="session-d">
+        <div class="section-header">
+          <h2>Session D</h2>
+          <span class="mono">Tuesday 24 March · AM only · ~40 min</span>
+        </div>
+        <div class="session-title-row">
+          <div class="session-letter">D</div>
+          <div class="session-title-text">
+            <div class="session-name">Morning activation</div>
+            <div class="session-date">
+              Volleyball training is in the evening. This session exists to
+              prime the nervous system and potentiate your output for volleyball
+              — not to create fatigue. Keep weights moderate. Be out of the gym
+              in 40 minutes.
+            </div>
+          </div>
+        </div>
+        <div class="session-focus">
+          <strong style="color: var(--teal)">Warm-up (8 min):</strong> Quick
+          bike · leg swings · glute bridges ×15
+        </div>
+
+        <div class="exercise-list">
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Hip thrust (barbell or machine)</div>
+              <div class="ex-prescription">
+                4 × 8 @ moderate load · rest 60 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Glute activation without spinal compression — excellent
+              pre-volleyball switch-on for the posterior chain. No bar on your
+              back means no soreness or stiffness walking into the volleyball
+              session. Drive the hips explosively at the top.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Jump squat (bodyweight or very light)</div>
+              <div class="ex-prescription">
+                4 × 5 · maximal intent · rest 90 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              CNS priming. The nervous system needs to be signalled to be
+              explosive — this does that without inducing fatigue. Every rep:
+              maximum intent, soft landing, full reset.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Single-leg box step-down (eccentric)</div>
+              <div class="ex-prescription">
+                3 × 8/leg · 3 s lowering phase · rest 60 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              <span class="ex-tag tag-prevention">prevention</span>
+              Stand on a box, lower slowly to just touch the heel to the floor
+              on one leg, return. Sand landings are heavily eccentric — your
+              quads and knees decelerate every single landing through soft
+              ground. This is injury prevention and sand-specific prep
+              simultaneously.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Pogo jumps</div>
+              <div class="ex-prescription">
+                3 × 15 · minimal knee bend · rest 60 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              Bounce rapidly off the balls of the feet with minimal knee bend.
+              Trains ankle stiffness and calf spring — the elastic return that
+              sand steals from every jump. This helps maintain the spring
+              quality so the loss feels less severe on Day 1 in the sand.
+            </div>
+          </div>
+        </div>
+        <div class="taper-note">
+          <strong>That's it.</strong> Eat well between the gym and volleyball.
+          Go into the evening session feeling primed, not depleted.
+        </div>
+      </div>
+
+      <!-- SESSION E -->
+      <div class="session" id="session-e">
+        <div class="section-header">
+          <h2>Session E</h2>
+          <span class="mono">Wednesday 25 March · ~75 min</span>
+        </div>
+        <div class="session-title-row">
+          <div class="session-letter">E</div>
+          <div class="session-title-text">
+            <div class="session-name">Sand stamina simulation</div>
+            <div class="session-date">
+              Last substantial training session. After this, the taper begins.
+              The stamina circuit in the middle of this session is the closest a
+              gym can get to simulating the demands of a beach volleyball
+              tournament day.
+            </div>
+          </div>
+        </div>
+        <div class="session-focus">
+          <strong style="color: var(--teal)">Warm-up (10 min):</strong> Foam
+          roll + full dynamic warm-up as before
+        </div>
+
+        <div class="exercise-list">
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Back squat</div>
+              <div class="ex-prescription">3 × 5 @ ~75% 1RM · rest 2 min</div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Slightly reduced load compared to Session A — maintaining the
+              neural stimulus without digging a recovery hole before the taper.
+              Do not go heavier. The goal here is to keep the pattern sharp, not
+              set a new PR.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Romanian deadlift</div>
+              <div class="ex-prescription">3 × 8 @ RPE 7 · rest 90 s</div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-prevention">prevention</span>
+              Continued eccentric hamstring loading — protective for the high
+              jump volume coming at the tournament. Also reinforces the hip
+              hinge pattern under fatigue.
+            </div>
+          </div>
+        </div>
+
+        <div class="circuit">
+          <div class="circuit-label">
+            Sand stamina circuit — centrepiece of the block
+          </div>
+          <div class="circuit-name">5 rounds · 60 s rest between rounds</div>
+          <div class="circuit-detail">
+            10 squat jumps → 8 split jumps (alternating) → 8 lateral bounds each
+            direction → 10 calf raise hops
+          </div>
+          <div class="circuit-note">
+            This sequence mimics a long rally: vertical explosion →
+            alternating-leg push-off → lateral sand movement → calf output. By
+            round 5, your legs should feel exactly like they do in the fourth
+            set of a close match. That's the point. Note your jump quality on
+            round 5 vs round 1.
+          </div>
+        </div>
+
+        <div class="exercise-list">
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Single-leg Romanian deadlift</div>
+              <div class="ex-prescription">3 × 8/leg · rest 90 s</div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              Balance and proprioception under load — this is as sand-specific
+              as a gym exercise gets. Sand is constantly shifting; your
+              stabilisers never get a clean, stable platform. The single-leg RDL
+              trains exactly the proprioceptive demand that the sand will
+              challenge.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Seated calf raises</div>
+              <div class="ex-prescription">
+                3 × 15 · heavier than Session A if possible · rest 60 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              Final significant calf loading of the block. Go slightly heavier
+              than your Session A weight if it felt manageable. After this, you
+              won't be going heavy again before the tournament.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SESSION F -->
+      <div class="session" id="session-f">
+        <div class="section-header">
+          <h2>Session F</h2>
+          <span class="mono">Thursday 26 March · ~45 min · taper</span>
+        </div>
+        <div class="session-title-row">
+          <div class="session-letter">F</div>
+          <div class="session-title-text">
+            <div class="session-name">Neural priming — taper begins</div>
+            <div class="session-date">
+              Volume drops ~50%. Intensity stays high. The goal is to stay
+              neurally sharp without creating any new fatigue. No circuits. No
+              new stimulus. If you feel good, do not add extra work — the taper
+              is doing its job.
+            </div>
+          </div>
+        </div>
+        <div class="taper-note">
+          <strong>Taper principle:</strong> Reduce volume, maintain intensity.
+          The adaptations from the previous sessions are consolidating. Trust
+          the process — resist the urge to add volume.
+        </div>
+
+        <div class="exercise-list">
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Back squat</div>
+              <div class="ex-prescription">
+                3 × 3 @ 82–85% 1RM · rest 2.5 min
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Heavy enough to maintain the neural drive established earlier in
+              the block. Three reps at this load keeps the CNS primed without
+              the volume cost of a full session. Every rep: sharp, controlled,
+              powerful.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Depth drop → vertical jump</div>
+              <div class="ex-prescription">
+                3 × 3 · minimum ground contact · rest 2 min
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Maintaining the reactive strength signal. Focus entirely on the
+              speed of ground contact and the height of the jump — these should
+              feel easier than they did on Day 1. That's the adaptation showing
+              up.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Hip thrust</div>
+              <div class="ex-prescription">
+                3 × 6 @ moderate load · rest 90 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Glute activation without spinal load. Keeps the posterior chain
+              switched on. Nothing heavy — this is maintenance, not loading.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Box jumps</div>
+              <div class="ex-prescription">
+                3 × 3 · full 2 min recovery between reps · rest 2 min
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Quality over quantity. Each jump should feel powerful and high.
+              Step down between reps. If you feel flat, reduce to 2 reps per set
+              — don't chase volume.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Calf raises</div>
+              <div class="ex-prescription">
+                2 × 12 · moderate load · rest 60 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              Maintenance. Nothing more.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SESSION G -->
+      <div class="session" id="session-g">
+        <div class="section-header">
+          <h2>Session G</h2>
+          <span class="mono">Friday 27 March · ~35 min · activation</span>
+        </div>
+        <div class="session-title-row">
+          <div class="session-letter">G</div>
+          <div class="session-title-text">
+            <div class="session-name">Light activation — final session</div>
+            <div class="session-date">
+              Feel athletic. Confirm you're fresh. Done. If you feel sore or
+              tight, reduce further. If you feel flat, add one extra set of box
+              jumps. Trust your body.
+            </div>
+          </div>
+        </div>
+        <div class="taper-note">
+          <strong>Rule for this session:</strong> Leave the gym feeling better
+          than when you arrived. The moment you feel slightly fatigued, stop.
+        </div>
+
+        <div class="exercise-list">
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Goblet squat</div>
+              <div class="ex-prescription">
+                2 × 8 · light (RPE 5) · rest 60 s
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Pattern activation, nothing more. You should feel warm and loose
+              after this, not loaded.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Box jumps</div>
+              <div class="ex-prescription">
+                3 × 3 · full 2 min recovery between reps
+              </div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-vertical">vertical</span>
+              Keeps the neuromuscular jumping pattern fresh without any loading.
+              These should feel effortless. If they feel heavy, you're likely
+              fatigued from travel prep — reduce to 2×2 and move on.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Lateral bounds</div>
+              <div class="ex-prescription">2 × 5/side</div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              Keep the lateral movement pattern alive for sand. Light, snappy,
+              controlled landings.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Pogo jumps</div>
+              <div class="ex-prescription">2 × 15</div>
+            </div>
+            <div class="ex-why">
+              <span class="ex-tag tag-sand">sand</span>
+              Final ankle/calf spring activation before sand. Light and fast —
+              ankle stiffness reminder.
+            </div>
+          </div>
+
+          <div class="exercise">
+            <div class="exercise-header" onclick="toggleEx(this)">
+              <div class="ex-name">Foam roll — full lower body</div>
+              <div class="ex-prescription">
+                8–10 min · quads, hamstrings, calves, glutes, IT band
+              </div>
+            </div>
+            <div class="ex-why">
+              Finish fresh, not tight. Take your time here. This is the last
+              prep work before the flight. Leave the gym feeling loose and
+              ready.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FLIGHT -->
+      <div class="rest-day">
+        <div class="rest-day-date">Saturday 28 March</div>
+        <div class="rest-day-title" style="color: var(--muted)">Flight day</div>
+        <div class="rest-day-body">
+          Rest. Walk the airport. Stay well hydrated — plane cabins dehydrate
+          legs faster than most people realise, and dehydrated muscles perform
+          worse and cramp more easily on sand. Compression socks if you have
+          them. Light stretching at the gate.
+        </div>
+      </div>
+
+      <!-- SAND DAYS -->
+      <div id="sand-days">
+        <div class="section-header">
+          <h2>Sand adjustment days</h2>
+          <span class="mono">Sun 29 + Mon 30 March</span>
+        </div>
+
+        <div class="sand-day">
+          <div class="sand-day-label">Day 1 — Sunday 29 March</div>
+          <h3>Calibration — respect the surface</h3>
+          <div class="sand-step">
+            <div class="sand-step-num">01</div>
+            <div class="sand-step-body">
+              <b>Warm-up walk/jog (15 min):</b> Easy pace on sand. Your calves
+              and ankles will immediately signal they're working harder than
+              usual. This is normal. The surface is telling you exactly what it
+              demands.
+            </div>
+          </div>
+          <div class="sand-step">
+            <div class="sand-step-num">02</div>
+            <div class="sand-step-body">
+              <b>Approach jumps at 50% (20–30 reps):</b> Do not try to jump
+              high. The mission is to feel where the sand gives and adjust your
+              timing accordingly. Sand delays the push-off — your approach
+              timing will need to shift slightly earlier than on court.
+            </div>
+          </div>
+          <div class="sand-step">
+            <div class="sand-step-num">03</div>
+            <div class="sand-step-body">
+              <b>Footwork and lateral drills (5 min):</b> Side shuffle on sand.
+              This is where most players get caught off-guard on Day 1 — lateral
+              push-off on sand requires significantly more force than on court.
+              Go slow, feel the mechanics, don't try to be fast yet.
+            </div>
+          </div>
+          <div class="sand-step">
+            <div class="sand-step-num">04</div>
+            <div class="sand-step-body">
+              <b>Two-touch technical play:</b> Light rallies. Prioritise
+              positioning and first-step reaction over aggressive play. Get your
+              eyes re-calibrated to the outdoor ball flight and wind.
+            </div>
+          </div>
+          <div class="sand-step">
+            <div class="sand-step-num">05</div>
+            <div class="sand-step-body">
+              <b>Stop at 60–75 min total.</b> Your legs will be more fatigued
+              than expected — that is the sand tax. Respect it. Stretching, cold
+              water on the legs if available, and eat well in the evening.
+            </div>
+          </div>
+        </div>
+
+        <div class="sand-day">
+          <div class="sand-day-label">Day 2 — Monday 30 March</div>
+          <h3>Ramp up — build to competition speed</h3>
+          <div class="sand-step">
+            <div class="sand-step-num">01</div>
+            <div class="sand-step-body">
+              <b>Warm-up (10 min):</b> Jog + sand-specific dynamic work — high
+              knees through sand, lateral shuffle, bounding. Your nervous system
+              has now slept with the sand stimulus. Day 2 feels meaningfully
+              different from Day 1.
+            </div>
+          </div>
+          <div class="sand-step">
+            <div class="sand-step-num">02</div>
+            <div class="sand-step-body">
+              <b>Full-speed approaches (80–90% intensity):</b> Now you push for
+              height and timing. You have your sand bearings. This is where the
+              vertical work from the gym block starts to show — approach with
+              full arm swing and commit to the timing you found yesterday.
+            </div>
+          </div>
+          <div class="sand-step">
+            <div class="sand-step-num">03</div>
+            <div class="sand-step-body">
+              <b>Full competitive rally play:</b> Play points at competition
+              intensity. Don't hold back. This is your dress rehearsal — run
+              your patterns, play your system, communicate with your partner.
+            </div>
+          </div>
+          <div class="sand-step">
+            <div class="sand-step-num">04</div>
+            <div class="sand-step-body">
+              <b>Jump serves and blocking:</b> Don't neglect these — they have
+              distinct sand mechanics from approach jumps. A few dedicated reps
+              of each will prevent surprises in match 1.
+            </div>
+          </div>
+          <div class="sand-step">
+            <div class="sand-step-num">05</div>
+            <div class="sand-step-body">
+              <b>Stop at 90–120 min.</b> Thorough calf-focused stretch, hydrate
+              aggressively, legs elevated if possible. You want to wake up on
+              competition day feeling like a coil loaded and ready to spring.
+              The work is done.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        10-day beach volleyball leg block · generated 20 Mar 2026 · sessions A–G
+        + 2 sand adjustment days
+      </div>
+    </div>
+
+    <script>
+      function toggleEx(header) {
+        const why = header.nextElementSibling;
+        if (why && why.classList.contains("ex-why")) {
+          why.classList.toggle("open");
+        }
+      }
+    </script>
+  </body>
+</html>
