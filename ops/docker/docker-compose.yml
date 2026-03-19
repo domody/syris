@@ -20,7 +20,7 @@ services:
       dockerfile: ops/docker/syris-core/Dockerfile
     container_name: syris-core
     environment:
-      DATABASE_URL: postgresql://syris:${POSTGRES_PASSWORD}@postgres:5432/syris
+      SYRIS_DATABASE_URL: postgresql+asyncpg://syris:${POSTGRES_PASSWORD}@postgres:5432/syris
     ports:
       - "8000:8000"
     depends_on:

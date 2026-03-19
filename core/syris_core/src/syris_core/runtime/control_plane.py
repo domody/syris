@@ -42,7 +42,7 @@ class ControlPlane:
     async def start(self) -> None:
         configure_logging(self._settings.log_level)
 
-        engine = create_engine(self._settings.db_url)
+        engine = create_engine(self._settings.database_url)
         sessionmaker = create_sessionmaker(engine)
 
         # ensure schema exists
@@ -83,7 +83,7 @@ class ControlPlane:
             "ControlPlane started run_id=%s env=%s db=%s",
             run_id,
             self._settings.env,
-            self._settings.db_url,
+            self._settings.database_url,
         )
 
     async def stop(self) -> None:

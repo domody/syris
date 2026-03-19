@@ -9,9 +9,9 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlmodel import SQLModel
 
-def create_engine(db_url: str) -> AsyncEngine:
+def create_engine(database_url: str) -> AsyncEngine:
     return create_async_engine(
-        db_url,
+        database_url,
         echo=False,
         pool_pre_ping=True,
         pool_size=5,

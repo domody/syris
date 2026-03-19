@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
-    db_url: str = "postgresql+asyncpg://syris:syris@localhost:5432/syris"
+    database_url: str = "postgresql+asyncpg://syris:syris@localhost:5432/syris"
     
     heartbeat_interval_s: int = Field(default=5, ge=1, le=3600)
 
