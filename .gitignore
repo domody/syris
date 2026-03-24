@@ -21,8 +21,8 @@ data/log/*.log
 ha.json
 **/tests/*
 
-AGENTS.md
-.codex/
+CLAUDE.md
+.claude/
 
 node_modules/
 .turbo/
