@@ -7,147 +7,149 @@ Eight milestones sequence the implementation. Each milestone builds on the previ
 
 ## Milestone 0: Skeleton
 
-**Timeline:** Day 1–2  
+**Timeline:** Day 1–2
 **Goal:** A running process with DB, API, and audit writer. No pipeline yet.
 
 Deliverables:
 
-- Repo structure, `pyproject.toml` with deps (fastapi, uvicorn, sqlalchemy, alembic, pydantic)
-- SQLite DB + Alembic migration 0001: `audit_events`, `system_health` tables
-- `AuditWriter` implemented and unit-tested
-- `GET /health` returns a hardcoded heartbeat
-- `GET /audit` returns audit events (empty list)
+* Repo structure, `pyproject.toml` with deps (fastapi, uvicorn, sqlalchemy, alembic, pydantic)
+* `config.py` with typed settings (Pydantic BaseSettings, reads `DATABASE_URL` from env)
+* PostgreSQL database + Alembic migration 0001: `audit_events`, `system_health` tables
+* `AuditWriter` implemented and unit-tested
+* `GET /health` returns a hardcoded heartbeat
+* `GET /audit` returns audit events (empty list)
 
-**Done when:** `uv run syris-api` → hit `/health` → get response. Write an audit event manually → see it at `/audit`. All tested.
+**Done when:** `uv run python -m syris.main` starts. Hit `/health` and get a JSON response. Write an audit event via test helper. See it at `GET /audit`. All unit-tested.
 
 ## Milestone 1: Pipeline skeleton with real audit output
 
-**Timeline:** Week 1  
+**Timeline:** Week 1
 **Goal:** An event flows end-to-end through Normalize → Route → Execute (fast only) and every stage emits a queryable audit event.
 
 Deliverables:
 
-- `schemas/` package: `MessageEvent`, `RoutingDecision`, `AuditEvent` (Pydantic v2)
-- `storage/models.py` + repos for events, audit, routing_decisions
-- `normalizer.py`: accepts raw dict + channel, returns `MessageEvent`, persists + audits
-- `router.py`: hard filter + one fast path (timer intent), returns `RoutingDecision`
-- `pipeline/executor.py`: fast lane only, calls `NoopTool`, audits
-- `tools/executor.py`: scope check + idempotency + `NoopTool` + audit
-- `GET /events`, `GET /audit`, `GET /audit?trace_id=X` working
+* `schemas/` package: `MessageEvent`, `RoutingDecision`, `AuditEvent` (Pydantic v2)
+* `storage/models.py` + repos for events, audit, routing\_decisions
+* `normaliser.py`: accepts raw dict + channel, returns `MessageEvent`, persists + audits
+* `router.py`: hard filter + one fast path (timer intent), returns `RoutingDecision`
+* `pipeline/executor.py`: fast lane only, calls `NoopTool`, audits
+* `tools/executor.py`: scope check + idempotency + `NoopTool` + audit
+* `GET /events`, `GET /audit`, `GET /audit?trace_id=X` working
 
-**Done when:** POST a raw event → watch it traverse pipeline → query full trace at `/audit?trace_id=X` showing 4 audit events (`event.ingested`, `routing.decided`, `tool_call.attempted`, `tool_call.succeeded`). Zero log-spelunking.
+**Done when:** POST a raw event → full trace at `/audit?trace_id=X` showing exactly 4 audit events (`event.ingested`, `routing.decided`, `tool_call.attempted`, `tool_call.succeeded`). POST same event again → `event.deduped`. Zero log-spelunking required.
 
 ## Milestone 2: Task engine
 
-**Timeline:** Week 2  
+**Timeline:** Week 2
 **Goal:** Multi-step workflows with checkpointing, retries, and crash recovery.
 
 Deliverables:
 
-- `schemas/tasks.py`: `Task`, `Step`, `RetryPolicy`
-- `storage/repos/tasks.py`
-- `tasks/engine.py`: claim → execute → checkpoint loop with `FOR UPDATE SKIP LOCKED`
-- `tasks/step_runner.py`: run step, handle retries, write checkpoint
-- `tasks/state.py`: state machine enforcement (illegal transitions blocked at DB level)
-- `tasks/recovery.py`: startup reconciliation
-- `GET /tasks`, `GET /tasks/{id}`, `POST /tasks/{id}/cancel|pause|resume`
+* `schemas/tasks.py`: `Task`, `Step`, `RetryPolicy`
+* `storage/repos/tasks.py`
+* `tasks/engine.py`: claim → execute → checkpoint loop with `FOR UPDATE SKIP LOCKED`
+* `tasks/step_runner.py`: run step, handle retries, write checkpoint
+* `tasks/state.py`: state machine enforcement (illegal transitions blocked at DB level)
+* `tasks/recovery.py`: startup reconciliation
+* `GET /tasks`, `GET /tasks/{id}`, `POST /tasks/{id}/cancel|pause|resume`
 
-**Done when:** Create 3-step task → kill process mid-step-2 → restart → observe task resumes from step 2. Audit shows interruption and recovery. No duplicated side effects.
+**Done when:** Create a 3-step task with a NoopTool at step 2. Kill the process mid-step-2. Restart. Task resumes from step 2 (not step 1). Audit shows interruption and recovery. Run 10 times — no duplicated side effects.
 
 ## Milestone 3: Safety layer + Approvals
 
-**Timeline:** Week 3  
+**Timeline:** Week 3
 **Goal:** Autonomy levels, risk classification, and approval gates working end-to-end.
 
 Deliverables:
 
-- `safety/autonomy.py`: read/write current level, persist history
-- `safety/risk.py`: classify tool action → risk level
-- `safety/gates.py`: gate decision logic per autonomy × risk matrix
-- `safety/dryrun.py`: preview protocol
-- `schemas/approvals.py` + `storage/repos/approvals.py`
-- `GET /approvals`, `POST /approvals/{id}/approve|deny`
-- `POST /controls/autonomy`
+* `safety/autonomy.py`: read/write current level, persist history
+* `safety/risk.py`: classify tool action → risk level
+* `safety/gates.py`: gate decision logic per autonomy × risk matrix
+* `safety/dryrun.py`: preview protocol
+* `schemas/approvals.py` + `storage/repos/approvals.py`
+* `GET /approvals`, `POST /approvals/{id}/approve|deny`
+* `POST /controls/autonomy`
 
-**Done when:** With `autonomy = A1`, medium-risk tool call creates `Approval` at `/approvals`, blocks execution. Operator approves via API. Tool executes. Full trace queryable.
+**Done when:** Set autonomy to A1. Trigger a medium-risk tool call. Approval created at `/approvals`, tool not executed, `gate.required` in audit. Approve via API. Tool executes. `gate.approved` + `tool_call.succeeded` in audit. Full trace queryable.
 
 ## Milestone 4: Scheduler + Watchers
 
-**Timeline:** Week 4  
+**Timeline:** Week 4
 **Goal:** Timers and scheduled events flow through the pipeline proactively.
 
 Deliverables:
 
-- `scheduler/scheduler.py`: cron + interval + one-shot loop
-- `storage/repos/schedules.py`
-- `scheduler/watchers/base.py` + `HeartbeatWatcher`
-- `GET /schedules`, `POST /schedules`, `PATCH /schedules/{id}`
-- `GET /watchers`, `PATCH /watchers/{id}`
-- `GET /health` now uses real heartbeat data
+* `scheduler/loop.py`: cron + interval + one-shot loop
+* `storage/repos/schedules.py`
+* `watchers/base.py` + `HeartbeatWatcher`
+* `GET /schedules`, `POST /schedules`, `PATCH /schedules/{id}`
+* `GET /watchers`, `PATCH /watchers/{id}`
+* `GET /health` now uses real heartbeat data
 
-**Done when:** Create 30-second interval schedule → observe firing in `/audit`. Heartbeat appears in `/health`. Disable watcher via API → confirm it stops ticking in `/audit`.
+**Done when:** Create a 30-second interval schedule. Observe `schedule.fired` in audit every ~30 seconds. Heartbeat appears at `/health` with real uptime. Disable watcher via API → confirm it stops ticking. Kill process, restart → schedule catches up per policy.
 
 ## Milestone 5: Rules Engine
 
-**Timeline:** Week 5  
+**Timeline:** Week 5
 **Goal:** IFTTT-style rules fire, suppress correctly, and emit child events.
 
 Deliverables:
 
-- `scheduler/rules/engine.py` + condition evaluator
-- `storage/repos/rules.py` (rules stored in DB)
-- Debounce + dedupe tracking in `WatcherState`
-- Quiet hours enforcement
-- `GET /rules`, `PATCH /rules/{id}`
+* `rules/engine.py` + condition evaluator
+* `storage/repos/rules.py` (rules stored in DB)
+* Debounce + dedupe tracking on rule records
+* Quiet hours enforcement (add `quiet_hours_policies` table)
+* `GET /rules`, `PATCH /rules/{id}`
 
-**Done when:** Rule matching `ha_event` fires → emits child event with `parent_event_id` set → both in audit with same `trace_id`. Same event fired 5× within debounce window → 1 `rule.triggered` + 4 `rule.suppressed` in audit.
+**Done when:** Rule matching `ha_event` fires → emits child event with `parent_event_id` set → both in audit with same `trace_id`. Same event fired 5× in 1 second with 10s debounce → 1 `rule.triggered` + 4 `rule.suppressed` in audit.
 
 ## Milestone 6: MCP Integration
 
-**Timeline:** Week 6–7  
+**Timeline:** Week 6–7
 **Goal:** An MCP server's tools appear in the tool registry and execute with full SYRIS gating.
 
 Deliverables:
 
-- `integrations/mcp/connection.py`: persistent connection + reconnect
-- `integrations/mcp/provider.py`: tool discovery + registry sync
-- `integrations/mcp/adapter.py`: `MCPToolAdapter(BaseTool)`
-- `integrations/mcp/trust.py`: `TrustPolicy` schema + loader
-- `GET /integrations` showing MCP server health
-- MCP connection lifecycle audit events
+* `mcp/connection.py`: persistent connection + reconnect
+* `mcp/provider.py`: tool discovery + registry sync
+* `mcp/adapter.py`: `MCPToolAdapter(BaseTool)`
+* `mcp/trust.py`: `TrustPolicy` schema + loader
+* `GET /integrations` showing MCP server health
+* MCP connection lifecycle audit events
 
-**Done when:** Connect real MCP server → tools appear in `GET /integrations`. Execute one tool → full audit trail (scope check, risk, idempotency, gate, result). Disconnect → health degrades in dashboard within 30 seconds.
+**Done when:** Connect a real MCP server. Tools appear in `GET /integrations`. Execute one tool → full audit trail (scope check, risk, idempotency, gate, result). Disconnect server → health degrades in dashboard within 30 seconds.
 
 ## Milestone 7: Worker Skeleton
 
-**Timeline:** Week 8  
+**Timeline:** Week 8
 **Goal:** A gated job submission and status reporting mechanism exists.
 
 Deliverables:
 
-- `workers/manager.py`: job table, spawn/progress/cancel
-- `workers/runtimes/process.py`: OS process isolation
-- `GET /state` shows job count
+* `workers/manager.py`: job table, spawn/progress/cancel
+* `workers/runtimes/process.py`: OS process isolation
+* `GET /state` shows job count
 
-**Done when:** Submit stub long-running job via API → observe in `/state` → cancel → see cancellation in audit.
+**Done when:** Submit a stub long-running job via API → observe in `/state` → cancel → see cancellation in audit.
 
 ## Milestone 8: First real integrations
 
-**Timeline:** Week 9+  
+**Timeline:** Week 9+
 **Goal:** A Home Assistant adapter or email adapter working end-to-end with live data.
 
 Deliverables:
 
-- First inbound adapter (e.g. webhook receiver for Home Assistant events)
-- First outbound tool (e.g. HA service call or email send)
-- Secrets store wired to real credentials
-- Approval flow exercised with a real risky action (e.g. device control)
+* First inbound adapter (e.g. webhook receiver for Home Assistant events)
+* First outbound tool (e.g. HA service call or email send)
+* Secrets store wired to real credentials
+* Approval flow exercised with a real risky action (e.g. device control)
 
 **Done when:** A real-world event flows in from HA or email, routes correctly, executes a tool with full audit trail, and requires/passes approval if risk demands it. SYRIS is useful.
 
 ## Related
 
-- [dev/repo-structure](/docs/dev/repo-structure)
-- [dev/testing-strategy](/docs/dev/testing-strategy)
-- [dev/outstanding-decisions](/docs/dev/outstanding-decisions)
-- [architecture/component-map](/docs/architecture/component-map)
+* [dev/repo-structure](/docs/dev/repo-structure)
+* [dev/testing-strategy](/docs/dev/testing-strategy)
+* [dev/outstanding-decisions](/docs/dev/outstanding-decisions)
+* [architecture/component-map](/docs/architecture/component-map)
+* [dev/implementation-design](/docs/dev/implementation-design)

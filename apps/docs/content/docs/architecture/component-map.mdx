@@ -7,100 +7,189 @@ A C4-style view of SYRIS as a modular monolith, its runtime topology, and the se
 
 ## Module tree
 
-```bash
+```
 syris/
-├── core/
-│   └── syris_core/
-│       ├── pyproject.toml
-│       └── src/syris_core/
-│           ├── main.py                   # Boot: wire loops + API
-│           ├── schemas/                  # Pure Pydantic v2 — no DB, no logic
-│           │   ├── events.py             # MessageEvent, RoutingDecision
-│           │   ├── tasks.py              # Task, Step
-│           │   ├── tools.py              # ToolCall, ToolResult
-│           │   ├── audit.py              # AuditEvent
-│           │   ├── approvals.py          # Approval
-│           │   ├── safety.py             # AutonomyLevel, RiskLevel enums
-│           │   └── common.py             # shared value types
-│           ├── pipeline/                 # Thin stage orchestrators
-│           │   ├── normalizer.py
-│           │   ├── router.py
-│           │   ├── executor.py
-│           │   └── runner.py             # Main pipeline loop
-│           ├── routing/                  # Router internals
-│           │   ├── filters.py            # Hard filters: spam, quiet hours
-│           │   ├── fastpath.py           # Deterministic intent DSL
-│           │   ├── rules_eval.py         # Rules engine evaluation
-│           │   └── llm_fallback.py       # LLM — last resort only
-│           ├── tasks/                    # Task engine
-│           │   ├── engine.py
-│           │   ├── step_runner.py
-│           │   ├── state.py              # State machine enforcement
-│           │   └── recovery.py           # Restart reconciliation
-│           ├── tools/                    # Tool runtime
-│           │   ├── registry.py
-│           │   ├── executor.py           # Gates + idempotency + audit
-│           │   ├── idempotency.py
-│           │   ├── adapter.py            # BaseTool ABC
-│           │   └── builtin/noop.py
-│           ├── integrations/
-│           │   ├── inbound/base.py       # InboundAdapter ABC
-│           │   ├── outbound/base.py      # OutboundAdapter ABC
-│           │   └── mcp/                  # Milestone 6
-│           │       ├── connection.py
-│           │       ├── provider.py
-│           │       ├── adapter.py
-│           │       └── trust.py
-│           ├── scheduler/
-│           │   ├── scheduler.py
-│           │   ├── watchers/
-│           │   │   ├── base.py
-│           │   │   └── heartbeat.py
-│           │   └── rules/
-│           │       ├── engine.py
-│           │       └── models.py
-│           ├── safety/
-│           │   ├── autonomy.py
-│           │   ├── risk.py
-│           │   ├── gates.py
-│           │   └── dryrun.py
-│           ├── observability/
-│           │   ├── audit.py              # AuditWriter — sole emit point
-│           │   ├── projections.py        # Sync updaters (in-transaction)
-│           │   ├── health.py
-│           │   └── alarms.py
-│           ├── secrets/store.py          # get_secret() only
-│           ├── storage/
-│           │   ├── db.py
-│           │   ├── models.py             # ORM models (separate from schemas)
-│           │   ├── repos/                # One repo per aggregate root
-│           │   └── migrations/           # Alembic
-│           ├── api/
-│           │   ├── app.py
-│           │   ├── auth.py
-│           │   └── routes/
-│           └── workers/                  # Milestone 7 skeleton
+├── pyproject.toml
+├── alembic.ini
+├── src/
+│   └── syris/
+│       ├── __init__.py
+│       ├── main.py                          # Boot: wire all components, start loops
+│       ├── config.py                        # Typed settings (Pydantic BaseSettings)
+│       │
+│       ├── schemas/                         # Pure Pydantic v2 — no DB, no logic
+│       │   ├── __init__.py
+│       │   ├── common.py                    # Enums: ChannelEnum, ActorType, RiskLevel,
+│       │   │                                #   AutonomyLevel, Sensitivity, etc.
+│       │   │                                # Value types: ErrorDetail
+│       │   ├── events.py                    # MessageEvent, RoutingDecision, GateSpec
+│       │   ├── tasks.py                     # Task, Step, RetryPolicy, StepOutcome
+│       │   ├── tools.py                     # ToolCall, ToolResult, ToolCallContext,
+│       │   │                                #   RegisteredTool, ToolHealth, TrustPolicy
+│       │   ├── audit.py                     # AuditEvent
+│       │   ├── approvals.py                 # Approval
+│       │   ├── schedules.py                 # Schedule
+│       │   ├── rules.py                     # Rule, Condition, Action types
+│       │   └── health.py                    # SystemHealth, Alarm
+│       │
+│       ├── storage/                         # DB layer (PostgreSQL)
+│       │   ├── __init__.py
+│       │   ├── db.py                        # Engine, session factory, connection config
+│       │   ├── models.py                    # SQLAlchemy ORM models (all tables)
+│       │   ├── repos/                       # One repo per aggregate root
+│       │   │   ├── __init__.py
+│       │   │   ├── events.py
+│       │   │   ├── audit.py
+│       │   │   ├── tasks.py
+│       │   │   ├── tools.py                 # tool_calls, tool_results,
+│       │   │   │                            #   idempotency_outcomes
+│       │   │   ├── approvals.py
+│       │   │   ├── schedules.py
+│       │   │   ├── watchers.py
+│       │   │   ├── rules.py
+│       │   │   ├── health.py                # system_health, alarms
+│       │   │   └── projections.py           # proj_* tables read/write
+│       │   └── migrations/                  # Alembic
+│       │       ├── env.py
+│       │       └── versions/
+│       │
+│       ├── pipeline/                        # The three-stage pipeline
+│       │   ├── __init__.py
+│       │   ├── runner.py                    # Main loop: normalise → route → execute
+│       │   ├── normaliser.py                # Raw payload → MessageEvent + audit
+│       │   ├── router.py                    # Orchestrates routing layers in order
+│       │   └── executor.py                  # Dispatches to fast/task/gated/sandbox
+│       │
+│       ├── routing/                         # Router internals (peer to pipeline/)
+│       │   ├── __init__.py
+│       │   ├── filters.py                   # Hard filters: dedup, spam, quiet hours
+│       │   ├── fastpath.py                  # Deterministic intent matching
+│       │   ├── rules_eval.py                # Condition evaluator for Rule objects
+│       │   └── llm_fallback.py              # LLM-based routing (last resort)
+│       │
+│       ├── tasks/                           # Task engine
+│       │   ├── __init__.py
+│       │   ├── engine.py                    # Claim → execute → checkpoint loop
+│       │   ├── step_runner.py               # Execute one step, handle outcomes
+│       │   ├── state.py                     # State machine enforcement
+│       │   └── recovery.py                  # Startup reconciliation
+│       │
+│       ├── tools/                           # Tool runtime
+│       │   ├── __init__.py
+│       │   ├── registry.py                  # ToolRegistry: register, lookup, health
+│       │   ├── executor.py                  # Scope → risk → gate → idempotency → call
+│       │   ├── idempotency.py               # Outcome store operations
+│       │   ├── base.py                      # BaseTool ABC
+│       │   └── builtin/
+│       │       └── noop.py                  # NoopTool for testing
+│       │
+│       ├── safety/                          # Safety layer
+│       │   ├── __init__.py
+│       │   ├── autonomy.py                  # Read/write current level + history
+│       │   ├── risk.py                      # Risk classifier + adjusters
+│       │   ├── gates.py                     # Gate matrix + override evaluation
+│       │   └── dryrun.py                    # Preview protocol
+│       │
+│       ├── scheduler/                       # Schedules only
+│       │   ├── __init__.py
+│       │   └── loop.py                      # Scheduler tick loop
+│       │
+│       ├── watchers/                        # Watcher subsystem (top-level peer)
+│       │   ├── __init__.py
+│       │   ├── loop.py                      # Watcher tick loop
+│       │   ├── base.py                      # BaseWatcher ABC
+│       │   └── heartbeat.py                 # HeartbeatWatcher
+│       │
+│       ├── rules/                           # Rules engine (top-level peer)
+│       │   ├── __init__.py
+│       │   ├── engine.py                    # Load rules, evaluate, dispatch actions
+│       │   └── cache.py                     # In-memory cache with TTL + invalidation
+│       │
+│       ├── mcp/                             # MCP integration (top-level peer)
+│       │   ├── __init__.py
+│       │   ├── connection.py                # MCPConnectionManager
+│       │   ├── provider.py                  # MCPProvider: discovery → registry sync
+│       │   ├── adapter.py                   # MCPToolAdapter(BaseTool)
+│       │   └── trust.py                     # TrustPolicy schema + loader
+│       │
+│       ├── adapters/                        # Inbound/outbound adapters
+│       │   ├── __init__.py
+│       │   ├── inbound/
+│       │   │   ├── __init__.py
+│       │   │   └── base.py                  # InboundAdapter ABC
+│       │   └── outbound/
+│       │       ├── __init__.py
+│       │       └── base.py                  # OutboundAdapter ABC
+│       │
+│       ├── observability/                   # Audit, projections, health
+│       │   ├── __init__.py
+│       │   ├── audit.py                     # AuditWriter — sole emit point
+│       │   ├── projections.py               # Sync projection updaters
+│       │   ├── health.py                    # SystemHealth writer
+│       │   └── alarms.py                    # Alarm creation + dedup + lifecycle
+│       │
+│       ├── secrets/
+│       │   ├── __init__.py
+│       │   └── store.py                     # SecretsStore protocol + Fernet impl
+│       │
+│       ├── api/                             # FastAPI
+│       │   ├── __init__.py
+│       │   ├── app.py                       # FastAPI app factory
+│       │   ├── deps.py                      # Dependency injection (session, services)
+│       │   └── routes/
+│       │       ├── __init__.py
+│       │       ├── status.py                # /health, /state
+│       │       ├── events.py                # /events
+│       │       ├── audit.py                 # /audit, /artifacts/{id}
+│       │       ├── tasks.py                 # /tasks CRUD + cancel/pause/resume
+│       │       ├── approvals.py             # /approvals + approve/deny
+│       │       ├── schedules.py             # /schedules CRUD
+│       │       ├── watchers.py              # /watchers
+│       │       ├── rules.py                 # /rules
+│       │       ├── integrations.py          # /integrations
+│       │       ├── controls.py              # /controls/pause, resume, autonomy
+│       │       └── alarms.py                # /alarms + ack/resolve
+│       │
+│       └── workers/                         # Milestone 7 — skeleton only
+│           ├── __init__.py
+│           └── manager.py
+│
 └── tests/
     ├── unit/
-    └── integration/
+    ├── integration/
+    └── conftest.py
 ```
+
+### Structural decisions
+
+**Flat `src/syris/` layout.** The previous spec used a nested `core/syris_core/src/syris_core/` structure. For a single-developer project with no current extraction need, a flat layout with one `pyproject.toml` at the root is sufficient. The extraction seam is the module boundary, not package nesting.
+
+**`routing/` is a top-level peer to `pipeline/`.** `pipeline/router.py` is a thin orchestrator that delegates to `routing/` functions in priority order. The routing internals (filters, fastpath, rules eval, LLM fallback) are a distinct concern from pipeline stage orchestration. Making them peers makes the dependency direction explicit: `pipeline` depends on `routing`, not the reverse.
+
+**`watchers/`, `rules/`, `scheduler/` are top-level peers.** Each has its own loop, state model, and lifecycle. The previous spec nested watchers and rules under `scheduler/`, but there is no containment relationship — the scheduler does not manage watchers or rules.
+
+**`mcp/` is a top-level peer.** MCP is a specific, well-defined integration mechanism with four components. The previous spec nested it under a generic `integrations/` package alongside inbound/outbound ABCs. MCP has enough weight and structure to justify its own top-level package.
+
+**`tools/base.py` instead of `tools/adapter.py`.** Avoids naming confusion with `mcp/adapter.py`. Both define abstract base classes; `base.py` is the conventional name.
+
+**`config.py` added.** Typed settings via Pydantic `BaseSettings` — reads from env vars and `.env` files, validates at startup, injectable everywhere.
 
 ## High-level flow
 
-```bash
-[Inbound Adapters] ──► [normalizer.py] ──► [router.py] ──► [pipeline/executor.py]
+```
+[Inbound Adapters] ──► [normaliser.py] ──► [router.py] ──► [pipeline/executor.py]
         │                    │                                      │
         │                    │ persists MessageEvent + AuditEvent   ├─ fast  ──► [tools/executor.py]
         │                    │                                      ├─ task  ──► [tasks/engine.py]
         │                    │                                      ├─ gated ──► [safety/gates.py]
         │                    │                                      └─ sandbox──► [workers/manager.py]
         │
-        └── Scheduler / Watchers / Rules also emit events into normalizer
+        └── Scheduler / Watchers / Rules also emit events into normaliser
 ```
 
 ## Process topology
 
-```bash
+```
 Control Plane (always-on process)
   ├── Ingestion loops (webhooks / pollers)
   ├── Scheduler loop
@@ -112,16 +201,39 @@ Worker(s) (optional, gated)
   └── Sandbox jobs; heavy analysis; artifact production
 ```
 
+## Dependency graph
+
+```
+schemas/          ← depends on nothing
+storage/          ← depends on schemas/
+observability/    ← depends on schemas/, storage/
+secrets/          ← depends on nothing
+safety/           ← depends on schemas/, storage/, observability/
+tools/            ← depends on schemas/, storage/, observability/, safety/, secrets/
+routing/          ← depends on schemas/, rules/
+pipeline/         ← depends on schemas/, routing/, tools/, tasks/, safety/, observability/
+tasks/            ← depends on schemas/, storage/, tools/, observability/
+scheduler/        ← depends on schemas/, storage/, pipeline/, observability/
+watchers/         ← depends on schemas/, storage/, pipeline/, observability/
+rules/            ← depends on schemas/, storage/
+mcp/              ← depends on schemas/, tools/, storage/, observability/
+adapters/         ← depends on schemas/, secrets/
+api/              ← depends on everything (thin layer)
+```
+
+No circular dependencies. Each module has a clear dependency direction pointing downward toward `schemas/` and `storage/`.
+
 ## Seams for later extraction
 
-- **Worker boundary** — worker process is already a separate runtime; can move to container or remote.
-- **Integration adapters** — inbound and outbound adapters implement stable ABCs; can move out of the monolith if needed.
-- **Projection builder** — `projections.py` updaters run synchronously today; can be replaced by an async projector without changing callers. See [observability/projections](/docs/observability/projections).
+* **Worker boundary** — worker process is already a separate runtime; can move to container or remote.
+* **Integration adapters** — inbound and outbound adapters implement stable ABCs; can move out of the monolith if needed.
+* **Projection builder** — `projections.py` updaters run synchronously today; can be replaced by an async projector without changing callers. See [observability/projections](/docs/observability/projections).
 
 ## Related
 
-- [dev/repo-structure](/docs/dev/repo-structure)
-- [architecture/pipeline](/docs/architecture/pipeline)
-- [architecture/principles](/docs/architecture/principles)
-- [integrations/tool-runtime](/docs/integrations/tool-runtime)
-- [adr/0001-modular-monolith](/docs/adr/0001-modular-monolith)
+* [dev/repo-structure](/docs/dev/repo-structure)
+* [architecture/pipeline](/docs/architecture/pipeline)
+* [architecture/principles](/docs/architecture/principles)
+* [integrations/tool-runtime](/docs/integrations/tool-runtime)
+* [adr/0001-modular-monolith](/docs/adr/0001-modular-monolith)
+* [dev/implementation-design](/docs/dev/implementation-design)

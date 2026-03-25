@@ -1,65 +1,126 @@
 ---
 title: Database Schema
-description: SQLite configuration, table summary with indexes, the Postgres migration rules, and the audit append-only constraint.
+description: PostgreSQL configuration, table summary with indexes, the audit append-only constraint, and column type conventions.
 ---
 
-SYRIS uses SQLite in WAL mode as the default database. The schema is designed to be Postgres-compatible with three trivial changes.
+SYRIS uses PostgreSQL as its database from day one. The schema uses native Postgres types and features throughout.
 
-## SQLite configuration
+## PostgreSQL configuration
 
-The following PRAGMAs must be applied on every connection:
+Connection is configured via the `DATABASE_URL` environment variable, validated at startup by `config.py`. Use `asyncpg` or `psycopg` as the SQLAlchemy async driver — whichever is already in use in the project.
 
-```sql
-PRAGMA journal_mode = WAL;       -- Write-Ahead Logging: concurrent reads + one writer
-PRAGMA synchronous  = NORMAL;    -- Safe with WAL; avoids fsync on every commit
-PRAGMA foreign_keys = ON;        -- Enforce referential integrity
-PRAGMA busy_timeout = 5000;      -- ms; prevents "database is locked" under load
-```
+No special PRAGMAs or connection-level configuration is needed beyond standard Postgres defaults. Connection pooling is handled by SQLAlchemy's pool (default size is sufficient for a single-process system).
 
-`WAL` is required because the API server and background loops read the DB concurrently while the pipeline writes it. `synchronous = NORMAL` is safe with WAL because WAL itself provides crash safety. `busy_timeout` prevents lock errors during brief write contention.
+## Column type conventions
+
+Use native Postgres types everywhere:
+
+| Python / logical type | Postgres column type | Notes |
+| --- | --- | --- |
+| `UUID` | `UUID` | Native; use `UUID(as_uuid=True)` in SQLAlchemy |
+| `datetime` | `TIMESTAMP WITH TIME ZONE` | Always store with timezone |
+| `bool` | `BOOLEAN` | Native; no integer mapping |
+| `dict`, `list` (flexible) | `JSONB` | For `checkpoint`, `structured`, `what`, `dedupe_window`, `conditions`, `payload`, etc. Supports indexing and path queries |
+| `list[str]` (fixed schema) | `TEXT[]` or `JSONB` | Pick one convention and be consistent. `TEXT[]` for simple string lists like `labels`, `required_scopes`; `JSONB` for anything more complex |
+| `str` | `TEXT` | No `VARCHAR` — Postgres treats them identically, `TEXT` is simpler |
+| `int` | `INTEGER` or `BIGINT` | Use `BIGINT` for counters that could grow large |
+| `Enum` | `TEXT` | Store enum values as text strings, validate in application code |
 
 ## Table summary
 
-| Table                  | Purpose                                                        | Key indexes                                                                      |
-| ---------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `events`               | Inbound events after normalisation                             | `trace_id`, `ingested_at`, `channel`, `dedupe_key` (unique partial)              |
-| `routing_decisions`    | Routing outcome per event chain (1:1 with trace)               | `event_id`, `decided_at`                                                         |
-| `tasks`                | Persisted workflow instances                                   | `status`, `trace_id`, `next_wake_time` (partial), `updated_at`                   |
-| `steps`                | Individual resumable units within tasks                        | `task_id`, `status`, `idempotency_key` (partial)                                 |
-| `tool_calls`           | Record of every tool invocation                                | `trace_id`, `idempotency_key`, `created_at`                                      |
-| `tool_results`         | Final outcome per tool call (FK to tool_calls)                 | PK = `tool_call_id`                                                              |
-| `idempotency_outcomes` | Stable outcome store for dedup on retry/restart                | PK = `idempotency_key`                                                           |
-| `audit_events`         | Append-only operational history — never updated or deleted     | `trace_id`, `timestamp`, `type`, `outcome`, `tool_name`, `ref_task_id` (partial) |
-| `approvals`            | Pending and resolved gate decisions                            | `status`, `trace_id`, `expires_at`                                               |
-| `schedules`            | Persistent schedule definitions                                | `next_run_at` (partial, `enabled = 1` only)                                      |
-| `watcher_state`        | Per-watcher tick, error, and dedup state                       | PK = `watcher_id`                                                                |
-| `rules`                | IFTTT-style condition → action rules                           | `enabled`, `priority`                                                            |
-| `system_health`        | Periodic heartbeat records from HeartbeatWatcher               | `recorded_at`                                                                    |
-| `alarms`               | Open and resolved incidents                                    | `dedupe_key` (unique partial, open only), `status`                               |
-| `artifacts`            | Encrypted, redacted audit payloads referenced by `payload_ref` | `ref_id`, `created_at`                                                           |
+| Table | Purpose | Key indexes |
+| --- | --- | --- |
+| `events` | Inbound events after normalisation | `trace_id`, `ingested_at`, `channel`, `dedupe_key` (unique partial) |
+| `routing_decisions` | Routing outcome per event chain (1:1 with trace) | `event_id`, `decided_at` |
+| `tasks` | Persisted workflow instances | `status`, `trace_id`, `next_wake_time` (partial), `updated_at` |
+| `steps` | Individual resumable units within tasks | `task_id`, `status`, `idempotency_key` (partial) |
+| `tool_calls` | Record of every tool invocation | `trace_id`, `idempotency_key`, `created_at` |
+| `tool_results` | Final outcome per tool call (FK to tool\_calls) | PK = `tool_call_id` |
+| `idempotency_outcomes` | Stable outcome store for dedup on retry/restart | PK = `idempotency_key` |
+| `audit_events` | Append-only operational history — never updated or deleted | `trace_id`, `timestamp`, `type`, `outcome`, `tool_name`, `ref_task_id` (partial) |
+| `approvals` | Pending and resolved gate decisions | `status`, `trace_id`, `expires_at` |
+| `schedules` | Persistent schedule definitions | `next_run_at` (partial, `enabled = true` only) |
+| `watcher_state` | Per-watcher tick, error, and dedup state | PK = `watcher_id` |
+| `rules` | IFTTT-style condition → action rules | `enabled`, `priority` |
+| `system_health` | Periodic heartbeat records from HeartbeatWatcher | `recorded_at` |
+| `alarms` | Open and resolved incidents | `dedupe_key` (unique partial, open only), `status` |
+| `artifacts` | Encrypted, redacted audit payloads referenced by `payload_ref` | `ref_id`, `created_at` |
+| `quiet_hours_policies` | Named quiet hours windows referenced by schedules and rules | PK = `policy_id` |
 
 Field-level schemas for `events`, `audit_events`, and `approvals` are in [architecture/data-contracts](/docs/architecture/data-contracts). Full DDL lives in `storage/migrations/`.
 
-## Append-only constraint on audit_events
+## Key indexes
+
+```sql
+-- events
+CREATE INDEX idx_events_trace_id ON events(trace_id);
+CREATE INDEX idx_events_ingested_at ON events(ingested_at);
+CREATE INDEX idx_events_channel ON events(channel);
+CREATE UNIQUE INDEX uq_events_dedupe_key ON events(dedupe_key)
+  WHERE dedupe_key IS NOT NULL;
+
+-- audit_events
+CREATE INDEX idx_audit_trace_id ON audit_events(trace_id);
+CREATE INDEX idx_audit_timestamp ON audit_events(timestamp);
+CREATE INDEX idx_audit_type ON audit_events(type);
+CREATE INDEX idx_audit_outcome ON audit_events(outcome);
+CREATE INDEX idx_audit_ref_task_id ON audit_events(ref_task_id)
+  WHERE ref_task_id IS NOT NULL;
+
+-- tasks
+CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_tasks_trace_id ON tasks(trace_id);
+CREATE INDEX idx_tasks_wake ON tasks(next_wake_time)
+  WHERE status = 'running';
+
+-- steps
+CREATE INDEX idx_steps_task_id ON steps(task_id);
+CREATE INDEX idx_steps_idemp ON steps(idempotency_key)
+  WHERE idempotency_key IS NOT NULL;
+
+-- tool_calls
+CREATE INDEX idx_toolcalls_trace_id ON tool_calls(trace_id);
+CREATE INDEX idx_toolcalls_idemp ON tool_calls(idempotency_key);
+CREATE INDEX idx_toolcalls_created ON tool_calls(created_at);
+
+-- approvals
+CREATE INDEX idx_approvals_status ON approvals(status);
+CREATE INDEX idx_approvals_trace_id ON approvals(trace_id);
+CREATE INDEX idx_approvals_expires ON approvals(expires_at);
+
+-- schedules
+CREATE INDEX idx_schedules_next_run ON schedules(next_run_at)
+  WHERE enabled = true;
+
+-- alarms
+CREATE UNIQUE INDEX uq_alarms_dedupe_open ON alarms(dedupe_key)
+  WHERE status = 'open';
+CREATE INDEX idx_alarms_status ON alarms(status);
+```
+
+## Append-only constraint on audit\_events
 
 `audit_events` must never be updated or deleted by application code. This is enforced by convention at the application layer: `AuditWriter` is the only code that writes to this table, and it only issues `INSERT`.
 
-At the DB level, no cascade deletes reference `audit_events`. If enforcement at the DB level is required, a trigger that raises on `UPDATE` or `DELETE` of `audit_events` can be added as a migration step.
+At the DB level, no cascade deletes reference `audit_events`. If enforcement at the DB level is required, a trigger that raises on `UPDATE` or `DELETE` of `audit_events` can be added as a migration step:
 
-## Postgres migration rules
+```sql
+CREATE OR REPLACE FUNCTION prevent_audit_mutation() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'audit_events is append-only: % not permitted', TG_OP;
+END;
+$$ LANGUAGE plpgsql;
 
-The SQLite schema above is valid Postgres SQL with exactly three changes:
-
-1. `INTEGER PRIMARY KEY AUTOINCREMENT` → `SERIAL PRIMARY KEY`
-2. `INTEGER` boolean columns (`0`/`1`) → `BOOLEAN`
-3. Partial index `WHERE` syntax is identical in Postgres — no change required
-
-Use Alembic with `render_as_batch = True` during SQLite development for `ALTER TABLE` compatibility. When migrating to Postgres, use `alembic --sql` to generate reviewed DDL rather than migrating a live database directly.
+CREATE TRIGGER audit_events_immutable
+  BEFORE UPDATE OR DELETE ON audit_events
+  FOR EACH ROW EXECUTE FUNCTION prevent_audit_mutation();
+```
 
 ## Related
 
-- [architecture/data-contracts](/docs/architecture/data-contracts)
-- [observability/audit-log](/docs/observability/audit-log)
-- [architecture/task-engine](/docs/architecture/task-engine)
-- [dev/repo-structure](/docs/dev/repo-structure)
-- [dev/outstanding-decisions](/docs/dev/outstanding-decisions)
+* [architecture/data-contracts](/docs/architecture/data-contracts)
+* [observability/audit-log](/docs/observability/audit-log)
+* [architecture/task-engine](/docs/architecture/task-engine)
+* [dev/repo-structure](/docs/dev/repo-structure)
+* [dev/outstanding-decisions](/docs/dev/outstanding-decisions)
+* [dev/implementation-design](/docs/dev/implementation-design)
