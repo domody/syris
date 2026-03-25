@@ -6,8 +6,6 @@ from sqlalchemy import text
 
 from syris_core.storage.db import session_scope
 
-from syris_core.config import Settings
-
 router = APIRouter(tags=["system"])
 
 @router.get("/health")

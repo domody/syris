@@ -27,9 +27,10 @@ AutonomyLevel = Literal["A0", "A1", "A2", "A3", "A4"]
 class AuditEvent(BaseModel):
     """
     Immutable record of a single pipeline action or state transition.
- 
-    audit_id and timestamp are assigned by AuditWriter.emit() — callers
-    must not set them manually.  trace_id is the sole join key that
+
+    audit_id and timestamp are populated by default_factory — they are
+    set when the object is constructed inside AuditWriter.emit() and
+    must not be passed by callers. trace_id is the sole join key that
     links every AuditEvent in a request chain back to the originating
     MessageEvent.
     """

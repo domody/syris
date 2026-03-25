@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: syris
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: syris
+    ports: 
+      - "5432:5432"
     volumes:
       - syris_pgdata:/var/lib/postgresql
     healthcheck:

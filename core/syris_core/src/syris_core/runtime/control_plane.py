@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from ..api.app import create_app
 from ..config import Settings
 from ..logging import configure_logging
-from ..observability.hearbeat import HeartbeatService
+from ..observability.heartbeat import HeartbeatService
 from ..storage.db import create_engine, create_sessionmaker, init_db
 
 logger = logging.getLogger(__name__)
