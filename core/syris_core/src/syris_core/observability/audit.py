@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from ..events.bus import EventBus
 from ..storage.db import session_scope
 from ..storage.models import AuditEventRow
 from ..schemas.audit import AuditEvent, AuditOutcome, AuditStage, AutonomyLevel, RiskLevel
@@ -44,8 +45,13 @@ class AuditWriter:
             span.outcome = "success"  # update outcome before the context exits
     """
 
-    def __init__(self, session_maker: async_sessionmaker[AsyncSession]) -> None:
+    def __init__(
+        self,
+        session_maker: async_sessionmaker[AsyncSession],
+        bus: Optional[EventBus] = None,
+    ) -> None:
         self._session_maker = session_maker
+        self._bus = bus
 
     # Primary API
 
@@ -94,6 +100,13 @@ class AuditWriter:
         )
 
         await self._insert(event)
+        if self._bus is not None:
+            self._bus.publish({
+                "stream_type": "audit_event",
+                "trace_id": str(event.trace_id),
+                "timestamp": event.timestamp.isoformat(),
+                "payload": event.model_dump(mode="json"),
+            })
         return event
 
     @asynccontextmanager

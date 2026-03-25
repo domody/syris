@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from ..api.app import create_app
 from ..config import Settings
+from ..events.bus import EventBus
 from ..logging import configure_logging
 from ..observability.audit import AuditWriter
 from ..observability.heartbeat import HeartbeatService
@@ -24,6 +25,7 @@ class RuntimeState:
     started_at: datetime
     engine: AsyncEngine
     sessionmaker: async_sessionmaker[AsyncSession]
+    event_bus: EventBus
     heartbeat: HeartbeatService
     audit_writer: AuditWriter
 
@@ -58,17 +60,20 @@ class ControlPlane:
 
         app = create_app(self._settings)
 
+        event_bus = EventBus()
+
         heartbeat = HeartbeatService(
             sessionmaker,
             run_id=run_id,
             started_at=started_at,
             interval_s=self._settings.heartbeat_interval_s,
             service=self._settings.service_name,
-            version=self._settings.version
+            version=self._settings.version,
+            bus=event_bus,
         )
         await heartbeat.start()
 
-        audit_writer = AuditWriter(sessionmaker)
+        audit_writer = AuditWriter(sessionmaker, bus=event_bus)
         normalizer = Normalizer(audit_writer)
         router = Router(audit_writer)
         executor = Executor(audit_writer)
@@ -78,6 +83,7 @@ class ControlPlane:
         app.state.sessionmaker = sessionmaker
         app.state.run_id = run_id
         app.state.started_at = started_at
+        app.state.event_bus = event_bus
         app.state.heartbeat = heartbeat
         app.state.audit_writer = audit_writer
         app.state.normalizer = normalizer
@@ -90,6 +96,7 @@ class ControlPlane:
             started_at=started_at,
             engine=engine,
             sessionmaker=sessionmaker,
+            event_bus=event_bus,
             heartbeat=heartbeat,
             audit_writer=audit_writer,
         )

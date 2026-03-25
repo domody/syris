@@ -7,6 +7,7 @@ from typing import Callable, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from syris_core.events.bus import EventBus
 from syris_core.storage.db import session_scope
 from syris_core.storage.models import SystemHeartbeatRow
 
@@ -29,7 +30,8 @@ class HeartbeatService:
             interval_s: int,
             service: str,
             version: str,
-            status_provider: Optional[Callable[[], str]] =  None,
+            status_provider: Optional[Callable[[], str]] = None,
+            bus: Optional[EventBus] = None,
     ) -> None:
         self._session_maker = session_maker
         self._run_id = run_id
@@ -38,6 +40,7 @@ class HeartbeatService:
         self._service = service
         self._version = version
         self._status_provider = status_provider or (lambda: "healthy")
+        self._bus = bus
 
         self._stop_event = asyncio.Event()
         self._task: asyncio.Task[None] | None = None
@@ -107,3 +110,17 @@ class HeartbeatService:
             session.add(row)
 
         self._last_beat_at = now
+
+        if self._bus is not None:
+            self._bus.publish({
+                "stream_type": "health",
+                "trace_id": str(self._run_id),
+                "timestamp": now.isoformat(),
+                "payload": {
+                    "run_id": str(self._run_id),
+                    "status": row.status,
+                    "uptime_s": uptime_s,
+                    "service": self._service,
+                    "version": self._version,
+                },
+            })
