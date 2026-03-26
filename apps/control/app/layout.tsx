@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Figtree } from "next/font/google"
 import "./globals.css";
+import { cn } from "@/lib/utils";
 import { Providers } from "@/components/providers/providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" })
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fontMono = Geist_Mono({
   subsets: ["latin"],
-});
+  variable: "--font-mono",
+})
+
 
 export const metadata: Metadata = {
   title: "syris-control",
@@ -24,9 +23,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning       className={cn(
+        fontMono.variable,
+        "overflow-x-hidden font-sans",
+        figtree.variable
+      )}>
       <body
-        className={`min-h-screen [--header-height:calc(var(--spacing)*14)] ${geistSans.variable} ${geistMono.variable}`}
+        className={`min-h-screen [--header-height:calc(var(--spacing)*14)]`}
       >
         <Providers>{children}</Providers>
       </body>
