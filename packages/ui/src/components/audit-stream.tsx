@@ -1,3 +1,6 @@
+"use client"
+
+import { useEffect, useRef } from "react"
 import { Badge } from "@workspace/ui/components/badge"
 import {
   Card,
@@ -7,11 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
+import { Skeleton } from "@workspace/ui/components/skeleton"
 import { StatusDot } from "@workspace/ui/components/status-dot"
 import { cn } from "@workspace/ui/lib/utils"
 import { type SystemStateKey } from "@workspace/ui/types/system-state"
 
-type AuditItem = {
+export type AuditStreamItem = {
   status: "success" | "destructive" | "warn" | "in_progress"
   label: string
   trace: string
@@ -23,53 +27,81 @@ const statusToSystemState: Record<string, SystemStateKey | undefined> = {
   destructive: "major_outage",
 }
 
-const items: AuditItem[] = [
-  { status: "success", label: "task.completed", trace: "a3f9b1c0-4d2e", time: "09:14:33" },
-  { status: "in_progress", label: "tool.invoked | calendar.read", trace: "a3f9b1c0-4d2e", time: "09:14:29" },
-  { status: "warn", label: "gate.awaiting | approval", trace: "8c1d04fa-7b3a", time: "09:13:51" },
-  { status: "success", label: "event.ingested | email", trace: "8c1d04fa-7b3a", time: "09:13:49" },
-  { status: "destructive", label: "tool.failed | ha.device-write", trace: "d70e2219-c5f1", time: "09:11:02" },
-]
+type AuditStreamProps = {
+  items?: AuditStreamItem[]
+  isLoading?: boolean
+}
 
-export function AuditStream() {
+export function AuditStream({ items, isLoading }: AuditStreamProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [items?.length])
+
   return (
     <Card className="h-min">
       <CardHeader>
         <CardTitle>Audit Stream</CardTitle>
         <CardAction>
-          <Badge variant="secondary">LIVE</Badge>
+          <Badge variant="secondary" className="gap-1.5">
+            <span className="size-1.5 rounded-full bg-current animate-pulse" />
+            LIVE
+          </Badge>
         </CardAction>
       </CardHeader>
       <CardContent>
-        <div className="flex size-full flex-col px-2">
-          {items.map((item) => (
-            <div
-              key={item.label}
-              className="flex w-full items-start justify-start gap-3 border-b py-1.5 last:border-b-0"
-            >
-              <StatusDot
-                status={statusToSystemState[item.status]}
-                className="mt-1.5"
-                dotClassName={cn(
-                  item.status === "warn" && "bg-warning",
-                  item.status === "in_progress" && "bg-pending"
-                )}
-              />
-              <div className="grid flex-1 grid-cols-1">
-                <CardDescription className="font-medium text-foreground">
-                  {item.label}
-                </CardDescription>
-                <CardDescription className="font-mono text-[10px]">
-                  trace {item.trace}
-                </CardDescription>
+        <div
+          ref={scrollRef}
+          className="flex size-full max-h-64 flex-col overflow-y-auto px-2 scroll-smooth no-scrollbar"
+        >
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-3 border-b py-1.5 last:border-b-0">
+                <Skeleton className="mt-1.5 size-2 shrink-0 rounded-full" />
+                <div className="flex flex-1 flex-col gap-1">
+                  <Skeleton className="h-3 w-40" />
+                  <Skeleton className="h-2.5 w-24" />
+                </div>
+                <Skeleton className="h-2.5 w-14" />
               </div>
-              <div className="ml-auto">
-                <CardDescription className="font-mono text-[10px]">
-                  {item.time}
-                </CardDescription>
+            ))
+          ) : !items || items.length === 0 ? (
+            <CardDescription className="py-4 text-center text-xs">
+              No audit events yet
+            </CardDescription>
+          ) : (
+            items.map((item, i) => (
+              <div
+                key={`${item.trace}-${i}`}
+                className="flex w-full items-start justify-start gap-3 border-b py-1.5 last:border-b-0"
+              >
+                <StatusDot
+                  status={statusToSystemState[item.status]}
+                  className="mt-1.5"
+                  dotClassName={cn(
+                    item.status === "warn" && "bg-warning",
+                    item.status === "in_progress" && "bg-pending"
+                  )}
+                />
+                <div className="grid flex-1 grid-cols-1 min-w-0">
+                  <CardDescription className="font-medium text-foreground truncate">
+                    {item.label}
+                  </CardDescription>
+                  <CardDescription className="font-mono text-[10px]">
+                    trace {item.trace.slice(0, 13)}
+                  </CardDescription>
+                </div>
+                <div className="ml-auto shrink-0">
+                  <CardDescription className="font-mono text-[10px]">
+                    {item.time}
+                  </CardDescription>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </CardContent>
     </Card>

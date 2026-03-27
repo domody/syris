@@ -1,21 +1,39 @@
 import { cn } from "@workspace/ui/lib/utils"
+import { Skeleton } from "@workspace/ui/components/skeleton"
 
-type MetricChip = {
+export type MetricChip = {
   label: string
   value: string | number
   variant?: "default" | "warning" | "destructive" | "success" | "pending"
   sub?: string
 }
 
-const chips: MetricChip[] = [
-  { label: "EVENTS/MIN", value: 47 },
-  { label: "P95 LATENCY", value: "142ms", sub: "tool exec" },
-  { label: "ACTIVE TASKS", value: 3, variant: "pending" },
-  { label: "PENDING GATES", value: 1, variant: "warning" },
-  { label: "TOOL FAILURES", value: 2, variant: "destructive", sub: "24h" },
-]
+type MetricStripProps = {
+  chips?: MetricChip[]
+  isLoading?: boolean
+}
 
-export function MetricStrip() {
+export function MetricStrip({ chips, isLoading }: MetricStripProps) {
+  if (isLoading) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-24 rounded-xl" />
+        ))}
+      </div>
+    )
+  }
+
+  if (!chips || chips.length === 0) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <div className="rounded-xl bg-card px-3 py-2 ring-1 ring-foreground/10">
+          <span className="font-mono text-[9px] text-muted-foreground">NO DATA</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-wrap gap-2">
       {chips.map((chip) => (

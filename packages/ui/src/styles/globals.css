@@ -135,6 +135,6 @@
   }
   html {
     @apply font-sans;
-    scrollbar-gutter: stable;
+    /* scrollbar-gutter: stable; */
   }
 }

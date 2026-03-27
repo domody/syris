@@ -9,34 +9,31 @@ import {
 } from "@workspace/ui/components/card"
 import { InsetCard } from "@workspace/ui/components/inset-card"
 import { Input } from "@workspace/ui/components/input"
+import { Skeleton } from "@workspace/ui/components/skeleton"
 import { useState } from "react"
 
-type LogEntry = {
+export type AuditLogEntry = {
   time: string
   type: string
   meta: string
 }
 
-const entries: LogEntry[] = [
-  { time: "09:14:33", type: "task.completed", meta: "a3f9b1c0" },
-  { time: "09:14:29", type: "tool.invoked", meta: "calendar.read" },
-  { time: "09:13:51", type: "gate.awaiting", meta: "8c1d04fa" },
-  { time: "09:13:49", type: "event.ingested", meta: "email" },
-  { time: "09:11:02", type: "tool.failed", meta: "ha.device-write d70e2219" },
-  { time: "08:47:11", type: "tool.failed", meta: "calendar.read 19cc3a01" },
-]
+type AuditSearchProps = {
+  entries?: AuditLogEntry[]
+  isLoading?: boolean
+}
 
-export function AuditSearch() {
+export function AuditSearch({ entries, isLoading }: AuditSearchProps) {
   const [query, setQuery] = useState("")
 
   const results = query
-    ? entries.filter(
+    ? (entries ?? []).filter(
         (e) =>
-          e.type.includes(query) ||
-          e.meta.includes(query) ||
+          e.type.toLowerCase().includes(query.toLowerCase()) ||
+          e.meta.toLowerCase().includes(query.toLowerCase()) ||
           e.time.includes(query)
       )
-    : entries.slice(0, 3)
+    : (entries ?? []).slice(0, 4)
 
   return (
     <Card className="h-min">
@@ -46,21 +43,27 @@ export function AuditSearch() {
       <CardContent className="flex flex-col gap-3">
         <Input
           className="font-mono text-xs"
-          placeholder="trace_id or event type…"
+          placeholder="event type or tool name…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         <div className="flex flex-col gap-1.5">
-          {results.length > 0 ? (
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-full rounded-lg" />
+            ))
+          ) : results.length > 0 ? (
             results.map((entry, i) => (
               <InsetCard key={i} className="gap-2 font-mono text-[11px]">
-                <CardDescription>{entry.time}</CardDescription>
-                <span className="font-semibold text-foreground">{entry.type}</span>
-                <CardDescription className="ml-auto">{entry.meta}</CardDescription>
+                <CardDescription className="shrink-0">{entry.time}</CardDescription>
+                <span className="truncate font-semibold text-foreground">{entry.type}</span>
+                <CardDescription className="ml-auto shrink-0">{entry.meta}</CardDescription>
               </InsetCard>
             ))
           ) : (
-            <CardDescription className="text-xs">No results</CardDescription>
+            <CardDescription className="text-xs">
+              {query ? "No results" : "No audit events"}
+            </CardDescription>
           )}
         </div>
       </CardContent>

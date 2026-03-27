@@ -25,8 +25,12 @@ const levels: AutonomyLevel[] = [
   { level: 4, desc: "Fully autonomous. All tools execute without confirmation. Audit log only." },
 ]
 
-export function AutonomyLevel() {
-  const [selected, setSelected] = useState(2)
+type AutonomyLevelProps = {
+  initialLevel?: number
+}
+
+export function AutonomyLevel({ initialLevel = 2 }: AutonomyLevelProps) {
+  const [selected, setSelected] = useState(initialLevel)
 
   return (
     <Card className="h-min">
