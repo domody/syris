@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime, timezone
-from typing import ClassVar, Optional
+from typing import Any, ClassVar, Optional
 
 from sqlalchemy import Column, Index, Integer, Text
-from sqlalchemy.dialects.postgresql import TIMESTAMP, UUID as PGUUID
+from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID as PGUUID
 from sqlmodel import SQLModel, Field
 
 
@@ -87,4 +87,87 @@ class AuditEventRow(SQLModel, table=True):
     )
     payload_ref: Optional[str] = Field(
         default=None, sa_column=Column(Text, nullable=True)
+    )
+
+
+class TaskRow(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "tasks"
+    __table_args__: tuple = (
+        Index("ix_tasks_status", "status"),
+        Index("ix_tasks_trace_id", "trace_id"),
+    )
+
+    task_id: uuid.UUID = Field(
+        sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
+    )
+    trace_id: uuid.UUID = Field(
+        sa_column=Column(PGUUID(as_uuid=True), nullable=False),
+    )
+    status: str = Field(sa_column=Column(Text, nullable=False))
+    handler: str = Field(sa_column=Column(Text, nullable=False))
+    input_payload: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column(JSONB, nullable=False, server_default="{}")
+    )
+    checkpoint: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column(JSONB, nullable=False, server_default="{}")
+    )
+    retry_policy: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column(JSONB, nullable=False, server_default="{}")
+    )
+    error: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    started_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True)
+    )
+    completed_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True)
+    )
+
+
+class TaskStepRow(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "task_steps"
+    __table_args__: tuple = (
+        Index("ix_task_steps_task_id", "task_id"),
+        Index("ix_task_steps_status", "status"),
+    )
+
+    step_id: uuid.UUID = Field(
+        sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
+    )
+    task_id: uuid.UUID = Field(
+        sa_column=Column(PGUUID(as_uuid=True), nullable=False),
+    )
+    step_index: int = Field(sa_column=Column(Integer, nullable=False))
+    status: str = Field(sa_column=Column(Text, nullable=False))
+    tool_name: str = Field(sa_column=Column(Text, nullable=False))
+    input_payload: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column(JSONB, nullable=False, server_default="{}")
+    )
+    output_payload: Optional[dict[str, Any]] = Field(
+        default=None, sa_column=Column(JSONB, nullable=True)
+    )
+    idempotency_key: str = Field(sa_column=Column(Text, nullable=False, unique=True))
+    attempt_count: int = Field(default=0, sa_column=Column(Integer, nullable=False))
+    max_attempts: int = Field(default=3, sa_column=Column(Integer, nullable=False))
+    error: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    started_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True)
+    )
+    completed_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True)
     )
