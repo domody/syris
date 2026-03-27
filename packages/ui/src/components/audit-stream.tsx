@@ -46,7 +46,7 @@ export function AuditStream({ items, isLoading }: AuditStreamProps) {
       <CardHeader>
         <CardTitle>Audit Stream</CardTitle>
         <CardAction>
-          <Badge variant="secondary" className="gap-1.5">
+          <Badge variant="pending" className="gap-1.5">
             <span className="size-1.5 rounded-full bg-current animate-pulse" />
             LIVE
           </Badge>

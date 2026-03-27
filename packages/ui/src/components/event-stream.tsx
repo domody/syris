@@ -88,7 +88,9 @@ export function EventStream({ events, todayCount, isLoading }: EventStreamProps)
               No events yet — waiting for stream
             </CardDescription>
           ) : (
-            events.map((ev) => (
+            events.map((ev) => {
+              // console.log(ev)
+              return (
               <div key={ev.id} className="flex items-start gap-2 border-b py-1.5 last:border-b-0">
                 <Badge
                   variant={routingVariant[ev.routing]}
@@ -110,7 +112,7 @@ export function EventStream({ events, todayCount, isLoading }: EventStreamProps)
                   </span>
                 </div>
               </div>
-            ))
+            )})
           )}
         </div>
       </CardContent>

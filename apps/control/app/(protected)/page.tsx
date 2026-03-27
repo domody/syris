@@ -5,15 +5,36 @@ import { Topbar } from "@/components/nav/topbar";
 import { useSSEStore, type SSEEvent } from "@/lib/sse";
 import { useHealth, useAuditEvents, useTasks } from "@/lib/api/queries";
 import type { AuditEvent, TaskResponse } from "@/lib/api/types";
-import { MetricStrip, type MetricChip } from "@workspace/ui/components/metric-strip";
-import { AuditStream, type AuditStreamItem } from "@workspace/ui/components/audit-stream";
-import { EventStream, type LiveEvent } from "@workspace/ui/components/event-stream";
-import { ToolExecutions, type ToolExecution } from "@workspace/ui/components/tool-executions";
+import {
+  MetricStrip,
+  type MetricChip,
+} from "@workspace/ui/components/metric-strip";
+import {
+  AuditStream,
+  type AuditStreamItem,
+} from "@workspace/ui/components/audit-stream";
+import {
+  EventStream,
+  type LiveEvent,
+} from "@workspace/ui/components/event-stream";
+import {
+  ToolExecutions,
+  type ToolExecution,
+} from "@workspace/ui/components/tool-executions";
 import { AutonomyLevel } from "@workspace/ui/components/autonomy-level";
 import { AuditSearch } from "@workspace/ui/components/audit-search";
-import { LlmFallback, type LlmFallbackStats } from "@workspace/ui/components/llm-fallback";
-import { SystemHealth, type SystemHealthItem } from "@workspace/ui/components/system-health";
-import { ScheduleQueue, type ScheduledItem } from "@workspace/ui/components/schedule-queue";
+import {
+  LlmFallback,
+  type LlmFallbackStats,
+} from "@workspace/ui/components/llm-fallback";
+import {
+  SystemHealth,
+  type SystemHealthItem,
+} from "@workspace/ui/components/system-health";
+import {
+  ScheduleQueue,
+  type ScheduledItem,
+} from "@workspace/ui/components/schedule-queue";
 import type { SystemStateKey } from "@workspace/ui/types/system-state";
 
 // Helpers
@@ -33,7 +54,8 @@ function fmtTime(iso: string): string {
 function fmtUptime(s: number): string {
   if (s < 60) return `${s}s`;
   if (s < 3600) return `${Math.floor(s / 60)}m`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+  if (s < 86400)
+    return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
   return `${Math.floor(s / 86400)}d ${Math.floor((s % 86400) / 3600)}h`;
 }
 
@@ -68,7 +90,9 @@ function toLiveEvent(ev: AuditEvent, idx: number): LiveEvent {
   const channel: LiveEvent["channel"] =
     connId.includes("email") || connId.includes("gmail")
       ? "email"
-      : connId.includes("webhook") || connId.includes("github") || connId.includes("stripe")
+      : connId.includes("webhook") ||
+          connId.includes("github") ||
+          connId.includes("stripe")
         ? "webhook"
         : connId.includes("cron") || ev.stage === "scheduler"
           ? "cron"
@@ -81,7 +105,8 @@ function toLiveEvent(ev: AuditEvent, idx: number): LiveEvent {
       ? "dropped"
       : ev.stage === "gate"
         ? "gated"
-        : ev.type.toLowerCase().includes("llm") || ev.type.toLowerCase().includes("fallback")
+        : ev.type.toLowerCase().includes("llm") ||
+            ev.type.toLowerCase().includes("fallback")
           ? "llm"
           : "rule";
 
@@ -142,33 +167,43 @@ function toScheduledItem(task: TaskResponse): ScheduledItem {
 export default function Page() {
   const sseStatus = useSSEStore((s) => s.status);
   const sseAuditEvents = useSSEStore(
-    (s) => s.events.audit_event as SSEEvent<AuditEvent>[]
+    (s) => s.events.audit_event as SSEEvent<AuditEvent>[],
   );
 
   const { data: health, isLoading: healthLoading } = useHealth();
-  const { data: auditData, isLoading: auditLoading } = useAuditEvents({ limit: 100 });
+  const { data: auditData, isLoading: auditLoading } = useAuditEvents({
+    limit: 100,
+  });
   const { data: tasks, isLoading: tasksLoading } = useTasks(50);
 
   // MetricStrip
   const chips = useMemo((): MetricChip[] => {
     if (!health && !tasks && !auditData) return [];
 
-    const activeTasks = tasks?.filter((t) => t.status === "running").length ?? 0;
-    const pendingTasks = tasks?.filter((t) => t.status === "pending").length ?? 0;
+    const activeTasks =
+      tasks?.filter((t) => t.status === "running").length ?? 0;
+    const pendingTasks =
+      tasks?.filter((t) => t.status === "pending").length ?? 0;
     const failedTasks = tasks?.filter((t) => t.status === "failed").length ?? 0;
 
     // Avg latency from audit events with latency_ms
-    const latencies = auditData?.map((e) => e.latency_ms).filter((v): v is number => v != null) ?? [];
+    const latencies =
+      auditData
+        ?.map((e) => e.latency_ms)
+        .filter((v): v is number => v != null) ?? [];
     const p95 =
       latencies.length > 0
-        ? latencies.sort((a, b) => a - b)[Math.floor(latencies.length * 0.95)] ?? null
+        ? (latencies.sort((a, b) => a - b)[
+            Math.floor(latencies.length * 0.95)
+          ] ?? null)
         : null;
 
     return [
       {
         label: "SYSTEM",
-        value: health?.status === "ok" ? "ok" : health?.status ?? "—",
-        variant: health?.status === "ok" ? "success" : health ? "warning" : "default",
+        value: health?.status === "ok" ? "ok" : (health?.status ?? "—"),
+        variant:
+          health?.status === "ok" ? "success" : health ? "warning" : "default",
       },
       {
         label: "ACTIVE TASKS",
@@ -187,10 +222,21 @@ export default function Page() {
         sub: "tasks",
       },
       ...(p95 != null
-        ? [{ label: "P95 LATENCY", value: fmtDuration(p95), sub: "tool exec" } satisfies MetricChip]
+        ? [
+            {
+              label: "P95 LATENCY",
+              value: fmtDuration(p95),
+              sub: "tool exec",
+            } satisfies MetricChip,
+          ]
         : []),
       ...(health != null
-        ? [{ label: "UPTIME", value: fmtUptime(health.uptime_s) } satisfies MetricChip]
+        ? [
+            {
+              label: "UPTIME",
+              value: fmtUptime(health.uptime_s),
+            } satisfies MetricChip,
+          ]
         : []),
     ];
   }, [health, tasks, auditData]);
@@ -206,13 +252,18 @@ export default function Page() {
   }, [sseAuditEvents, auditData]);
 
   // EventStream
-  // All SSE events as a live log; fall back to REST audit data
+  // OLD, NEEDS REIMPLEMENTATION: All SSE events as a live log; fall back to REST audit data
+  // NEW: All MessageEvents into the system, showing all incoming traffic into the system
   const liveEvents = useMemo((): LiveEvent[] => {
     const liveItems = sseAuditEvents
       .slice(-50)
       .map((e, i) => toLiveEvent(e.payload, i));
     if (liveItems.length > 0) return liveItems;
-    return (auditData ?? []).slice(0, 50).map((e, i) => toLiveEvent(e, i)).reverse();
+    return (auditData ?? [])
+      .slice(0, 50)
+      .filter((e) => e.type.includes("event.ingested"))
+      .map((e, i) => toLiveEvent(e, i))
+      .reverse();
   }, [sseAuditEvents, auditData]);
 
   // ToolExecutions
@@ -235,7 +286,8 @@ export default function Page() {
   // SystemHealth
   const healthItems = useMemo((): SystemHealthItem[] => {
     if (!health) return [];
-    const overall: SystemStateKey = health.status === "ok" ? "healthy" : "degraded";
+    const overall: SystemStateKey =
+      health.status === "ok" ? "healthy" : "degraded";
     const dbState: SystemStateKey = health.db.ok ? "healthy" : "major_outage";
     return [
       { title: "API Service", status: overall },
@@ -256,10 +308,14 @@ export default function Page() {
     if (!auditData || auditData.length === 0) return undefined;
     const routeEvents = auditData.filter((e) => e.stage === "route");
     const llmCalls = routeEvents.filter(
-      (e) => e.type.toLowerCase().includes("llm") || e.type.toLowerCase().includes("fallback")
+      (e) =>
+        e.type.toLowerCase().includes("llm") ||
+        e.type.toLowerCase().includes("fallback"),
     ).length;
     const ruleHits = routeEvents.length - llmCalls;
-    const latencies = auditData.map((e) => e.latency_ms).filter((v): v is number => v != null);
+    const latencies = auditData
+      .map((e) => e.latency_ms)
+      .filter((v): v is number => v != null);
     const avgLatencyMs =
       latencies.length > 0
         ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
@@ -304,13 +360,19 @@ export default function Page() {
         <MetricStrip chips={chips} isLoading={isMetricLoading} />
         <div className="grid grid-cols-3 gap-3 w-full min-w-0">
           <Column>
-            <AuditStream items={auditStreamItems} isLoading={auditLoading && sseAuditEvents.length === 0} />
-            <ToolExecutions executions={toolExecutions} isLoading={auditLoading} />
+            <AuditStream
+              items={auditStreamItems}
+              isLoading={auditLoading && sseAuditEvents.length === 0}
+            />
+            <ToolExecutions
+              executions={toolExecutions}
+              isLoading={auditLoading}
+            />
           </Column>
           <Column>
             <EventStream
               events={liveEvents}
-              todayCount={auditData?.length}
+              todayCount={liveEvents?.length}
               isLoading={auditLoading && sseAuditEvents.length === 0}
             />
             <ScheduleQueue items={queuedItems} isLoading={tasksLoading} />
