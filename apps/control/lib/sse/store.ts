@@ -1,19 +1,25 @@
-import { create } from 'zustand';
-import type { SSEEvent, ConnectionStatus, EventBuckets } from './types';
+import { create } from "zustand";
+import type {
+  SSEEvent,
+  SSEEventMap,
+  ConnectionStatus,
+  EventBuckets,
+} from "./types";
 
 const MAX_BUCKET_SIZE = 500;
 
 interface SSEStore {
   events: EventBuckets;
   status: ConnectionStatus;
-  addEvent: (event: SSEEvent) => void;
+  addEvent: <K extends keyof SSEEventMap>(
+    event: SSEEvent<SSEEventMap[K]> & { stream_type: K },
+  ) => void;
   setStatus: (status: ConnectionStatus) => void;
-  getEventsByType: <P>(streamType: string) => SSEEvent<P>[];
 }
 
 export const useSSEStore = create<SSEStore>()((set, get) => ({
-  events: {},
-  status: 'disconnected',
+  events: createEventBuckets(),
+  status: "disconnected",
 
   addEvent: (event) =>
     set((state) => {
@@ -22,15 +28,26 @@ export const useSSEStore = create<SSEStore>()((set, get) => ({
       return {
         events: {
           ...state.events,
-          [event.stream_type]: next.length > MAX_BUCKET_SIZE
-            ? next.slice(next.length - MAX_BUCKET_SIZE)
-            : next,
+          [event.stream_type]:
+            next.length > MAX_BUCKET_SIZE
+              ? next.slice(next.length - MAX_BUCKET_SIZE)
+              : next,
         },
       };
     }),
 
   setStatus: (status) => set({ status }),
-
-  getEventsByType: <P>(streamType: string) =>
-    (get().events[streamType] ?? []) as SSEEvent<P>[],
 }));
+
+const EMPTY_ARRAY: any[] = [];
+
+function createEventBuckets(): EventBuckets {
+  return new Proxy({} as EventBuckets, {
+    get(target, prop: keyof EventBuckets) {
+      if (!(prop in target)) {
+        target[prop] = EMPTY_ARRAY;
+      }
+      return target[prop];
+    },
+  });
+}
