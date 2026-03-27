@@ -27,7 +27,7 @@ const entries: LogEntry[] = [
 ]
 
 export function AuditSearch() {
-  const [query, setQuery] = useState("tool.failed")
+  const [query, setQuery] = useState("")
 
   const results = query
     ? entries.filter(

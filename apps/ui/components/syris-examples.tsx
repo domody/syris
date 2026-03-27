@@ -1,15 +1,15 @@
 "use client"
 
-import { MetricStrip } from "@/components/cards/metric-strip"
-import { EventStream } from "@/components/cards/event-stream"
-import { RiskGate } from "@/components/cards/risk-gate"
-import { LlmFallback } from "@/components/cards/llm-fallback"
-import { RiskClassification } from "@/components/cards/risk-classification"
-import { ToolExecutions } from "@/components/cards/tool-executions"
-import { AuditRetention } from "@/components/cards/audit-retention"
-import { AutonomySuspended } from "@/components/cards/autonomy-suspended"
-import { RuleConflict } from "@/components/cards/rule-conflict"
-import { IncidentTimeline } from "@/components/cards/incident-timeline"
+import { MetricStrip } from "@workspace/ui/components/metric-strip"
+import { EventStream } from "@workspace/ui/components/event-stream"
+import { RiskGate } from "@workspace/ui/components/risk-gate"
+import { LlmFallback } from "@workspace/ui/components/llm-fallback"
+import { RiskClassification } from "@workspace/ui/components/risk-classification"
+import { ToolExecutions } from "@workspace/ui/components/tool-executions"
+import { AuditRetention } from "@workspace/ui/components/audit-retention"
+import { AutonomySuspended } from "@workspace/ui/components/autonomy-suspended"
+import { RuleConflict } from "@workspace/ui/components/rule-conflict"
+import { IncidentTimeline } from "@workspace/ui/components/incident-timeline"
 
 export function SyrisExamples() {
   return (

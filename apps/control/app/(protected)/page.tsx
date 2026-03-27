@@ -12,6 +12,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useSSEStore } from "@/lib/sse";
+import { MetricStrip } from "@workspace/ui/components/metric-strip";
+import { AuditStream } from "@workspace/ui/components/audit-stream";
+import { EventStream } from "@workspace/ui/components/event-stream";
+import { ToolExecutions } from "@workspace/ui/components/tool-executions";
+import { AutonomyLevel } from "@workspace/ui/components/autonomy-level";
+import { AuditSearch } from "@workspace/ui/components/audit-search";
+import { LlmFallback } from "@workspace/ui/components/llm-fallback";
+import { SystemHealth } from "@workspace/ui/components/system-health";
+import { ScheduleQueue } from "@workspace/ui/components/schedule-queue";
 
 const row4 = ["Approvals", "Alarms", "Failures"];
 const row5 = [
@@ -31,28 +40,32 @@ export default function Page() {
       <Topbar>
         <h1 className="font-semibold text-lg">Overview</h1>
       </Topbar>
-      <div className="flex flex-1 flex-col gap-2 w-full p-4 items-start justify-start">
-        <div className="grid grid-cols-2 gap-2 w-full">
-          <div className="flex flex-col gap-4 w-full overflow-x-hidden">
-            {auditEvents.map((event, i) => {
-              return (
-                <pre key={i}>{JSON.stringify(event.payload, null, 2)}</pre>
-              );
-            })}
-          </div>
-          <div className="flex flex-col gap-4 w-full overflow-x-hidden flex-wrap">
-            {healthEvents.map((event, i) => {
-              return (
-                <pre key={i}>{JSON.stringify(event.payload, null, 2)}</pre>
-              );
-            })}
-          </div>
+      <div className="flex flex-1 flex-col gap-3 w-full p-4 items-start justify-start">
+        <MetricStrip />
+        <div className="grid grid-cols-3 gap-3 w-full">
+          <Column>
+            <AuditStream />
+            <ToolExecutions />
+          </Column>
+          <Column>
+            <EventStream />
+            <ScheduleQueue />
+          </Column>
+          <Column>
+            <SystemHealth />
+            <AutonomyLevel />
+            <LlmFallback />
+            <AuditSearch />
+          </Column>
         </div>
       </div>
     </div>
   );
 }
 
+function Column({ ...props }: React.ComponentProps<"div">) {
+  return <div className="flex flex-col gap-3" {...props} />;
+}
 // <div className="grid grid-cols-6 gap-2 w-full">
 //   <SystemSnapshot
 //     className="col-span-4 grid-cols-4"
