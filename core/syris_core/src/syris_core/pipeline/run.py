@@ -1,12 +1,11 @@
 import logging
 
 from ..schemas.events import RawInput
-from ..schemas.llm import LLMResponse
 from ..schemas.pipeline import ExecutionResult
 from .executor import Executor
 from .normalizer import Normalizer
 from .router import Router
-from .responder import Responder
+from.responder import Responder
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +15,8 @@ async def run_pipeline(
     normalizer: Normalizer,
     router: Router,
     executor: Executor,
-    responder: Responder,
-) -> ExecutionResult | LLMResponse:
+    responder: Responder
+) -> ExecutionResult:
     """Normalize → Route → Execute.
 
     Each stage is independently testable. The orchestrator does not contain
@@ -27,7 +26,7 @@ async def run_pipeline(
     decision = await router.route(event)
     result = await executor.execute(decision, event)
 
-    if decision.response_mode == "llm_response":
-        return await responder.respond(event, decision, result)
-
+    # TODO:
+    response = await responder.respond(event, decision, result)
+    
     return result
