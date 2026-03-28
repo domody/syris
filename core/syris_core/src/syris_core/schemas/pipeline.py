@@ -1,10 +1,11 @@
 import enum
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+ResponseMode = Literal["silent", "acknowledge", "llm_response"]
 
 class RouteDecision(BaseModel):
     """Output of the Router stage — identifies which handler should process the event."""
@@ -12,6 +13,7 @@ class RouteDecision(BaseModel):
     event_id: UUID
     trace_id: UUID
     handler: str  # e.g. "unroutable", "tool:lights.turn_on", "rule:r_001"
+    response_mode: ResponseMode
     matched_rule_id: Optional[str] = None
     confidence: Optional[float] = None  # populated only by LLM fallback (future)
     reason: str

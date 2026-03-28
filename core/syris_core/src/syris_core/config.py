@@ -1,9 +1,23 @@
 from typing import Literal
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .version import VERSION
+
+
+class LLMSettings(BaseModel):
+    """Configuration for the LLM provider used by the responder."""
+
+    provider: Literal["sglang", "ollama"] = "ollama"
+    base_url: str = "http://localhost:11434"
+    model: str = "llama3.2"
+    timeout_s: int = Field(default=30, ge=1, le=300)
+    system_prompt: str = (
+        "You are SYRIS, an always-on automation control plane. "
+        "Respond concisely and accurately."
+    )
+
 
 class Settings(BaseSettings):
     """
@@ -32,3 +46,5 @@ class Settings(BaseSettings):
     heartbeat_interval_s: int = Field(default=30, ge=1, le=3600)
 
     log_level: str = "INFO"
+
+    llm: LLMSettings = Field(default_factory=LLMSettings)
