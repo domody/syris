@@ -23,6 +23,7 @@ ha.json
 
 CLAUDE.md
 .claude/
+.mcp.json
 
 node_modules/
 .turbo/
