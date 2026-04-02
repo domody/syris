@@ -15,7 +15,7 @@ from .routes.tasks import router as tasks_router
 #     "http://127.0.0.1:3001",
 # ]
 
-origin_regex = r"^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$|^https:\/\/([a-zA-Z0-9-]+\.)*<domain>\.uk$"
+origin_regex = r"^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$|^https:\/\/([a-zA-Z0-9-]+\.)*syris\.uk$"
 
 def create_app(settings: Settings) -> FastAPI:
     app = FastAPI(
