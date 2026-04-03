@@ -94,7 +94,7 @@ function NavGroup({
                   tooltip={item.label}
                   render={<Link href={item.href} />}
                 >
-                  <item.icon className="size-4" />
+                  <item.icon />
                   <span>{item.label}</span>
                 </SidebarMenuButton>
                 {item.badgeKey && badgeCounts[item.badgeKey] > 0 && (

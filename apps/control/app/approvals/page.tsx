@@ -4,11 +4,8 @@ import { useState } from "react"
 import Link from "next/link"
 import { Check, X, Search, ChevronDown, ChevronRight } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
-import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-} from "@workspace/ui/components/card"
+import { Button, buttonVariants } from "@workspace/ui/components/button"
+import { Card, CardContent } from "@workspace/ui/components/card"
 import {
   Dialog,
   DialogContent,
@@ -32,7 +29,10 @@ const tabs: { label: string; status: ApprovalStatus }[] = [
   { label: "Expired", status: "expired" },
 ]
 
-const riskVariant: Record<RiskLevel, "secondary" | "warning" | "destructive" | "destructive"> = {
+const riskVariant: Record<
+  RiskLevel,
+  "secondary" | "warning" | "destructive" | "destructive"
+> = {
   low: "secondary",
   medium: "warning",
   high: "destructive",
@@ -91,7 +91,9 @@ function ApprovalCard({ approval }: { approval: Approval }) {
                 })}
               </span>
               {remaining && (
-                <span className={cn(expiringSoon && "text-destructive font-medium")}>
+                <span
+                  className={cn(expiringSoon && "font-medium text-destructive")}
+                >
                   Expires: {remaining}
                 </span>
               )}
@@ -146,7 +148,7 @@ function ApprovalCard({ approval }: { approval: Approval }) {
         <div>
           <button
             onClick={() => setPayloadExpanded(!payloadExpanded)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             {payloadExpanded ? (
               <ChevronDown className="size-3" />
@@ -156,7 +158,7 @@ function ApprovalCard({ approval }: { approval: Approval }) {
             Payload preview
           </button>
           {payloadExpanded && (
-            <pre className="mt-1.5 rounded-md bg-muted/50 p-2 text-xs font-mono overflow-auto max-h-40">
+            <pre className="mt-1.5 max-h-40 overflow-auto rounded-md bg-muted/50 p-2 font-mono text-xs">
               {JSON.stringify(approval.what, null, 2)}
             </pre>
           )}
@@ -166,7 +168,10 @@ function ApprovalCard({ approval }: { approval: Approval }) {
         {isPending && (
           <div className="flex gap-2">
             {/* Approve */}
-            <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+            <Dialog
+              open={approveDialogOpen}
+              onOpenChange={setApproveDialogOpen}
+            >
               <Button
                 size="sm"
                 variant="success"
@@ -183,7 +188,7 @@ function ApprovalCard({ approval }: { approval: Approval }) {
                     undone.
                   </DialogDescription>
                 </DialogHeader>
-                <pre className="rounded-md bg-muted/50 p-2 text-xs font-mono overflow-auto max-h-48">
+                <pre className="max-h-48 overflow-auto rounded-md bg-muted/50 p-2 font-mono text-xs">
                   {JSON.stringify(approval.what, null, 2)}
                 </pre>
                 <DialogFooter>
@@ -260,14 +265,25 @@ function ApprovalCard({ approval }: { approval: Approval }) {
             </Dialog>
 
             {/* Full Trace */}
-            <Button
+            <Link
+              href={`/traces/${approval.trace_id}`}
+              className={buttonVariants({
+                variant: "outline",
+                size: "sm",
+              })}
+            >
+              <Search data-icon="inline-start" />
+              Full Trace
+            </Link>
+            {/* <Button
               size="sm"
               variant="outline"
               render={<Link href={`/traces/${approval.trace_id}`} />}
+              nativeButton={false}
             >
               <Search className="size-3" />
               Full Trace
-            </Button>
+            </Button> */}
           </div>
         )}
 
@@ -293,7 +309,7 @@ export default function ApprovalsPage() {
   return (
     <div className="space-y-4 p-4">
       {/* Tabs */}
-      <div className="flex gap-1 rounded-lg bg-muted/50 p-1 w-fit">
+      <div className="flex w-fit gap-1 rounded-lg bg-muted/50 p-1">
         {tabs.map((tab) => {
           const count =
             tab.status === "pending"
@@ -304,10 +320,10 @@ export default function ApprovalsPage() {
               key={tab.status}
               onClick={() => setActiveTab(tab.status)}
               className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer",
+                "cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                 activeTab === tab.status
                   ? "bg-background shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               {tab.label}

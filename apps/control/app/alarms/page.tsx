@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { Badge } from "@workspace/ui/components/badge"
-import { Button } from "@workspace/ui/components/button"
+import { Button, buttonVariants } from "@workspace/ui/components/button"
 import {
   Dialog,
   DialogContent,
@@ -62,7 +62,7 @@ function AlarmRow({ alarm }: { alarm: Alarm }) {
     <div className="rounded-md border">
       {/* Main row */}
       <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors"
+        className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
         onClick={() => setExpanded(!expanded)}
       >
         {expanded ? (
@@ -75,9 +75,9 @@ function AlarmRow({ alarm }: { alarm: Alarm }) {
           {alarm.severity}
         </Badge>
 
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-xs font-medium">{alarm.title}</p>
-          <p className="text-xs text-muted-foreground truncate">
+          <p className="truncate text-xs text-muted-foreground">
             {alarm.detail}
           </p>
         </div>
@@ -87,7 +87,10 @@ function AlarmRow({ alarm }: { alarm: Alarm }) {
         </span>
 
         {/* Actions */}
-        <div className="flex shrink-0 gap-1.5" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="flex shrink-0 gap-1.5"
+          onClick={(e) => e.stopPropagation()}
+        >
           {alarm.status === "open" && (
             <Button
               size="xs"
@@ -115,20 +118,30 @@ function AlarmRow({ alarm }: { alarm: Alarm }) {
           )}
 
           {entityLink && (
-            <Button
-              size="xs"
-              variant="outline"
-              render={<Link href={entityLink} />}
+            <Link
+              href={entityLink}
+              className={buttonVariants({
+                variant: "outline",
+                size: "xs",
+              })}
             >
               {alarm.related_entity!.label}
-            </Button>
+            </Link>
+            // <Button
+            //   size="xs"
+            //   variant="outline"
+            //   render={<Link href={entityLink} />}
+            //   nativeButton={false}
+            // >
+            //   {alarm.related_entity!.label}
+            // </Button>
           )}
         </div>
       </div>
 
       {/* Expanded detail panel */}
       {expanded && (
-        <div className="border-t bg-muted/30 px-4 py-3 space-y-3">
+        <div className="space-y-3 border-t bg-muted/30 px-4 py-3">
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
             <div>
               <span className="text-muted-foreground">Dedupe key</span>
@@ -159,10 +172,7 @@ function AlarmRow({ alarm }: { alarm: Alarm }) {
             </p>
             <div className="space-y-0.5">
               {alarm.transitions.map((t, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 text-xs"
-                >
+                <div key={i} className="flex items-center gap-3 text-xs">
                   <span className="w-36 shrink-0 font-mono text-muted-foreground tabular-nums">
                     {new Date(t.at).toLocaleString()}
                   </span>
@@ -241,7 +251,7 @@ export default function AlarmsPage() {
   return (
     <div className="space-y-4 p-4">
       {/* Tabs */}
-      <div className="flex gap-1 rounded-lg bg-muted/50 p-1 w-fit">
+      <div className="flex w-fit gap-1 rounded-lg bg-muted/50 p-1">
         {tabs.map((tab) => {
           const count = allAlarms.filter((a) => a.status === tab.status).length
           return (
@@ -249,10 +259,10 @@ export default function AlarmsPage() {
               key={tab.status}
               onClick={() => setActiveTab(tab.status)}
               className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer",
+                "cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                 activeTab === tab.status
                   ? "bg-background shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               {tab.label}
@@ -271,9 +281,7 @@ export default function AlarmsPage() {
             No {activeTab} alarms
           </p>
         ) : (
-          filtered.map((alarm) => (
-            <AlarmRow key={alarm.id} alarm={alarm} />
-          ))
+          filtered.map((alarm) => <AlarmRow key={alarm.id} alarm={alarm} />)
         )}
       </div>
     </div>

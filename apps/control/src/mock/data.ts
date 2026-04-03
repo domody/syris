@@ -3,6 +3,7 @@ import type {
   Approval,
   FeedEvent,
   SystemState,
+  TaskStepDetail,
   WorkloadSummary,
 } from "./types"
 import type { AuditEvent, TaskResponse } from "@/lib/api/types"
@@ -424,6 +425,355 @@ export const tasks: TaskResponse[] = [
     ],
   },
 ]
+
+// ── Task step details (keyed by step_id) ────────────────────────────────────
+
+export const taskStepDetails: Record<string, TaskStepDetail> = {
+  // deploy-preview steps
+  s1: {
+    step_id: "s1",
+    label: "Clone repo",
+    is_gate: false,
+    tool_call: { tool: "git_clone", action: "clone", request: { repo: "syris", branch: "main" }, response: { commit: "a1b2c3d" } },
+    idempotency_key: "sha256(task-deploy+s1+1+git_clone+syris+main)",
+    duration_ms: 4000,
+    audit_events: [
+      { timestamp: "2026-04-02T11:52:01Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T11:52:05Z", type: "task.step_completed", detail: "cloned in 4s" },
+    ],
+  },
+  s2: {
+    step_id: "s2",
+    label: "Build image",
+    is_gate: false,
+    tool_call: { tool: "docker_build", action: "build", request: { dockerfile: "./Dockerfile", tag: "syris:preview" }, response: { image_id: "sha256:ef45..." } },
+    idempotency_key: "sha256(task-deploy+s2+1+docker_build+Dockerfile)",
+    duration_ms: 32000,
+    audit_events: [
+      { timestamp: "2026-04-02T11:52:06Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T11:52:38Z", type: "task.step_completed", detail: "built in 32s" },
+    ],
+  },
+  s3: {
+    step_id: "s3",
+    label: "Run tests",
+    is_gate: false,
+    tool_call: { tool: "test_runner", action: "run_suite", request: { suite: "integration", timeout: 300 } },
+    idempotency_key: "sha256(task-deploy+s3+1+test_runner+integration)",
+    duration_ms: undefined,
+    audit_events: [
+      { timestamp: "2026-04-02T12:04:18Z", type: "task.step_started", detail: "attempt 1" },
+    ],
+  },
+  s4: {
+    step_id: "s4",
+    label: "Deploy to prod",
+    is_gate: true,
+    gate_risk: "high",
+    idempotency_key: "sha256(task-deploy+s4+0+gate_deploy)",
+    audit_events: [],
+  },
+  s5: {
+    step_id: "s5",
+    label: "Deploy",
+    is_gate: false,
+    tool_call: { tool: "k8s_deploy", action: "apply", request: { manifest: "deploy.yaml", namespace: "production" } },
+    idempotency_key: "sha256(task-deploy+s5+0+k8s_deploy)",
+    audit_events: [],
+  },
+  // daily-digest steps
+  d1: {
+    step_id: "d1",
+    label: "Aggregate events",
+    is_gate: false,
+    tool_call: { tool: "aggregate_events", action: "query", request: { period: "24h" } },
+    idempotency_key: "sha256(task-digest+d1+1+aggregate_events)",
+    audit_events: [
+      { timestamp: "2026-04-02T12:02:01Z", type: "task.step_started", detail: "attempt 1" },
+    ],
+  },
+  d2: {
+    step_id: "d2",
+    label: "Format digest",
+    is_gate: false,
+    tool_call: { tool: "format_digest", action: "render", request: { template: "weekly" } },
+    idempotency_key: "sha256(task-digest+d2+0+format_digest)",
+    audit_events: [],
+  },
+  d3: {
+    step_id: "d3",
+    label: "Send to Slack",
+    is_gate: false,
+    tool_call: { tool: "slack_post", action: "send_message", request: { channel: "#general" } },
+    idempotency_key: "sha256(task-digest+d3+0+slack_post)",
+    audit_events: [],
+  },
+  // sync-contacts steps
+  c1: {
+    step_id: "c1",
+    label: "Fetch contacts",
+    is_gate: false,
+    tool_call: { tool: "gcal_fetch", action: "list", request: { source: "gcal" }, response: { count: 142 } },
+    idempotency_key: "sha256(task-sync+c1+1+gcal_fetch)",
+    duration_ms: 1200,
+    audit_events: [
+      { timestamp: "2026-04-02T11:04:01Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T11:04:02Z", type: "task.step_completed", detail: "fetched 142 contacts" },
+    ],
+  },
+  c2: {
+    step_id: "c2",
+    label: "Normalize",
+    is_gate: false,
+    tool_call: { tool: "normalize_contacts", action: "transform", request: {}, response: { normalized: 142 } },
+    idempotency_key: "sha256(task-sync+c2+1+normalize_contacts)",
+    duration_ms: 800,
+    audit_events: [
+      { timestamp: "2026-04-02T11:04:03Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T11:04:04Z", type: "task.step_completed", detail: "normalized" },
+    ],
+  },
+  c3: {
+    step_id: "c3",
+    label: "Diff",
+    is_gate: false,
+    tool_call: { tool: "diff_contacts", action: "compare", request: {}, response: { added: 3, updated: 7, deleted: 0 } },
+    idempotency_key: "sha256(task-sync+c3+1+diff_contacts)",
+    duration_ms: 200,
+    audit_events: [
+      { timestamp: "2026-04-02T11:04:05Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T11:04:05Z", type: "task.step_completed", detail: "3 added, 7 updated" },
+    ],
+  },
+  c4: {
+    step_id: "c4",
+    label: "Write sync",
+    is_gate: false,
+    tool_call: { tool: "sync_write", action: "upsert", request: { count: 10 } },
+    idempotency_key: "sha256(task-sync+c4+1+sync_write)",
+    audit_events: [
+      { timestamp: "2026-04-02T12:02:50Z", type: "task.step_started", detail: "attempt 1" },
+    ],
+  },
+  c5: {
+    step_id: "c5",
+    label: "Verify sync",
+    is_gate: false,
+    tool_call: { tool: "verify_sync", action: "check", request: {} },
+    idempotency_key: "sha256(task-sync+c5+0+verify_sync)",
+    audit_events: [],
+  },
+  // backup-db steps
+  b1: {
+    step_id: "b1",
+    label: "Snapshot DB",
+    is_gate: false,
+    tool_call: { tool: "snapshot_db", action: "create", request: { database: "main" }, response: { snapshot: "snap-20260402" } },
+    idempotency_key: "sha256(task-backup+b1+1+snapshot_db)",
+    duration_ms: 15000,
+    audit_events: [
+      { timestamp: "2026-04-02T11:19:01Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T11:19:16Z", type: "task.step_completed", detail: "snapshot created" },
+    ],
+  },
+  b2: {
+    step_id: "b2",
+    label: "Upload snapshot",
+    is_gate: false,
+    tool_call: { tool: "upload_snapshot", action: "upload", request: { target: "s3://backups/" } },
+    idempotency_key: "sha256(task-backup+b2+1+upload_snapshot)",
+    audit_events: [
+      { timestamp: "2026-04-02T11:19:17Z", type: "task.step_started", detail: "attempt 1" },
+    ],
+  },
+  b3: {
+    step_id: "b3",
+    label: "Verify backup",
+    is_gate: false,
+    tool_call: { tool: "verify_backup", action: "checksum", request: {} },
+    idempotency_key: "sha256(task-backup+b3+0+verify_backup)",
+    audit_events: [],
+  },
+  b4: {
+    step_id: "b4",
+    label: "Cleanup old",
+    is_gate: false,
+    tool_call: { tool: "cleanup_old", action: "delete", request: { older_than: "30d" } },
+    idempotency_key: "sha256(task-backup+b4+0+cleanup_old)",
+    audit_events: [],
+  },
+  // cleanup-stale steps
+  cl1: {
+    step_id: "cl1",
+    label: "Scan stale",
+    is_gate: false,
+    tool_call: { tool: "scan_stale", action: "scan", request: { max_age: "7d" }, response: { found: 23 } },
+    idempotency_key: "sha256(task-cleanup+cl1+1+scan_stale)",
+    duration_ms: 3000,
+    audit_events: [
+      { timestamp: "2026-04-02T10:04:01Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T10:04:04Z", type: "task.step_completed", detail: "found 23 stale items" },
+    ],
+  },
+  cl2: {
+    step_id: "cl2",
+    label: "Delete stale",
+    is_gate: false,
+    tool_call: { tool: "delete_stale", action: "delete", request: { count: 23 } },
+    idempotency_key: "sha256(task-cleanup+cl2+0+delete_stale)",
+    audit_events: [],
+  },
+  cl3: {
+    step_id: "cl3",
+    label: "Report",
+    is_gate: false,
+    tool_call: { tool: "report_cleanup", action: "summarize", request: {} },
+    idempotency_key: "sha256(task-cleanup+cl3+0+report_cleanup)",
+    audit_events: [],
+  },
+  // sync-calendar steps
+  cs1: {
+    step_id: "cs1",
+    label: "Fetch calendar",
+    is_gate: false,
+    tool_call: { tool: "gcal_fetch", action: "list_events", request: { calendar: "work" } },
+    idempotency_key: "sha256(task-cal-sync+cs1+3+gcal_fetch)",
+    audit_events: [
+      { timestamp: "2026-04-02T09:04:01Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T09:04:05Z", type: "task.step_failed", detail: "OAuth token expired" },
+      { timestamp: "2026-04-02T09:04:15Z", type: "task.step_started", detail: "attempt 2" },
+      { timestamp: "2026-04-02T09:04:19Z", type: "task.step_failed", detail: "OAuth token expired" },
+      { timestamp: "2026-04-02T09:04:29Z", type: "task.step_started", detail: "attempt 3" },
+      { timestamp: "2026-04-02T09:04:33Z", type: "task.step_failed", detail: "OAuth token expired" },
+    ],
+  },
+  cs2: {
+    step_id: "cs2",
+    label: "Update events",
+    is_gate: false,
+    tool_call: { tool: "update_events", action: "sync", request: {} },
+    idempotency_key: "sha256(task-cal-sync+cs2+0+update_events)",
+    audit_events: [],
+  },
+  // deploy-preview (old/failed) steps
+  do1: {
+    step_id: "do1",
+    label: "Clone repo",
+    is_gate: false,
+    tool_call: { tool: "git_clone", action: "clone", request: { repo: "syris", branch: "feature/auth" }, response: { commit: "f1e2d3c" } },
+    idempotency_key: "sha256(task-deploy-old+do1+1+git_clone)",
+    duration_ms: 3500,
+    audit_events: [
+      { timestamp: "2026-04-02T07:04:01Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T07:04:05Z", type: "task.step_completed", detail: "cloned" },
+    ],
+  },
+  do2: {
+    step_id: "do2",
+    label: "Build image",
+    is_gate: false,
+    tool_call: { tool: "docker_build", action: "build", request: { dockerfile: "./Dockerfile", tag: "syris:auth" }, response: { image_id: "sha256:ab12..." } },
+    idempotency_key: "sha256(task-deploy-old+do2+1+docker_build)",
+    duration_ms: 28000,
+    audit_events: [
+      { timestamp: "2026-04-02T07:04:06Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T07:04:34Z", type: "task.step_completed", detail: "built" },
+    ],
+  },
+  do3: {
+    step_id: "do3",
+    label: "Run tests",
+    is_gate: false,
+    tool_call: { tool: "test_runner", action: "run_suite", request: { suite: "integration", timeout: 300 } },
+    idempotency_key: "sha256(task-deploy-old+do3+3+test_runner)",
+    duration_ms: 45000,
+    audit_events: [
+      { timestamp: "2026-04-02T07:04:35Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T07:05:20Z", type: "task.step_failed", detail: "3 assertions failed" },
+      { timestamp: "2026-04-02T07:05:30Z", type: "task.step_started", detail: "attempt 2" },
+      { timestamp: "2026-04-02T07:06:15Z", type: "task.step_failed", detail: "3 assertions failed" },
+      { timestamp: "2026-04-02T07:06:25Z", type: "task.step_started", detail: "attempt 3" },
+      { timestamp: "2026-04-02T07:07:10Z", type: "task.step_failed", detail: "3 assertions failed" },
+    ],
+  },
+  do4: {
+    step_id: "do4",
+    label: "Deploy to prod",
+    is_gate: true,
+    gate_risk: "high",
+    idempotency_key: "sha256(task-deploy-old+do4+0+gate_deploy)",
+    audit_events: [],
+  },
+  do5: {
+    step_id: "do5",
+    label: "Deploy",
+    is_gate: false,
+    tool_call: { tool: "k8s_deploy", action: "apply", request: { manifest: "deploy.yaml", namespace: "production" } },
+    idempotency_key: "sha256(task-deploy-old+do5+0+k8s_deploy)",
+    audit_events: [],
+  },
+  // weekly-report steps
+  r1: {
+    step_id: "r1",
+    label: "Aggregate metrics",
+    is_gate: false,
+    tool_call: { tool: "aggregate_metrics", action: "query", request: { period: "2026-W13" }, response: { metrics: 47 } },
+    idempotency_key: "sha256(task-report+r1+1+aggregate_metrics)",
+    duration_ms: 2000,
+    audit_events: [
+      { timestamp: "2026-04-02T06:00:01Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T06:00:03Z", type: "task.step_completed", detail: "aggregated" },
+    ],
+  },
+  r2: {
+    step_id: "r2",
+    label: "Generate charts",
+    is_gate: false,
+    tool_call: { tool: "generate_charts", action: "render", request: { format: "png" }, response: { charts: 5 } },
+    idempotency_key: "sha256(task-report+r2+1+generate_charts)",
+    duration_ms: 8000,
+    audit_events: [
+      { timestamp: "2026-04-02T06:00:04Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T06:00:12Z", type: "task.step_completed", detail: "5 charts generated" },
+    ],
+  },
+  r3: {
+    step_id: "r3",
+    label: "Compile report",
+    is_gate: false,
+    tool_call: { tool: "compile_report", action: "build", request: {}, response: { pages: 3 } },
+    idempotency_key: "sha256(task-report+r3+1+compile_report)",
+    duration_ms: 1500,
+    audit_events: [
+      { timestamp: "2026-04-02T06:00:13Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T06:00:15Z", type: "task.step_completed", detail: "compiled" },
+    ],
+  },
+  r4: {
+    step_id: "r4",
+    label: "Send email",
+    is_gate: false,
+    tool_call: { tool: "send_email", action: "send", request: { to: "team@example.com" }, response: { sent: true } },
+    idempotency_key: "sha256(task-report+r4+1+send_email)",
+    duration_ms: 500,
+    audit_events: [
+      { timestamp: "2026-04-02T06:00:16Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T06:00:17Z", type: "task.step_completed", detail: "sent" },
+    ],
+  },
+  r5: {
+    step_id: "r5",
+    label: "Archive report",
+    is_gate: false,
+    tool_call: { tool: "archive_report", action: "store", request: { bucket: "reports" }, response: { path: "s3://reports/2026-W13.pdf" } },
+    idempotency_key: "sha256(task-report+r5+1+archive_report)",
+    duration_ms: 1200,
+    audit_events: [
+      { timestamp: "2026-04-02T06:00:18Z", type: "task.step_started", detail: "attempt 1" },
+      { timestamp: "2026-04-02T06:00:19Z", type: "task.step_completed", detail: "archived" },
+    ],
+  },
+}
 
 // ── Audit Events ─────────────────────────────────────────────────────────────
 

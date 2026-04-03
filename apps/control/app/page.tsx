@@ -1,12 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import {
-  AlertTriangle,
-  XCircle,
-  RefreshCw,
-  ExternalLink,
-} from "lucide-react"
+import { AlertTriangle, XCircle, RefreshCw, ExternalLink } from "lucide-react"
 import {
   Card,
   CardContent,
@@ -14,7 +9,7 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card"
 import { Badge } from "@workspace/ui/components/badge"
-import { Button } from "@workspace/ui/components/button"
+import { Button, buttonVariants } from "@workspace/ui/components/button"
 import { StatusDot } from "@workspace/ui/components/status-dot"
 import { useDashboard } from "@/components/dashboard-context"
 import {
@@ -76,7 +71,7 @@ function AutonomyChanger() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <button className="text-xs text-primary hover:underline cursor-pointer">
+          <button className="cursor-pointer text-xs text-primary hover:underline">
             [change]
           </button>
         }
@@ -167,7 +162,7 @@ function StatusStrip() {
             <p className="text-xs text-muted-foreground">Pipeline</p>
             <button
               onClick={togglePipeline}
-              className="text-sm font-medium hover:text-primary transition-colors cursor-pointer"
+              className="cursor-pointer text-sm font-medium transition-colors hover:text-primary"
             >
               {pipelinePaused ? "paused" : "active"}
             </button>
@@ -208,12 +203,12 @@ function NeedsAttention() {
             {pendingApprovals.map((approval) => (
               <div
                 key={approval.id}
-                className="rounded-md border p-2.5 space-y-1.5"
+                className="space-y-1.5 rounded-md border p-2.5"
               >
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 size-3 text-warning" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium">
                       {approval.title}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -265,13 +260,13 @@ function NeedsAttention() {
             {openAlarms.map((alarm) => (
               <div
                 key={alarm.id}
-                className="rounded-md border p-2.5 space-y-1.5"
+                className="space-y-1.5 rounded-md border p-2.5"
               >
                 <div className="flex items-start gap-2">
                   <XCircle className="mt-0.5 size-3 text-destructive" />
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium">{alarm.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="truncate text-xs text-muted-foreground">
                       {alarm.detail}
                     </p>
                   </div>
@@ -289,13 +284,23 @@ function NeedsAttention() {
                   >
                     Ack
                   </Button>
-                  <Button
+                  <Link
+                    href={"/alarms"}
+                    className={buttonVariants({
+                      variant: "outline",
+                      size: "xs",
+                    })}
+                  >
+                    View
+                  </Link>
+                  {/* <Button
                     size="xs"
                     variant="outline"
                     render={<Link href="/alarms" />}
+                    nativeButton={false}
                   >
                     View
-                  </Button>
+                  </Button> */}
                 </div>
               </div>
             ))}
@@ -308,16 +313,16 @@ function NeedsAttention() {
             </h3>
             {failedTasks.map((task) => {
               const completedSteps = task.steps.filter(
-                (s) => s.status === "completed",
+                (s) => s.status === "completed"
               ).length
               return (
                 <div
                   key={task.task_id}
-                  className="rounded-md border p-2.5 space-y-1.5"
+                  className="space-y-1.5 rounded-md border p-2.5"
                 >
                   <div className="flex items-start gap-2">
                     <XCircle className="mt-0.5 size-3 text-destructive" />
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium">{task.handler}</p>
                       <p className="text-xs text-muted-foreground">
                         step {completedSteps}/{task.steps.length} · retries{" "}
@@ -340,13 +345,23 @@ function NeedsAttention() {
                       <RefreshCw className="size-3" />
                       Retry
                     </Button>
-                    <Button
+                    <Link
+                      href={`/tasks/${task.task_id}`}
+                      className={buttonVariants({
+                        variant: "outline",
+                        size: "xs",
+                      })}
+                    >
+                      View
+                    </Link>
+                    {/* <Button
                       size="xs"
                       variant="outline"
                       render={<Link href={`/tasks/${task.task_id}`} />}
+                      nativeButton={false}
                     >
                       View
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
               )
@@ -388,9 +403,7 @@ function ActivityAndWorkload() {
               </p>
             </div>
             <div className="col-span-2">
-              <span className="text-muted-foreground">
-                Fast / Task / Gated
-              </span>
+              <span className="text-muted-foreground">Fast / Task / Gated</span>
               <p className="font-medium tabular-nums">
                 {systemState.fast_count} / {systemState.task_count} /{" "}
                 {systemState.gated_count}
@@ -446,7 +459,7 @@ function ActivityAndWorkload() {
               <Link
                 key={row.label}
                 href={row.href}
-                className="flex items-center justify-between rounded-sm px-1 py-0.5 hover:bg-muted transition-colors"
+                className="flex items-center justify-between rounded-sm px-1 py-0.5 transition-colors hover:bg-muted"
               >
                 <span className="text-muted-foreground">{row.label}</span>
                 <span className="font-medium tabular-nums">{row.value}</span>
@@ -480,7 +493,7 @@ function RecentAudit() {
             <Link
               key={evt.audit_id}
               href={evt.trace_id ? `/traces/${evt.trace_id}` : "#"}
-              className="flex items-center gap-3 rounded-sm px-1 py-1 text-xs hover:bg-muted transition-colors"
+              className="flex items-center gap-3 rounded-sm px-1 py-1 text-xs transition-colors hover:bg-muted"
             >
               <span className="w-20 shrink-0 font-mono text-muted-foreground tabular-nums">
                 {new Date(evt.timestamp).toLocaleTimeString([], {

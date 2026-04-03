@@ -96,5 +96,27 @@ export interface SystemState {
   gated_count: number
 }
 
+// ── Task step detail ─────────────────────────────────────────────────────────
+
+export interface TaskStepDetail {
+  step_id: string
+  label: string
+  is_gate: boolean
+  gate_risk?: RiskLevel
+  tool_call?: {
+    tool: string
+    action: string
+    request: Record<string, unknown>
+    response?: Record<string, unknown>
+  }
+  idempotency_key: string
+  duration_ms?: number
+  audit_events: {
+    timestamp: string
+    type: string
+    detail: string
+  }[]
+}
+
 // Re-export for convenience
 export type { AuditEvent, TaskResponse }
