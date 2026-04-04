@@ -15,6 +15,8 @@ from ..observability.heartbeat import HeartbeatService
 from ..pipeline.executor import Executor
 from ..pipeline.normalizer import Normalizer
 from ..pipeline.router import Router
+from ..safety.autonomy import AutonomyService
+from ..safety.gates import GateChecker
 from ..storage.db import create_engine, create_sessionmaker, init_db
 
 logger = logging.getLogger(__name__)
@@ -77,6 +79,7 @@ class ControlPlane:
         normalizer = Normalizer(audit_writer)
         router = Router(audit_writer)
         executor = Executor(audit_writer)
+        autonomy_service = AutonomyService(sessionmaker)
 
         app.state.settings = self._settings
         app.state.engine = engine
@@ -89,6 +92,7 @@ class ControlPlane:
         app.state.normalizer = normalizer
         app.state.router = router
         app.state.executor = executor
+        app.state.autonomy_service = autonomy_service
 
         self._app = app
         self._runtime = RuntimeState(

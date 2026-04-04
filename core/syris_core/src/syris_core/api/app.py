@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from ..config import Settings
+from .routes.approvals import router as approvals_router
 from .routes.audit import router as audit_router
+from .routes.controls import router as controls_router
 from .routes.health import router as health_router
 from .routes.ingest import router as ingest_router
 from .routes.stream import router as stream_router
@@ -28,6 +30,8 @@ def create_app(settings: Settings) -> FastAPI:
     app.include_router(ingest_router)
     app.include_router(stream_router)
     app.include_router(tasks_router)
+    app.include_router(approvals_router)
+    app.include_router(controls_router)
     app.add_middleware(
         CORSMiddleware,
         # allow_origins=origins,

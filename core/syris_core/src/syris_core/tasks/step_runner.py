@@ -2,10 +2,20 @@
 Step runner — executes a single step within a task, with retry logic.
 
 The runner is responsible for:
-1. Marking the step as running (updating DB via repo).
-2. Invoking the step handler (tool).
-3. On success: marking the step as completed and returning the output.
-4. On failure: deciding whether to retry (reset to pending) or fail permanently.
+1. Checking the safety gate before executing the step.
+2. Marking the step as running (updating DB via repo).
+3. Invoking the step handler (tool).
+4. On success: marking the step as completed and returning the output.
+5. On failure: deciding whether to retry (reset to pending) or fail permanently.
+
+Gate flow
+---------
+If a GateChecker is injected and the gate returns CONFIRM, the step is set
+to ``"gated"`` status and an Approval is created. The step is NOT executed.
+The task engine will pause the task. When the approval is resolved via the
+API, the step is reset to ``"pending"`` and the task is re-queued. On the
+second run, the gate check finds an existing approved approval and returns
+ALLOW, allowing execution to proceed.
 
 Idempotency: each step carries an idempotency_key of the form
 ``{task_id}:{step_index}``. The key is stable across retry attempts so that
@@ -19,11 +29,12 @@ re-execution and mark it completed immediately.
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..observability.audit import AuditWriter
+from ..safety.gates import GateChecker
 from ..storage.models import TaskRow, TaskStepRow
 from ..storage.repos.tasks import TaskRepo
 from .state import assert_step_transition
@@ -42,10 +53,18 @@ class StepRunner:
     Retry loop: if the handler raises, attempt_count is incremented and
     the step is reset to pending. The engine re-calls run() for the next
     attempt. If attempt_count >= max_attempts the step is marked failed.
+
+    If a GateChecker is provided, the gate is checked before execution.
+    A CONFIRM gate sets the step to "gated" and returns without executing.
     """
 
-    def __init__(self, audit: AuditWriter) -> None:
+    def __init__(
+        self,
+        audit: AuditWriter,
+        gate_checker: Optional[GateChecker] = None,
+    ) -> None:
         self._audit = audit
+        self._gate_checker = gate_checker
 
     async def run(
         self,
@@ -57,10 +76,56 @@ class StepRunner:
         """
         Execute one step attempt.
 
-        Returns the updated step row (status will be completed, failed, or pending
-        if a retry is scheduled).  Raises nothing — all outcomes are recorded in DB.
+        Returns the updated step row (status will be completed, failed, pending
+        if a retry is scheduled, or gated if awaiting approval).
+        Raises nothing — all outcomes are recorded in DB.
         """
         repo = TaskRepo(session)
+
+        # Gate check before execution (only for pending steps)
+        if self._gate_checker is not None and step_row.status == "pending":
+            gate_decision = await self._gate_checker.check(
+                trace_id=task_row.trace_id,
+                tool_name=step_row.tool_name,
+                risk_level=step_row.risk_level,
+                autonomy_level=await self._gate_checker.current_autonomy_level(),
+                what={
+                    "tool_name": step_row.tool_name,
+                    "input_payload": step_row.input_payload,
+                    "idempotency_key": step_row.idempotency_key,
+                },
+                why=f"Task {task_row.task_id} step {step_row.step_index} execution",
+                ref_task_id=task_row.task_id,
+                ref_step_id=step_row.step_id,
+            )
+
+            if gate_decision.action == "HARD_BLOCK":
+                assert_step_transition(step_row.status, "failed")
+                await repo.update_step_status(
+                    step_row.step_id,
+                    "failed",
+                    error="Gate hard-blocked this step",
+                )
+                await session.refresh(step_row)
+                return step_row
+
+            if gate_decision.action in ("CONFIRM", "PREVIEW"):
+                assert_step_transition(step_row.status, "gated")
+                approval_id = (
+                    gate_decision.approval.approval_id
+                    if gate_decision.approval
+                    else None
+                )
+                await repo.update_step_status(
+                    step_row.step_id,
+                    "gated",
+                    pending_approval_id=approval_id,
+                )
+                await session.refresh(step_row)
+                return step_row
+
+            # action == "ALLOW" — fall through to execution
+
         now = datetime.now(timezone.utc)
 
         assert_step_transition(step_row.status, "running")
@@ -126,6 +191,7 @@ class StepRunner:
                 "completed",
                 output_payload=output_payload,
                 completed_at=completed_at,
+                clear_approval_id=True,
             )
             await self._audit.emit(
                 task_row.trace_id,

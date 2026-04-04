@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 TaskStatus = Literal["pending", "running", "completed", "failed", "cancelled", "paused"]
 
-StepStatus = Literal["pending", "running", "completed", "failed", "skipped"]
+StepStatus = Literal["pending", "running", "completed", "failed", "skipped", "gated"]
 
 
 class RetryPolicy(BaseModel):
@@ -36,6 +36,8 @@ class TaskStep(BaseModel):
     idempotency_key: str
     attempt_count: int = Field(default=0, ge=0)
     max_attempts: int = Field(default=3, ge=1)
+    risk_level: str = "low"
+    pending_approval_id: Optional[UUID] = None
     error: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -86,3 +88,4 @@ class StepSpec(BaseModel):
     tool_name: str
     input_payload: dict[str, Any] = Field(default_factory=dict)
     max_attempts: int = Field(default=3, ge=1)
+    risk_level: Literal["low", "medium", "high", "critical"] = "low"

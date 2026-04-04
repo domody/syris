@@ -25,6 +25,9 @@ _STEP_TRANSITIONS: dict[tuple[str, str], str] = {
     ("running", "failed"): "exhausted retries",
     ("running", "pending"): "retry — reset for re-attempt",
     ("pending", "skipped"): "skip step",
+    ("pending", "gated"): "gate requires approval",
+    ("gated", "pending"): "approval granted — reset for execution",
+    ("gated", "failed"): "approval denied",
 }
 
 

@@ -22,11 +22,12 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Callable, Coroutine
+from typing import Any, Callable, Coroutine, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ..observability.audit import AuditWriter
+from ..safety.gates import GateChecker
 from ..schemas.tasks import RetryPolicy, StepSpec, Task, TaskStep, TaskSubmit
 from ..storage.db import session_scope
 from ..storage.repos.tasks import TaskRepo
@@ -56,11 +57,13 @@ class TaskEngine:
         session_maker: async_sessionmaker[AsyncSession],
         audit: AuditWriter,
         handlers: dict[str, StepHandler],
+        gate_checker: Optional[GateChecker] = None,
     ) -> None:
         self._session_maker = session_maker
         self._audit = audit
         self._handlers = handlers
-        self._runner = StepRunner(audit)
+        self._gate_checker = gate_checker
+        self._runner = StepRunner(audit, gate_checker=gate_checker)
 
     # -------------------------------------------------------------------------
     # Public API
@@ -87,6 +90,7 @@ class TaskEngine:
                 input_payload=spec.input_payload,
                 idempotency_key=f"{task.task_id}:{i}",
                 max_attempts=spec.max_attempts,
+                risk_level=spec.risk_level,
             )
             for i, spec in enumerate(request.steps)
         ]
@@ -237,6 +241,10 @@ class TaskEngine:
                 if step.status in ("pending", "running"):
                     next_step = step
                     break
+                if step.status == "gated":
+                    # Step is awaiting approval — pause the task
+                    await self._gate_task(task_id, trace_id, step)
+                    return
                 if step.status == "failed":
                     # A failed step means the task fails
                     await self._fail_task(task_id, trace_id, step)
@@ -291,6 +299,41 @@ class TaskEngine:
                 backoff = retry_policy.backoff_s
                 if backoff > 0:
                     await asyncio.sleep(backoff)
+
+    async def _gate_task(
+        self,
+        task_id: uuid.UUID,
+        trace_id: uuid.UUID,
+        gated_step: Any,
+    ) -> None:
+        """Pause a task because a step is waiting for gate approval."""
+        async with session_scope(self._session_maker) as session:
+            repo = TaskRepo(session)
+            task_row = await repo.get_task(task_id)
+            if task_row is None:
+                return
+            if task_row.status == "running":
+                assert_task_transition(task_row.status, "paused")
+                await repo.update_task_status(task_id, "paused")
+
+        await self._audit.emit(
+            trace_id,
+            stage="task",
+            type="task.gated",
+            summary=(
+                f"Task {task_id} paused — step {gated_step.step_index} "
+                f"({gated_step.tool_name}) awaiting gate approval"
+            ),
+            outcome="info",
+            ref_task_id=task_id,
+            ref_step_id=gated_step.step_id,
+        )
+        logger.info(
+            "task.gated task_id=%s step=%s waiting_approval=%s",
+            task_id,
+            gated_step.step_index,
+            getattr(gated_step, "pending_approval_id", None),
+        )
 
     async def _complete_task(
         self, task_id: uuid.UUID, trace_id: uuid.UUID

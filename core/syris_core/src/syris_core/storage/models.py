@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, ClassVar, Optional
 
-from sqlalchemy import Column, Index, Integer, Text
+from sqlalchemy import Column, Index, Integer, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID as PGUUID
 from sqlmodel import SQLModel, Field
 
@@ -156,6 +156,10 @@ class TaskStepRow(SQLModel, table=True):
     idempotency_key: str = Field(sa_column=Column(Text, nullable=False, unique=True))
     attempt_count: int = Field(default=0, sa_column=Column(Integer, nullable=False))
     max_attempts: int = Field(default=3, sa_column=Column(Integer, nullable=False))
+    risk_level: str = Field(default="low", sa_column=Column(Text, nullable=False, server_default="low"))
+    pending_approval_id: Optional[uuid.UUID] = Field(
+        default=None, sa_column=Column(PGUUID(as_uuid=True), nullable=True)
+    )
     error: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -171,3 +175,64 @@ class TaskStepRow(SQLModel, table=True):
     completed_at: Optional[datetime] = Field(
         default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True)
     )
+
+
+class ApprovalRow(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "approvals"
+    __table_args__: tuple = (
+        Index("ix_approvals_status", "status"),
+        Index("ix_approvals_trace_id", "trace_id"),
+        Index("ix_approvals_expires_at", "expires_at"),
+        Index("ix_approvals_ref_step_id", "ref_step_id"),
+    )
+
+    approval_id: uuid.UUID = Field(
+        sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    expires_at: datetime = Field(
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    status: str = Field(sa_column=Column(Text, nullable=False))
+    trace_id: uuid.UUID = Field(
+        sa_column=Column(PGUUID(as_uuid=True), nullable=False),
+    )
+    ref_event_id: Optional[uuid.UUID] = Field(
+        default=None, sa_column=Column(PGUUID(as_uuid=True), nullable=True)
+    )
+    ref_task_id: Optional[uuid.UUID] = Field(
+        default=None, sa_column=Column(PGUUID(as_uuid=True), nullable=True)
+    )
+    ref_step_id: Optional[uuid.UUID] = Field(
+        default=None, sa_column=Column(PGUUID(as_uuid=True), nullable=True)
+    )
+    risk_level: str = Field(sa_column=Column(Text, nullable=False))
+    autonomy_level: str = Field(sa_column=Column(Text, nullable=False))
+    what: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column(JSONB, nullable=False, server_default="{}")
+    )
+    why: str = Field(sa_column=Column(Text, nullable=False))
+    how_to_approve: str = Field(sa_column=Column(Text, nullable=False))
+    decided_by: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    decided_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True)
+    )
+    decision_reason: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+
+
+class AutonomySettingRow(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "autonomy_settings"
+
+    setting_id: str = Field(
+        default="current",
+        sa_column=Column(Text, primary_key=True),
+    )
+    level: str = Field(sa_column=Column(Text, nullable=False))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    updated_by: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))

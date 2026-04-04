@@ -53,6 +53,8 @@ class TaskRepo:
             idempotency_key=step.idempotency_key,
             attempt_count=step.attempt_count,
             max_attempts=step.max_attempts,
+            risk_level=step.risk_level,
+            pending_approval_id=step.pending_approval_id,
             error=step.error,
             created_at=step.created_at,
             updated_at=step.updated_at,
@@ -131,6 +133,8 @@ class TaskRepo:
         attempt_count: Optional[int] = None,
         started_at: Optional[datetime] = None,
         completed_at: Optional[datetime] = None,
+        pending_approval_id: Optional[uuid.UUID] = None,
+        clear_approval_id: bool = False,
     ) -> None:
         """Update step status and optional metadata fields."""
         values: dict = {"status": status, "updated_at": datetime.now(timezone.utc)}
@@ -144,6 +148,10 @@ class TaskRepo:
             values["started_at"] = started_at
         if completed_at is not None:
             values["completed_at"] = completed_at
+        if pending_approval_id is not None:
+            values["pending_approval_id"] = pending_approval_id
+        if clear_approval_id:
+            values["pending_approval_id"] = None
         stmt = (
             update(TaskStepRow)
             .where(TaskStepRow.step_id == step_id)
