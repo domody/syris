@@ -118,5 +118,205 @@ export interface TaskStepDetail {
   }[]
 }
 
+// ── Schedules ───────────────────────────────────────────────────────────────
+
+export type ScheduleType = "cron" | "interval" | "one_shot"
+export type CatchUpPolicy = "fire_once" | "fire_all" | "skip"
+
+export interface ScheduleQuietHours {
+  enabled: boolean
+  start: string // "22:00"
+  end: string   // "07:00"
+  timezone: string
+}
+
+export interface ScheduleFiringEvent {
+  timestamp: string
+  outcome: "success" | "failure"
+  trace_id: string
+  summary: string
+}
+
+export interface Schedule {
+  id: string
+  name: string
+  enabled: boolean
+  type: ScheduleType
+  spec: string
+  next_run: string | null
+  last_fired: string | null
+  catch_up: CatchUpPolicy
+  quiet_hours: ScheduleQuietHours
+  missed_runs: number
+  payload_template: Record<string, unknown>
+  recent_firings: ScheduleFiringEvent[]
+  created_at: string
+}
+
+// ── Watchers ─────────────────────────────────────────────────────────────────
+
+export type WatcherOutcome = "ok" | "changed" | "error" | "suppressed"
+
+export interface WatcherTickEvent {
+  timestamp: string
+  outcome: WatcherOutcome
+  trace_id: string
+  summary: string
+  latency_ms: number | null
+}
+
+export interface WatcherThrottle {
+  enabled: boolean
+  window_s: number
+  max_fires: number
+}
+
+export interface Watcher {
+  id: string
+  name: string
+  enabled: boolean
+  interval_s: number
+  last_tick: string | null
+  last_outcome: WatcherOutcome | null
+  consecutive_errors: number
+  suppression_count: number
+  dedupe_window_s: number
+  dedupe_current_count: number
+  throttle: WatcherThrottle
+  related_alarm_id: string | null
+  recent_ticks: WatcherTickEvent[]
+  created_at: string
+}
+
+// ── Rules ─────────────────────────────────────────────────────────────────────
+
+export type ConditionOp = "eq" | "neq" | "contains" | "matches" | "gt" | "lt" | "gte" | "lte"
+export type ConditionLogic = "ALL" | "ANY" | "NOT"
+
+export interface RuleCondition {
+  type: "logic" | "leaf"
+  logic?: ConditionLogic
+  children?: RuleCondition[]
+  field?: string
+  op?: ConditionOp
+  value?: string | number | boolean
+}
+
+export type RuleActionType = "emit_event" | "notify" | "call_tool"
+
+export interface RuleAction {
+  type: RuleActionType
+  label: string
+  config: Record<string, unknown>
+}
+
+export interface RuleFiring {
+  timestamp: string
+  outcome: "triggered" | "suppressed"
+  trace_id: string | null
+  suppression_reason: string | null
+}
+
+export interface Rule {
+  id: string
+  name: string
+  enabled: boolean
+  condition: RuleCondition
+  actions: RuleAction[]
+  debounce_ms: number | null
+  dedupe_window_ms: number | null
+  quiet_hours: ScheduleQuietHours | null
+  hits_24h: number
+  last_fired: string | null
+  suppressed_count: number
+  cascade_targets: string[]
+  recent_activity: RuleFiring[]
+  created_at: string
+}
+
+// ── Integrations ─────────────────────────────────────────────────────────────
+
+export type IntegrationStatus = "healthy" | "degraded" | "unavailable"
+export type ProviderType = "native" | "mcp" | "oauth"
+
+export interface IntegrationAuth {
+  type: "api_key" | "oauth" | "none"
+  valid: boolean
+  expires_at: string | null
+  warning: boolean
+}
+
+export interface IntegrationRateLimit {
+  current: number
+  max: number
+  resets_at: string | null
+}
+
+export interface IntegrationToolCall {
+  timestamp: string
+  tool: string
+  action: string
+  outcome: "success" | "deduped" | "failed"
+  latency_ms: number | null
+  trace_id: string
+}
+
+export interface Integration {
+  id: string
+  name: string
+  connector_id: string
+  enabled: boolean
+  status: IntegrationStatus
+  last_ok: string | null
+  consecutive_errors: number
+  rate_limit: IntegrationRateLimit | null
+  auth: IntegrationAuth
+  tools: string[]
+  scopes: string[]
+  provider_type: ProviderType
+  tool_call_history: IntegrationToolCall[]
+  created_at: string
+}
+
+// ── Traces ────────────────────────────────────────────────────────────────────
+
+export type TraceNodeType =
+  | "ingest"
+  | "normalize"
+  | "route"
+  | "tool_call"
+  | "task"
+  | "gate"
+  | "child_event"
+  | "rule"
+  | "schedule"
+
+export type TraceNodeStatus = "success" | "failure" | "pending" | "deduped" | "info"
+
+export interface TraceNode {
+  id: string
+  type: TraceNodeType
+  label: string
+  status: TraceNodeStatus
+  timestamp: string
+  latency_ms: number | null
+  detail: string | null
+}
+
+export type TraceEdgeType = "flow" | "child" | "approval"
+
+export interface TraceEdge {
+  source: string
+  target: string
+  type: TraceEdgeType
+}
+
+export interface TraceGraph {
+  trace_id: string
+  started_at: string
+  nodes: TraceNode[]
+  edges: TraceEdge[]
+}
+
 // Re-export for convenience
 export type { AuditEvent, TaskResponse }

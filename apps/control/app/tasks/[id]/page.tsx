@@ -127,7 +127,10 @@ function StepNode({ data }: { data: StepNodeData }) {
     <>
       <Handle type="target" position={Position.Top} className="!bg-border" />
       <div
-        onClick={() => onSelect(step.step_id)}
+        onClick={() => {
+          onSelect(step.step_id)
+          // console.log("Clicked!!!")
+        }}
         className={cn(
           "cursor-pointer rounded-lg border-2 px-4 py-3 transition-all min-w-[160px]",
           config.borderColor,
@@ -567,7 +570,7 @@ export default function TaskDetailPage({
               proOptions={{ hideAttribution: true }}
               nodesDraggable={false}
               nodesConnectable={false}
-              elementsSelectable={false}
+              // elementsSelectable={false}
             >
               <Background gap={16} size={1} />
             </ReactFlow>
