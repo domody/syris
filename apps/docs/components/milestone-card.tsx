@@ -30,7 +30,7 @@ export function MilestoneCard({
         <ItemContent>
           <ItemTitle className="font-mono text-xs text-foreground">
             Current Milestone:{" "}
-            <span className="font-medium text-foreground">0</span>
+            <span className="font-medium text-foreground">2</span>
           </ItemTitle>
         </ItemContent>
         <ItemActions>
