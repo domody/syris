@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, ClassVar, Optional
 
-from sqlalchemy import Column, Index, Integer, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, Index, Integer, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID as PGUUID
 from sqlmodel import SQLModel, Field
 
@@ -236,3 +236,62 @@ class AutonomySettingRow(SQLModel, table=True):
         sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
     )
     updated_by: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+
+
+class ScheduleRow(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "schedules"
+    __table_args__: tuple = (
+        Index("ix_schedules_next_run_at", "next_run_at"),
+        Index("ix_schedules_enabled", "enabled"),
+    )
+
+    schedule_id: uuid.UUID = Field(
+        sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
+    )
+    name: str = Field(sa_column=Column(Text, nullable=False))
+    enabled: bool = Field(default=True, sa_column=Column(Boolean, nullable=False, server_default="true"))
+    schedule_type: str = Field(sa_column=Column(Text, nullable=False))
+    cron_expr: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    interval_s: Optional[int] = Field(default=None, sa_column=Column(Integer, nullable=True))
+    run_at: Optional[datetime] = Field(default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True))
+    timezone: str = Field(default="UTC", sa_column=Column(Text, nullable=False, server_default="UTC"))
+    quiet_hours_start: Optional[int] = Field(default=None, sa_column=Column(Integer, nullable=True))
+    quiet_hours_end: Optional[int] = Field(default=None, sa_column=Column(Integer, nullable=True))
+    catch_up_policy: str = Field(default="skip", sa_column=Column(Text, nullable=False, server_default="skip"))
+    catch_up_max: Optional[int] = Field(default=None, sa_column=Column(Integer, nullable=True))
+    event_source: str = Field(sa_column=Column(Text, nullable=False))
+    event_content: str = Field(default="", sa_column=Column(Text, nullable=False, server_default=""))
+    event_structured: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column(JSONB, nullable=False, server_default="{}")
+    )
+    next_run_at: Optional[datetime] = Field(default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True))
+    last_run_at: Optional[datetime] = Field(default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True))
+    fire_count: int = Field(default=0, sa_column=Column(Integer, nullable=False, server_default="0"))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+
+
+class WatcherStateRow(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "watcher_states"
+
+    watcher_id: str = Field(sa_column=Column(Text, primary_key=True))
+    enabled: bool = Field(default=True, sa_column=Column(Boolean, nullable=False, server_default="true"))
+    last_tick_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True)
+    )
+    last_outcome: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
+    dedupe_window: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column(JSONB, nullable=False, server_default="{}")
+    )
+    consecutive_errors: int = Field(default=0, sa_column=Column(Integer, nullable=False, server_default="0"))
+    suppression_count: int = Field(default=0, sa_column=Column(Integer, nullable=False, server_default="0"))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )

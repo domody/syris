@@ -15,9 +15,15 @@ from ..observability.heartbeat import HeartbeatService
 from ..pipeline.executor import Executor
 from ..pipeline.normalizer import Normalizer
 from ..pipeline.router import Router
+from ..pipeline.run import run_pipeline
+from ..pipeline.responder import Responder
 from ..safety.autonomy import AutonomyService
 from ..safety.gates import GateChecker
+from ..scheduler.loop import SchedulerLoop
+from ..schemas.events import RawInput
 from ..storage.db import create_engine, create_sessionmaker, init_db
+from ..watchers.base import WatcherLoop
+from ..watchers.heartbeat import HeartbeatWatcher
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +36,8 @@ class RuntimeState:
     event_bus: EventBus
     heartbeat: HeartbeatService
     audit_writer: AuditWriter
+    scheduler_loop: SchedulerLoop
+    watcher_loop: WatcherLoop
 
 
 class ControlPlane:
@@ -79,7 +87,26 @@ class ControlPlane:
         normalizer = Normalizer(audit_writer)
         router = Router(audit_writer)
         executor = Executor(audit_writer)
+        responder = Responder(audit_writer)
         autonomy_service = AutonomyService(sessionmaker)
+
+        async def _pipeline(raw: RawInput) -> None:
+            await run_pipeline(raw, normalizer, router, executor, responder)
+
+        scheduler_loop = SchedulerLoop(sessionmaker, audit_writer, _pipeline)
+        await scheduler_loop.start()
+
+        heartbeat_watcher = HeartbeatWatcher(
+            sessionmaker,
+            run_id=run_id,
+            started_at=started_at,
+            service=self._settings.service_name,
+            version=self._settings.version,
+            tick_interval_s=self._settings.heartbeat_interval_s,
+        )
+        watcher_loop = WatcherLoop(sessionmaker, audit_writer, _pipeline)
+        watcher_loop.register(heartbeat_watcher)
+        await watcher_loop.start()
 
         app.state.settings = self._settings
         app.state.engine = engine
@@ -93,6 +120,8 @@ class ControlPlane:
         app.state.router = router
         app.state.executor = executor
         app.state.autonomy_service = autonomy_service
+        app.state.scheduler_loop = scheduler_loop
+        app.state.watcher_loop = watcher_loop
 
         self._app = app
         self._runtime = RuntimeState(
@@ -103,6 +132,8 @@ class ControlPlane:
             event_bus=event_bus,
             heartbeat=heartbeat,
             audit_writer=audit_writer,
+            scheduler_loop=scheduler_loop,
+            watcher_loop=watcher_loop,
         )
 
         logger.info(
@@ -117,6 +148,8 @@ class ControlPlane:
             return
         
         logger.info("ControlPlane stopping run_id=%s", self._runtime.run_id)
+        await self._runtime.scheduler_loop.stop()
+        await self._runtime.watcher_loop.stop()
         await self._runtime.heartbeat.stop()
         await self._runtime.engine.dispose()
 
