@@ -39,7 +39,7 @@ function getBreadcrumbs(pathname: string) {
 
 export function TopBar() {
   const pathname = usePathname()
-  const { pipelinePaused, togglePipeline } = useDashboard()
+  const { pipelinePaused, togglePipeline, openCommandPalette } = useDashboard()
   const breadcrumbs = getBreadcrumbs(pathname)
 
   const segments = pathname.split("/").filter(Boolean)
@@ -91,7 +91,7 @@ export function TopBar() {
           )}
         </Button>
 
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={openCommandPalette}>
           <Command className="size-3" />
           <span>K</span>
         </Button>

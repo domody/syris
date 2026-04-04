@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { TopBar } from "@/components/top-bar"
 import { PipelinePauseBanner } from "@/components/pipeline-pause-banner"
 import { ToastLayer } from "@/components/toast-layer"
+import { CommandPalette } from "@/components/command-palette"
 import { SidebarInset } from "@workspace/ui/components/sidebar"
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" })
@@ -39,6 +40,7 @@ export default function RootLayout({
             <div className="flex-1 overflow-auto">{children}</div>
           </SidebarInset>
           <ToastLayer />
+          <CommandPalette />
         </Providers>
       </body>
     </html>

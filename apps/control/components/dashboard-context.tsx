@@ -30,6 +30,9 @@ interface DashboardContextValue {
   toasts: Toast[]
   addToast: (toast: Omit<Toast, "id" | "createdAt">) => void
   dismissToast: (id: string) => void
+  commandPaletteOpen: boolean
+  openCommandPalette: () => void
+  closeCommandPalette: () => void
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null)
@@ -40,6 +43,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [pipelinePaused, setPipelinePaused] = useState(false)
   const [autonomyLevel, setAutonomyLevel] = useState<AutonomyLevelCode>("A2")
   const [toasts, setToasts] = useState<Toast[]>([])
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+
+  const openCommandPalette = useCallback(() => setCommandPaletteOpen(true), [])
+  const closeCommandPalette = useCallback(() => setCommandPaletteOpen(false), [])
 
   const togglePipeline = useCallback(() => {
     setPipelinePaused((prev) => !prev)
@@ -70,6 +77,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         toasts,
         addToast,
         dismissToast,
+        commandPaletteOpen,
+        openCommandPalette,
+        closeCommandPalette,
       }}
     >
       {children}
