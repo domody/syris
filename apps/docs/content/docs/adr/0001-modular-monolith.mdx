@@ -9,38 +9,38 @@ description: Start with a modular monolith for SYRIS core, with explicit seams f
 
 SYRIS is a single-user, 24/7 automation and orchestration system with:
 
-* omnichannel event ingestion
-* a unified pipeline (Normalize > Route > Plan/Execute)
-* strict traceability and auditability
-* safety/autonomy gates and approvals
-* integrations/tooling with retry discipline and idempotency
-* scheduler/watchers/rules engine
-* future isolated workers (sandbox) and vision streams
+- omnichannel event ingestion
+- a unified pipeline (Normalize > Route > Plan/Execute)
+- strict traceability and auditability
+- safety/autonomy gates and approvals
+- integrations/tooling with retry discipline and idempotency
+- scheduler/watchers/rules engine
+- future isolated workers (sandbox) and vision streams
 
 As a solo developer, the dominant risks are:
 
-* over-engineering early
-* losing observability during rapid iteration
-* building a system too complex to run, debug, and evolve
+- over-engineering early
+- losing observability during rapid iteration
+- building a system too complex to run, debug, and evolve
 
 ## Decision
 
 We will implement SYRIS core as a **modular monolith**:
 
-* one primary "control plane" process (plus optional worker processes)
-* strong internal module boundaries and stable data contracts
-* PostgreSQL from day one — no SQLite intermediate step
-* flat `src/syris/` package layout with one `pyproject.toml`
-* explicit seams for later extraction:
-  + worker/sandbox subsystem boundary
-  + integration adapter interfaces
-  + projection builder (sync now, async later)
+- one primary "control plane" process (plus optional worker processes)
+- strong internal module boundaries and stable data contracts
+- PostgreSQL from day one — no SQLite intermediate step
+- flat `src/syris/` package layout with one `pyproject.toml`
+- explicit seams for later extraction:
+  - worker/sandbox subsystem boundary
+  - integration adapter interfaces
+  - projection builder (sync now, async later)
 
 ### Structural decisions (from implementation design review)
 
-* `watchers/`, `rules/`, and `mcp/` are top-level peer packages — not nested under `scheduler/` or `integrations/`. Each has its own loop, state model, and lifecycle.
-* `routing/` is a top-level peer to `pipeline/`. The router delegates to routing functions; it doesn't own them.
-* Adapter ABCs live in `adapters/inbound/` and `adapters/outbound/`. MCP has its own top-level `mcp/` package.
+- `watchers/`, `rules/`, and `mcp/` are top-level peer packages — not nested under `scheduler/` or `integrations/`. Each has its own loop, state model, and lifecycle.
+- `routing/` is a top-level peer to `pipeline/`. The router delegates to routing functions; it doesn't own them.
+- Adapter ABCs live in `adapters/inbound/` and `adapters/outbound/`. MCP has its own top-level `mcp/` package.
 
 See [architecture/component-map](/docs/architecture/component-map) for the full module tree and [dev/implementation-design](/docs/dev/implementation-design) for the reasoning behind each structural choice.
 
@@ -50,51 +50,51 @@ See [architecture/component-map](/docs/architecture/component-map) for the full 
 
 **Pros**
 
-* strong isolation boundaries
-* independent scaling/deployment
+- strong isolation boundaries
+- independent scaling/deployment
 
 **Cons**
 
-* operational overhead (service discovery, deployment, coordination)
-* distributed tracing required immediately
-* slows iteration and complicates debugging
-* too heavy for single-user + solo dev
+- operational overhead (service discovery, deployment, coordination)
+- distributed tracing required immediately
+- slows iteration and complicates debugging
+- too heavy for single-user + solo dev
 
 ### 2) Monolith without boundaries
 
 **Pros**
 
-* fastest to start
+- fastest to start
 
 **Cons**
 
-* becomes untestable and fragile
-* encourages integration sprawl
-* breaks "dashboard-first observability" as behavior becomes implicit
+- becomes untestable and fragile
+- encourages integration sprawl
+- breaks "dashboard-first observability" as behavior becomes implicit
 
 ### 3) Event-sourced microservice platform
 
 **Pros**
 
-* replay/debug story is strong
+- replay/debug story is strong
 
 **Cons**
 
-* high upfront complexity
-* requires strong infra discipline early
+- high upfront complexity
+- requires strong infra discipline early
 
 ### 4) SQLite first, Postgres later
 
 **Pros**
 
-* zero-ops database to start
-* single file, easy to move around
+- zero-ops database to start
+- single file, easy to move around
 
 **Cons**
 
-* requires dual-compatibility constraints throughout the schema (no native UUID, no JSONB, no native booleans, `render_as_batch` workarounds for ALTER TABLE)
-* `FOR UPDATE SKIP LOCKED` needs workarounds or is unavailable
-* migration overhead is not justified — PostgreSQL is already available in the deployment environment
+- requires dual-compatibility constraints throughout the schema (no native UUID, no JSONB, no native booleans, `render_as_batch` workarounds for ALTER TABLE)
+- `FOR UPDATE SKIP LOCKED` needs workarounds or is unavailable
+- migration overhead is not justified — PostgreSQL is already available in the deployment environment
 
 **Decision:** Start with PostgreSQL directly. The overhead of maintaining SQLite compatibility and planning a future migration exceeds the cost of running Postgres from day one.
 
@@ -102,35 +102,35 @@ See [architecture/component-map](/docs/architecture/component-map) for the full 
 
 ### Positive
 
-* Faster iteration while maintaining a coherent architecture
-* Easier debugging (single process + consistent audit)
-* Simpler deployment and ops (especially early)
-* Clear internal contracts allow refactors without chaos
-* Native Postgres features (UUID, JSONB, partial indexes, SKIP LOCKED) available immediately
+- Faster iteration while maintaining a coherent architecture
+- Easier debugging (single process + consistent audit)
+- Simpler deployment and ops (especially early)
+- Clear internal contracts allow refactors without chaos
+- Native Postgres features (UUID, JSONB, partial indexes, SKIP LOCKED) available immediately
 
 ### Negative
 
-* Some boundaries are "convention-enforced," not network-enforced
-* Future extraction work will exist (but the seams reduce that cost)
-* Requires a running Postgres instance for development and testing (minimal overhead with Docker or system install)
+- Some boundaries are "convention-enforced," not network-enforced
+- Future extraction work will exist (but the seams reduce that cost)
+- Requires a running Postgres instance for development and testing (minimal overhead with Docker or system install)
 
 ## Implementation notes
 
-* Create stable core schemas (`MessageEvent`, `Task`, `ToolCall`, `AuditEvent`, `Approval`, `ErrorDetail`).
-* Enforce invariants: trace\_id everywhere, append-only audit, idempotency on effectful calls.
-* Keep integrations behind strict adapter interfaces.
-* Introduce worker processes as a separate runtime only when needed.
+- Create stable core schemas (`MessageEvent`, `Task`, `ToolCall`, `AuditEvent`, `Approval`, `ErrorDetail`).
+- Enforce invariants: trace_id everywhere, append-only audit, idempotency on effectful calls.
+- Keep integrations behind strict adapter interfaces.
+- Introduce worker processes as a separate runtime only when needed.
 
 ## Follow-ups
 
-* ADR for idempotency key strategy and tool outcome storage
-* ADR for fast lane vs work lane gating policy
-* ADR for projections approach (sync now, async projector later)
+- ADR for idempotency key strategy and tool outcome storage
+- ADR for fast lane vs work lane gating policy
+- ADR for projections approach (sync now, async projector later)
 
 ## Related
 
-* [architecture/component-map](/docs/architecture/component-map)
-* [architecture/principles](/docs/architecture/principles)
-* [ops/db-schema](/docs/ops/db-schema)
-* [dev/repo-structure](/docs/dev/repo-structure)
-* [dev/implementation-design](/docs/dev/implementation-design)
+- [architecture/component-map](/docs/architecture/component-map)
+- [architecture/principles](/docs/architecture/principles)
+- [ops/db-schema](/docs/ops/db-schema)
+- [dev/repo-structure](/docs/dev/repo-structure)
+- [dev/implementation-design](/docs/dev/implementation-design)
