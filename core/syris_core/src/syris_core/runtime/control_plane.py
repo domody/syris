@@ -99,9 +99,6 @@ class ControlPlane:
         heartbeat_watcher = HeartbeatWatcher(
             sessionmaker,
             run_id=run_id,
-            started_at=started_at,
-            service=self._settings.service_name,
-            version=self._settings.version,
             tick_interval_s=self._settings.heartbeat_interval_s,
         )
         watcher_loop = WatcherLoop(sessionmaker, audit_writer, _pipeline)

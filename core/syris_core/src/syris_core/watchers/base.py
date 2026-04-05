@@ -56,8 +56,8 @@ class BaseWatcher(ABC):
         """Execute one monitoring cycle.
 
         Must be idempotent. Returns a (possibly empty) list of RawInput events
-        to inject into the pipeline. Watchers that write directly to the DB
-        (e.g. HeartbeatWatcher) return an empty list.
+        to inject into the pipeline. Return an empty list when no condition
+        requires alerting.
         """
         ...
 
