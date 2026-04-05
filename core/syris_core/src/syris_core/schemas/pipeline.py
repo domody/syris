@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-ResponseMode = Literal["silent", "acknowledge", "llm_response"]
+ResponseMode = Literal["silent", "acknowledge", "llm_response", "passthrough"]
 
 class RouteDecision(BaseModel):
     """Output of the Router stage — identifies which handler should process the event."""
@@ -45,3 +45,10 @@ class ExecutionResult(BaseModel):
     )
 
     model_config = {"frozen": True}
+
+
+class IngestResponse(BaseModel):
+    """HTTP response for POST /ingest — execution result plus optional reply text."""
+
+    execution: ExecutionResult
+    reply: Optional[str] = None

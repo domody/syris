@@ -34,6 +34,39 @@ PipelineRunner = Callable[[RawInput], Coroutine[Any, Any, Any]]
 _POLL_INTERVAL_S = 5
 
 
+def compute_initial_next_run(
+    schedule_type: str,
+    *,
+    interval_s: Optional[int] = None,
+    run_at: Optional[datetime] = None,
+    cron_expr: Optional[str] = None,
+    now: Optional[datetime] = None,
+) -> Optional[datetime]:
+    """Compute next_run_at for a newly created schedule.
+
+    Must be called at creation time so the scheduler's get_due() query
+    (which filters WHERE next_run_at IS NOT NULL) can find the row.
+
+    - interval  → now (fire on the very next scheduler tick)
+    - one_shot  → run_at
+    - cron      → first occurrence after now per cron_expr
+    """
+    _now = now or datetime.now(timezone.utc)
+    if schedule_type == "interval":
+        return _now
+    if schedule_type == "one_shot":
+        return run_at
+    if schedule_type == "cron":
+        if not cron_expr:
+            return None
+        try:
+            return croniter(cron_expr, _now).get_next(datetime)
+        except Exception:
+            logger.exception("croniter error computing initial next_run for expr=%s", cron_expr)
+            return None
+    return None
+
+
 class SchedulerLoop:
     """Polls for due schedules and fires MessageEvents through the pipeline."""
 

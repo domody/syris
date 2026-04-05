@@ -19,7 +19,7 @@ class OllamaProvider(BaseProvider):
     with the same request/response shape as the OpenAI API.
     """
 
-    def __init__(self, base_url: str, model: str, timeout_s: int = 30) -> None:
+    def __init__(self, base_url: str, model: str, timeout_s: int = 120) -> None:
         self._base_url = base_url.rstrip("/")
         self._model = model
         self._timeout_s = timeout_s

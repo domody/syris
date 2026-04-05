@@ -1,4 +1,6 @@
 import logging
+import time
+from typing import Any, Callable, Coroutine
 
 from ..observability.audit import AuditWriter
 from ..schemas.events import MessageEvent
@@ -6,45 +8,117 @@ from ..schemas.pipeline import ExecutionOutcome, ExecutionResult, RouteDecision
 
 logger = logging.getLogger(__name__)
 
+# A PipelineHandler receives the event and routing decision, performs work,
+# and returns a short detail string. Raising signals failure.
+PipelineHandler = Callable[
+    [MessageEvent, RouteDecision],
+    Coroutine[Any, Any, str],
+]
+
 
 class Executor:
-    """Executes the handler indicated by a RouteDecision.
+    """Dispatches a RouteDecision to a registered handler.
 
-    Currently a stub — always returns a NOOP result.
-    # TODO: dispatch to real handler registry
+    Handlers are injected at construction time. Each handler is an async
+    callable ``(MessageEvent, RouteDecision) → str``.
+
+    Audit events emitted per execution:
+    - ``tool_call.attempted``  before invocation
+    - ``tool_call.succeeded``  on success
+    - ``tool_call.failed``     on exception
     """
 
-    def __init__(self, audit: AuditWriter) -> None:
+    def __init__(
+        self,
+        audit: AuditWriter,
+        handlers: dict[str, PipelineHandler] | None = None,
+    ) -> None:
         self._audit = audit
+        self._handlers: dict[str, PipelineHandler] = handlers or {}
 
     async def execute(
         self, decision: RouteDecision, event: MessageEvent
     ) -> ExecutionResult:
-        async with self._audit.span(
-            event.trace_id,
-            stage="execute",
-            type="event.executed",
-            summary=f"MessageEvent {event.event_id} executing via {decision.handler}",
-            outcome="info",
-            ref_event_id=event.event_id,
-        ) as span:
-            # TODO: dispatch to real handler registry
-            result = ExecutionResult(
+        handler_fn = self._handlers.get(decision.handler)
+
+        if handler_fn is None:
+            if decision.handler != "unroutable":
+                logger.warning(
+                    "executor.no_handler handler=%s event_id=%s",
+                    decision.handler,
+                    event.event_id,
+                )
+            return ExecutionResult(
                 event_id=event.event_id,
                 trace_id=event.trace_id,
                 handler=decision.handler,
                 outcome=ExecutionOutcome.NOOP,
-                detail=f"stub executor: handler '{decision.handler}' not implemented",
-            )
-            span.outcome = "success"
-            span.summary = (
-                f"MessageEvent {event.event_id} executed via {decision.handler}: noop"
+                detail=f"no handler registered for '{decision.handler}'",
             )
 
-        logger.info(
-            "event.executed event_id=%s handler=%s outcome=%s",
-            event.event_id,
-            decision.handler,
-            result.outcome,
+        t0 = time.monotonic()
+
+        await self._audit.emit(
+            event.trace_id,
+            stage="tool_call",
+            type="tool_call.attempted",
+            summary=f"Calling '{decision.handler}' for event {event.event_id}",
+            outcome="info",
+            ref_event_id=event.event_id,
+            tool_name=decision.handler,
         )
-        return result
+
+        try:
+            detail = await handler_fn(event, decision)
+            latency_ms = int((time.monotonic() - t0) * 1_000)
+
+            await self._audit.emit(
+                event.trace_id,
+                stage="tool_call",
+                type="tool_call.succeeded",
+                summary=f"Handler '{decision.handler}' succeeded: {detail}",
+                outcome="success",
+                ref_event_id=event.event_id,
+                tool_name=decision.handler,
+                latency_ms=latency_ms,
+            )
+
+            logger.info(
+                "executor.succeeded handler=%s event_id=%s",
+                decision.handler,
+                event.event_id,
+            )
+            return ExecutionResult(
+                event_id=event.event_id,
+                trace_id=event.trace_id,
+                handler=decision.handler,
+                outcome=ExecutionOutcome.SUCCESS,
+                detail=detail,
+                latency_ms=latency_ms,
+            )
+
+        except Exception as exc:
+            latency_ms = int((time.monotonic() - t0) * 1_000)
+
+            await self._audit.emit(
+                event.trace_id,
+                stage="tool_call",
+                type="tool_call.failed",
+                summary=f"Handler '{decision.handler}' failed: {exc}",
+                outcome="failure",
+                ref_event_id=event.event_id,
+                tool_name=decision.handler,
+                latency_ms=latency_ms,
+            )
+
+            logger.exception(
+                "executor.failed handler=%s event_id=%s", decision.handler, event.event_id
+            )
+            return ExecutionResult(
+                event_id=event.event_id,
+                trace_id=event.trace_id,
+                handler=decision.handler,
+                outcome=ExecutionOutcome.FAILURE,
+                detail=str(exc),
+                latency_ms=latency_ms,
+            )

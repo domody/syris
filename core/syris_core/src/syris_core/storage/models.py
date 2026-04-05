@@ -90,6 +90,34 @@ class AuditEventRow(SQLModel, table=True):
     )
 
 
+class MessageEventRow(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "message_events"
+    __table_args__: tuple = (
+        Index("ix_message_events_trace_id", "trace_id"),
+        Index("ix_message_events_created_at", "created_at"),
+        Index("ix_message_events_idempotency_key", "idempotency_key"),
+    )
+
+    event_id: uuid.UUID = Field(
+        sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
+    )
+    trace_id: uuid.UUID = Field(
+        sa_column=Column(PGUUID(as_uuid=True), nullable=False),
+    )
+    created_at: datetime = Field(
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    source: str = Field(sa_column=Column(Text, nullable=False))
+    content: str = Field(sa_column=Column(Text, nullable=False, server_default=""))
+    structured: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column(JSONB, nullable=False, server_default="{}")
+    )
+    content_type: str = Field(default="text/plain", sa_column=Column(Text, nullable=False))
+    idempotency_key: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
+
+
 class TaskRow(SQLModel, table=True):
     __tablename__: ClassVar[str] = "tasks"
     __table_args__: tuple = (

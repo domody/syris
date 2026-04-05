@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
 import uuid
+from typing import Any
 
 import uvicorn
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -10,24 +11,65 @@ from ..api.app import create_app
 from ..config import Settings
 from ..events.bus import EventBus
 from ..logging import configure_logging
+from ..llm.client import LLMClient
+from ..llm.providers.ollama import OllamaProvider
 from ..observability.audit import AuditWriter
 from ..observability.heartbeat import HeartbeatService
 from ..pipeline.executor import Executor
+from ..pipeline.handlers import LLMConversationHandler, make_timer_set_handler
 from ..pipeline.normalizer import Normalizer
+from ..pipeline.responder import Responder
 from ..pipeline.router import Router
 from ..pipeline.run import run_pipeline
-from ..llm.client import LLMClient
-from ..llm.providers.ollama import OllamaProvider
-from ..pipeline.responder import Responder
 from ..safety.autonomy import AutonomyService
 from ..safety.gates import GateChecker
 from ..scheduler.loop import SchedulerLoop
 from ..schemas.events import RawInput
-from ..storage.db import create_engine, create_sessionmaker, init_db
+from ..schemas.safety import Approval
+from ..storage.db import create_engine, create_sessionmaker, init_db, session_scope
+from ..storage.models import ApprovalRow
+from ..storage.repos.approvals import ApprovalRepo
+from ..tasks.engine import TaskEngine
+from ..tasks.llm_step import LLMDecideHandler
+from ..tools.base import ToolDeps
+from ..tools.built_in import register_built_ins
+from ..tools.executor import ToolExecutor
+from ..tools.registry import ToolRegistry
+from ..tasks.recovery import TaskRecovery
 from ..watchers.base import WatcherLoop
 from ..watchers.heartbeat import HeartbeatWatcher
 
 logger = logging.getLogger(__name__)
+
+
+class _SessionedApprovalRepo:
+    """ApprovalRepo shim that opens its own session per call.
+
+    GateChecker needs an ApprovalRepo but is constructed once at startup,
+    before any per-request session is available. This shim satisfies the
+    interface by opening a fresh session for each approval operation.
+    """
+
+    def __init__(self, sm: async_sessionmaker[AsyncSession]) -> None:
+        self._sm = sm
+
+    async def get_approved_for_step(
+        self, step_id: uuid.UUID
+    ) -> Any:  # Optional[ApprovalRow]
+        async with session_scope(self._sm) as session:
+            return await ApprovalRepo(session).get_approved_for_step(step_id)
+
+    async def create(self, approval: Approval) -> ApprovalRow:
+        async with session_scope(self._sm) as session:
+            return await ApprovalRepo(session).create(approval)
+
+
+async def _noop_get_secret(connector_id: str, key: str) -> str:
+    """Placeholder secrets provider. Replace with a real SecretsStore implementation."""
+    raise NotImplementedError(
+        f"No secrets store configured. Cannot retrieve secret '{key}' for '{connector_id}'."
+    )
+
 
 @dataclass(frozen=True)
 class RuntimeState:
@@ -43,9 +85,7 @@ class RuntimeState:
 
 
 class ControlPlane:
-    """
-    Explicit Runtime Orchestrator
-    """
+    """Explicit Runtime Orchestrator."""
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -55,23 +95,20 @@ class ControlPlane:
     @property
     def app(self):
         if self._app is None:
-            raise RuntimeError("ControlPlane not started yet; call start() first.")    
+            raise RuntimeError("ControlPlane not started yet; call start() first.")
         return self._app
-    
+
     async def start(self) -> None:
         configure_logging(self._settings.log_level)
 
         engine = create_engine(self._settings.database_url)
         sessionmaker = create_sessionmaker(engine)
-
-        # ensure schema exists
         await init_db(engine)
 
         run_id = uuid.uuid4()
         started_at = datetime.now(timezone.utc)
 
         app = create_app(self._settings)
-
         event_bus = EventBus()
 
         heartbeat = HeartbeatService(
@@ -86,15 +123,63 @@ class ControlPlane:
         await heartbeat.start()
 
         audit_writer = AuditWriter(sessionmaker, bus=event_bus)
-        normalizer = Normalizer(audit_writer)
-        router = Router(audit_writer)
-        executor = Executor(audit_writer)
 
-        ollama_provider = OllamaProvider(self._settings.llm.base_url, self._settings.llm.model)
-        llm_client = LLMClient(ollama_provider, audit_writer, self._settings.llm.system_prompt)
-        responder = Responder(llm_client)
+        # LLM client (provider is configurable; defaults to Ollama)
+        ollama_provider = OllamaProvider(
+            self._settings.llm.base_url, self._settings.llm.model
+        )
+        llm_client = LLMClient(
+            ollama_provider, audit_writer, self._settings.llm.system_prompt
+        )
 
+        # Safety
         autonomy_service = AutonomyService(sessionmaker)
+        gate_checker = GateChecker(
+            audit=audit_writer,
+            approval_repo=_SessionedApprovalRepo(sessionmaker),  # type: ignore[arg-type]
+            autonomy_service=autonomy_service,
+        )
+
+        # Tool registry — single source of truth for all system capabilities
+        tool_deps = ToolDeps(
+            session_maker=sessionmaker,
+            audit=audit_writer,
+            autonomy_service=autonomy_service,
+            get_secret=_noop_get_secret,
+        )
+        tool_registry = ToolRegistry()
+        register_built_ins(tool_registry)
+
+        # Task engine — step handlers from registry (gate owned by StepRunner)
+        step_handlers = tool_registry.as_step_handlers(tool_deps)
+        llm_decide_handler = LLMDecideHandler(llm_client, tool_registry)
+        step_handlers["llm_decide"] = llm_decide_handler
+
+        task_engine = TaskEngine(
+            session_maker=sessionmaker,
+            audit=audit_writer,
+            handlers=step_handlers,
+            gate_checker=gate_checker,
+        )
+
+        # Run startup crash recovery before the claim loop starts
+        recovery = TaskRecovery(audit_writer)
+        async with session_scope(sessionmaker) as session:
+            await recovery.reconcile(session)
+
+        # Pipeline executor: fastpath regex handler + LLM conversation handler
+        # ToolExecutor for direct pipeline dispatch carries the gate_checker
+        tool_executor = ToolExecutor(tool_registry, tool_deps, gate_checker=gate_checker)
+        pipeline_handlers = {
+            "timer.set": make_timer_set_handler(sessionmaker),
+            "llm_conversation": LLMConversationHandler(llm_client=llm_client),
+        }
+
+        # Pipeline stages
+        normalizer = Normalizer(audit_writer, session_maker=sessionmaker)
+        router = Router(audit_writer)
+        executor = Executor(audit_writer, handlers=pipeline_handlers)
+        responder = Responder(llm_client, audit_writer)
 
         async def _pipeline(raw: RawInput) -> None:
             await run_pipeline(raw, normalizer, router, executor, responder)
@@ -111,6 +196,7 @@ class ControlPlane:
         watcher_loop.register(heartbeat_watcher)
         await watcher_loop.start()
 
+        # Expose runtime components on app.state for API routes
         app.state.settings = self._settings
         app.state.engine = engine
         app.state.sessionmaker = sessionmaker
@@ -124,6 +210,7 @@ class ControlPlane:
         app.state.executor = executor
         app.state.responder = responder
         app.state.autonomy_service = autonomy_service
+        app.state.task_engine = task_engine
         app.state.scheduler_loop = scheduler_loop
         app.state.watcher_loop = watcher_loop
 
@@ -141,16 +228,13 @@ class ControlPlane:
         )
 
         logger.info(
-            "ControlPlane started run_id=%s env=%s db=%s",
-            run_id,
-            self._settings.env,
-            self._settings.database_url,
+            "ControlPlane started run_id=%s env=%s", run_id, self._settings.env
         )
 
     async def stop(self) -> None:
         if self._runtime is None:
             return
-        
+
         logger.info("ControlPlane stopping run_id=%s", self._runtime.run_id)
         await self._runtime.scheduler_loop.stop()
         await self._runtime.watcher_loop.stop()
@@ -161,17 +245,15 @@ class ControlPlane:
         self._app = None
 
     async def run(self) -> None:
-        """
-        Start the runtime and serve HTTP until shutdown signal
-        """
+        """Start the runtime and serve HTTP until shutdown signal."""
         await self.start()
-        
+
         config = uvicorn.Config(
             self.app,
             host=self._settings.api_host,
             port=self._settings.api_port,
             log_level=self._settings.log_level.lower(),
-            lifespan="off"
+            lifespan="off",
         )
         server = uvicorn.Server(config)
 
