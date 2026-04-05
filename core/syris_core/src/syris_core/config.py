@@ -11,7 +11,7 @@ class LLMSettings(BaseModel):
 
     provider: Literal["sglang", "ollama"] = "ollama"
     base_url: str = "http://localhost:11434"
-    model: str = "llama3.2"
+    model: str = "gemma4:latest"
     timeout_s: int = Field(default=30, ge=1, le=300)
     system_prompt: str = (
         "You are SYRIS, an always-on automation control plane. "

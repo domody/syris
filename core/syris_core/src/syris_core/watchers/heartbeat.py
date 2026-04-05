@@ -10,7 +10,7 @@ never writes to that table.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ..schemas.events import RawInput
@@ -49,8 +49,8 @@ class HeartbeatWatcher(BaseWatcher):
         async with session_scope(self._sessionmaker) as session:
             result = await session.execute(
                 select(SystemHeartbeatRow)
-                .where(SystemHeartbeatRow.run_id == self._run_id)
-                .order_by(SystemHeartbeatRow.ts.desc())
+                .where(SystemHeartbeatRow.run_id == self._run_id) # type: ignore
+                .order_by(desc(SystemHeartbeatRow.ts)) # type: ignore
                 .limit(1)
             )
             latest: SystemHeartbeatRow | None = result.scalar_one_or_none()

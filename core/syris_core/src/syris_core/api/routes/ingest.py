@@ -14,4 +14,5 @@ async def ingest(request: Request, body: RawInput) -> ExecutionResult:
         normalizer=request.app.state.normalizer,
         router=request.app.state.router,
         executor=request.app.state.executor,
+        responder=request.app.state.responder,
     )

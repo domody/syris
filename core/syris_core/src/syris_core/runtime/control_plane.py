@@ -16,6 +16,8 @@ from ..pipeline.executor import Executor
 from ..pipeline.normalizer import Normalizer
 from ..pipeline.router import Router
 from ..pipeline.run import run_pipeline
+from ..llm.client import LLMClient
+from ..llm.providers.ollama import OllamaProvider
 from ..pipeline.responder import Responder
 from ..safety.autonomy import AutonomyService
 from ..safety.gates import GateChecker
@@ -87,7 +89,11 @@ class ControlPlane:
         normalizer = Normalizer(audit_writer)
         router = Router(audit_writer)
         executor = Executor(audit_writer)
-        responder = Responder(audit_writer)
+
+        ollama_provider = OllamaProvider(self._settings.llm.base_url, self._settings.llm.model)
+        llm_client = LLMClient(ollama_provider, audit_writer, self._settings.llm.system_prompt)
+        responder = Responder(llm_client)
+
         autonomy_service = AutonomyService(sessionmaker)
 
         async def _pipeline(raw: RawInput) -> None:
@@ -116,6 +122,7 @@ class ControlPlane:
         app.state.normalizer = normalizer
         app.state.router = router
         app.state.executor = executor
+        app.state.responder = responder
         app.state.autonomy_service = autonomy_service
         app.state.scheduler_loop = scheduler_loop
         app.state.watcher_loop = watcher_loop

@@ -53,6 +53,10 @@ class LLMClient:
             outcome="info",
             ref_event_id=event.event_id,
         ) as span:
+            logger.info(
+                "llm.response_completed event_id=%s",
+                event.event_id,
+            )
             llm_response = await self._provider.complete(request)
             span.outcome = "success"
             span.summary = (
