@@ -35,7 +35,7 @@ Nine milestones sequence the implementation. Each milestone builds on the previo
 - `schemas/` package: `MessageEvent`, `RoutingDecision`, `AuditEvent` (Pydantic v2)
 - `storage/models.py` + repos for events, audit, routing_decisions
 - `normaliser.py`: accepts raw dict + channel, returns `MessageEvent`, persists + audits
-- `router.py`: full cascade structure wired — **filters → fastpath → rules → LLM fallback**. Ships with one fastpath intent (`timer.set`). Rules and LLM fallback are stubs that return a canned `routing.unhandled` response, but the cascade is real and traversed in order.
+- `router.py`: full cascade structure wired — **filters → IFTTT rules → fastpath → LLM fallback**. Ships with one fastpath intent (`timer.set`). Rules and LLM fallback are stubs that return a canned `routing.unhandled` response, but the cascade is real and traversed in order.
 - `pipeline/executor.py`: fast lane only, calls `NoopTool`, audits
 - `tools/executor.py`: scope check + idempotency + `NoopTool` + audit
 - `pipeline/responder.py`: stub final stage — logs that a response would be sent, does nothing yet
