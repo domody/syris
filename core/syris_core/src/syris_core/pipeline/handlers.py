@@ -23,11 +23,13 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ..llm.client import LLMClient
+from ..observability.audit import AuditWriter
 from ..scheduler.loop import compute_initial_next_run
 from ..schemas.events import MessageEvent
 from ..schemas.pipeline import RouteDecision
 from ..storage.db import session_scope
-from ..storage.models import ScheduleRow
+from ..storage.models import RuleRow, ScheduleRow
+from ..storage.repos.rules import RuleRepo
 from ..storage.repos.schedules import ScheduleRepo
 from .executor import PipelineHandler
 
@@ -124,3 +126,120 @@ class LLMConversationHandler:
         llm_response = await self._llm.chat(content, event.trace_id)
         logger.info("llm_conversation.replied event_id=%s", event.event_id)
         return llm_response.content
+
+
+def make_rule_list_handler(
+    session_maker: async_sessionmaker[AsyncSession],
+) -> PipelineHandler:
+    """Handler for rule.list: returns a summary of all rules."""
+
+    async def handler(event: MessageEvent, decision: RouteDecision) -> str:
+        async with session_scope(session_maker) as session:
+            rows = await RuleRepo(session).list_all()
+        if not rows:
+            return "No rules configured."
+        lines = [
+            f"  {r.rule_id} '{r.name}' enabled={r.enabled} debounce={r.debounce_s}s"
+            for r in rows
+        ]
+        return f"Rules ({len(rows)}):\n" + "\n".join(lines)
+
+    return handler
+
+
+def make_rule_enable_handler(
+    session_maker: async_sessionmaker[AsyncSession],
+    audit: AuditWriter,
+) -> PipelineHandler:
+    """Handler for rule.enable: enables a rule by ID from event.structured['rule_id']."""
+
+    async def handler(event: MessageEvent, decision: RouteDecision) -> str:
+        rule_id = event.structured.get("rule_id")
+        if not rule_id:
+            return "rule_id missing from structured payload"
+        async with session_scope(session_maker) as session:
+            updated = await RuleRepo(session).update_fields(rule_id, enabled=True)
+        if updated is None:
+            return f"Rule {rule_id} not found"
+        await audit.emit(
+            event.trace_id,
+            stage="rule",
+            type="rule.enabled",
+            summary=f"Rule {rule_id} enabled",
+            outcome="success",
+            ref_event_id=event.event_id,
+            connector_id=str(rule_id),
+        )
+        return f"Rule {rule_id} enabled"
+
+    return handler
+
+
+def make_rule_disable_handler(
+    session_maker: async_sessionmaker[AsyncSession],
+    audit: AuditWriter,
+) -> PipelineHandler:
+    """Handler for rule.disable: disables a rule by ID from event.structured['rule_id']."""
+
+    async def handler(event: MessageEvent, decision: RouteDecision) -> str:
+        rule_id = event.structured.get("rule_id")
+        if not rule_id:
+            return "rule_id missing from structured payload"
+        async with session_scope(session_maker) as session:
+            updated = await RuleRepo(session).update_fields(rule_id, enabled=False)
+        if updated is None:
+            return f"Rule {rule_id} not found"
+        await audit.emit(
+            event.trace_id,
+            stage="rule",
+            type="rule.disabled",
+            summary=f"Rule {rule_id} disabled",
+            outcome="success",
+            ref_event_id=event.event_id,
+            connector_id=str(rule_id),
+        )
+        return f"Rule {rule_id} disabled"
+
+    return handler
+
+
+def make_rule_create_handler(
+    session_maker: async_sessionmaker[AsyncSession],
+    audit: AuditWriter,
+) -> PipelineHandler:
+    """Handler for rule.create: creates a rule from event.structured payload.
+
+    Expected structured keys: name, conditions (list), action (dict).
+    Optional: debounce_s (int), quiet_hours_policy_id (str UUID).
+    """
+
+    async def handler(event: MessageEvent, decision: RouteDecision) -> str:
+        s = event.structured
+        name = s.get("name", f"rule-{event.event_id}")
+        conditions = s.get("conditions", [])
+        action = s.get("action", {})
+        debounce_s = int(s.get("debounce_s", 0))
+
+        row = RuleRow(
+            rule_id=uuid4(),
+            name=name,
+            conditions=conditions,
+            action=action,
+            debounce_s=debounce_s,
+        )
+        async with session_scope(session_maker) as session:
+            saved = await RuleRepo(session).create(row)
+            rule_id = saved.rule_id
+
+        await audit.emit(
+            event.trace_id,
+            stage="rule",
+            type="rule.created",
+            summary=f"Rule '{name}' ({rule_id}) created via pipeline",
+            outcome="success",
+            ref_event_id=event.event_id,
+            connector_id=str(rule_id),
+        )
+        return f"Created rule '{name}' id={rule_id}"
+
+    return handler

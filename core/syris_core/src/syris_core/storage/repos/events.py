@@ -26,6 +26,7 @@ class EventRepo:
             structured=event.structured,
             content_type=event.content_type,
             idempotency_key=event.idempotency_key,
+            parent_event_id=event.parent_event_id,
         )
         self._session.add(row)
         await self._session.flush()

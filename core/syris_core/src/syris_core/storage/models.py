@@ -96,6 +96,7 @@ class MessageEventRow(SQLModel, table=True):
         Index("ix_message_events_trace_id", "trace_id"),
         Index("ix_message_events_created_at", "created_at"),
         Index("ix_message_events_idempotency_key", "idempotency_key"),
+        Index("ix_message_events_parent_event_id", "parent_event_id"),
     )
 
     event_id: uuid.UUID = Field(
@@ -115,6 +116,9 @@ class MessageEventRow(SQLModel, table=True):
     content_type: str = Field(default="text/plain", sa_column=Column(Text, nullable=False))
     idempotency_key: Optional[str] = Field(
         default=None, sa_column=Column(Text, nullable=True)
+    )
+    parent_event_id: Optional[uuid.UUID] = Field(
+        default=None, sa_column=Column(PGUUID(as_uuid=True), nullable=True)
     )
 
 
@@ -319,6 +323,66 @@ class WatcherStateRow(SQLModel, table=True):
     )
     consecutive_errors: int = Field(default=0, sa_column=Column(Integer, nullable=False, server_default="0"))
     suppression_count: int = Field(default=0, sa_column=Column(Integer, nullable=False, server_default="0"))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+
+
+class QuietHoursPolicyRow(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "quiet_hours_policies"
+
+    policy_id: uuid.UUID = Field(
+        sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
+    )
+    name: str = Field(sa_column=Column(Text, nullable=False))
+    start_hour: int = Field(sa_column=Column(Integer, nullable=False))
+    end_hour: int = Field(sa_column=Column(Integer, nullable=False))
+    timezone: str = Field(default="UTC", sa_column=Column(Text, nullable=False, server_default="UTC"))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+
+
+class RuleRow(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "rules"
+    __table_args__: tuple = (Index("ix_rules_enabled", "enabled"),)
+
+    rule_id: uuid.UUID = Field(
+        sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
+    )
+    name: str = Field(sa_column=Column(Text, nullable=False))
+    enabled: bool = Field(default=True, sa_column=Column(Boolean, nullable=False, server_default="true"))
+    conditions: list[dict[str, Any]] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, server_default="[]"),
+    )
+    action: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, server_default="{}"),
+    )
+    debounce_s: int = Field(default=0, sa_column=Column(Integer, nullable=False, server_default="0"))
+    last_fired_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True)
+    )
+    suppression_count: int = Field(
+        default=0, sa_column=Column(Integer, nullable=False, server_default="0")
+    )
+    fire_count: int = Field(
+        default=0, sa_column=Column(Integer, nullable=False, server_default="0")
+    )
+    quiet_hours_policy_id: Optional[uuid.UUID] = Field(
+        default=None, sa_column=Column(PGUUID(as_uuid=True), nullable=True)
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(TIMESTAMP(timezone=True), nullable=False),

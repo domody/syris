@@ -35,5 +35,6 @@ class MessageEvent(BaseModel):
     structured: dict[str, Any] = Field(default_factory=dict)
     content_type: str = "text/plain"
     idempotency_key: Optional[str] = None
+    parent_event_id: Optional[UUID] = None
 
     model_config = {"frozen": True}

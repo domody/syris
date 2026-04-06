@@ -16,7 +16,15 @@ from ..llm.providers.ollama import OllamaProvider
 from ..observability.audit import AuditWriter
 from ..observability.heartbeat import HeartbeatService
 from ..pipeline.executor import Executor
-from ..pipeline.handlers import LLMConversationHandler, make_timer_set_handler
+from ..pipeline.handlers import (
+    LLMConversationHandler,
+    make_rule_create_handler,
+    make_rule_disable_handler,
+    make_rule_enable_handler,
+    make_rule_list_handler,
+    make_timer_set_handler,
+)
+from ..rules.engine import RulesEngine
 from ..pipeline.normalizer import Normalizer
 from ..pipeline.responder import Responder
 from ..pipeline.router import Router
@@ -172,8 +180,15 @@ class ControlPlane:
         tool_executor = ToolExecutor(tool_registry, tool_deps, gate_checker=gate_checker)
         pipeline_handlers = {
             "timer.set": make_timer_set_handler(sessionmaker),
+            "rule.list": make_rule_list_handler(sessionmaker),
+            "rule.enable": make_rule_enable_handler(sessionmaker, audit_writer),
+            "rule.disable": make_rule_disable_handler(sessionmaker, audit_writer),
+            "rule.create": make_rule_create_handler(sessionmaker, audit_writer),
             "llm_conversation": LLMConversationHandler(llm_client=llm_client),
         }
+
+        # Rules engine — evaluates IFTTT rules before routing
+        rules_engine = RulesEngine(sessionmaker, audit_writer)
 
         # Pipeline stages
         normalizer = Normalizer(audit_writer, session_maker=sessionmaker)
@@ -182,7 +197,7 @@ class ControlPlane:
         responder = Responder(llm_client, audit_writer)
 
         async def _pipeline(raw: RawInput) -> None:
-            await run_pipeline(raw, normalizer, router, executor, responder)
+            await run_pipeline(raw, normalizer, router, executor, responder, rules_engine=rules_engine)
 
         scheduler_loop = SchedulerLoop(sessionmaker, audit_writer, _pipeline)
         await scheduler_loop.start()
@@ -213,6 +228,7 @@ class ControlPlane:
         app.state.task_engine = task_engine
         app.state.scheduler_loop = scheduler_loop
         app.state.watcher_loop = watcher_loop
+        app.state.rules_engine = rules_engine
 
         self._app = app
         self._runtime = RuntimeState(
