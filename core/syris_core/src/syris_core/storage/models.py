@@ -94,6 +94,7 @@ class MessageEventRow(SQLModel, table=True):
     __tablename__: ClassVar[str] = "message_events"
     __table_args__: tuple = (
         Index("ix_message_events_trace_id", "trace_id"),
+        Index("ix_message_events_thread_id", "thread_id"),
         Index("ix_message_events_created_at", "created_at"),
         Index("ix_message_events_idempotency_key", "idempotency_key"),
         Index("ix_message_events_parent_event_id", "parent_event_id"),
@@ -103,6 +104,9 @@ class MessageEventRow(SQLModel, table=True):
         sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
     )
     trace_id: uuid.UUID = Field(
+        sa_column=Column(PGUUID(as_uuid=True), nullable=False),
+    )
+    thread_id: uuid.UUID = Field(
         sa_column=Column(PGUUID(as_uuid=True), nullable=False),
     )
     created_at: datetime = Field(

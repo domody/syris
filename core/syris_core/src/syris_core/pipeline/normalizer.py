@@ -37,8 +37,11 @@ class Normalizer:
             content = raw.content
             structured = {}
 
+        thread_id = raw.thread_id or trace_id
+
         event = MessageEvent(
             trace_id=trace_id,
+            thread_id=thread_id,
             source=raw.source,
             content=content,
             structured=structured,

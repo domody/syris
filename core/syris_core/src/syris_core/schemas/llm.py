@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -9,6 +9,23 @@ class LLMRequest(BaseModel):
     system_prompt: str
     user_message: str
     tool_result_context: Optional[str] = None  # snippet from ExecutionResult, if relevant
+
+    model_config = {"frozen": True}
+
+
+class ChatMessage(BaseModel):
+    """Single message in a multi-turn conversation."""
+
+    role: Literal["system", "user", "assistant"]
+    content: str
+
+    model_config = {"frozen": True}
+
+
+class LLMChatRequest(BaseModel):
+    """Multi-turn chat request carrying a full conversation history."""
+
+    messages: list[ChatMessage]
 
     model_config = {"frozen": True}
 

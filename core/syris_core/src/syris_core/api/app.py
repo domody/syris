@@ -8,6 +8,7 @@ from .routes.events import router as events_router
 from .routes.controls import router as controls_router
 from .routes.health import router as health_router
 from .routes.ingest import router as ingest_router
+from .routes.llm import router as llm_router
 from .routes.rules import router as rules_router
 from .routes.schedules import router as schedules_router
 from .routes.stream import router as stream_router
@@ -33,6 +34,7 @@ def create_app(settings: Settings) -> FastAPI:
     app.include_router(audit_router)
     app.include_router(events_router)
     app.include_router(ingest_router)
+    app.include_router(llm_router)
     app.include_router(stream_router)
     app.include_router(tasks_router)
     app.include_router(approvals_router)

@@ -1,15 +1,21 @@
 import json
 import logging
-from typing import Any
+from collections import OrderedDict
+from typing import TYPE_CHECKING, Any, Optional
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from .context import ContextBuilder
 
 from ..observability.audit import AuditWriter
 from ..schemas.events import MessageEvent
-from ..schemas.llm import LLMRequest, LLMResponse
+from ..schemas.llm import LLMChatRequest, LLMRequest, LLMResponse
 from ..schemas.pipeline import ExecutionResult, RouteDecision
 from .providers.base import BaseProvider
 
 logger = logging.getLogger(__name__)
+
+_MAX_CONTEXT_CACHE = 100
 
 
 class LLMClient:
@@ -24,10 +30,14 @@ class LLMClient:
         provider: BaseProvider,
         audit: AuditWriter,
         system_prompt: str,
+        context_builder: Optional["ContextBuilder"] = None,
     ) -> None:
         self._provider = provider
         self._audit = audit
         self._system_prompt = system_prompt
+        self._context_builder = context_builder
+        # Bounded cache of recent context bundles for the debug endpoint
+        self._last_context: OrderedDict[UUID, Any] = OrderedDict()
 
     async def respond(
         self,
@@ -77,28 +87,57 @@ class LLMClient:
         return llm_response
 
 
-    async def chat(self, content: str, trace_id: UUID) -> LLMResponse:
-        """Conversational LLM call — no tool selection, no execution context.
+    async def chat(self, event: MessageEvent) -> LLMResponse:
+        """Conversational LLM call with thread-scoped context.
 
-        This is the entry point for the llm_conversation pipeline handler.
-        Later it will become the agentic loop (tool calls, multi-turn, etc.).
+        When a ContextBuilder is configured, assembles full conversation
+        history and tool catalog into a multi-turn request. Falls back to
+        single-turn when no context builder is available.
         """
-        request = LLMRequest(
-            system_prompt=self._system_prompt,
-            user_message=content,
-        )
+        content = event.content or str(event.structured)
+        trace_id = event.trace_id
 
-        async with self._audit.span(
-            trace_id,
-            stage="llm",
-            type="llm.conversation",
-            summary=f"LLM conversation: {content[:80]!r}",
-            outcome="info",
-        ) as span:
-            logger.info("llm.conversation trace_id=%s", trace_id)
-            llm_response = await self._provider.complete(request)
-            span.outcome = "success"
-            span.summary = f"LLM conversation reply: {llm_response.content[:80]!r}"
+        if self._context_builder is not None:
+            bundle = await self._context_builder.build(event)
+            messages = self._context_builder.to_messages(bundle)
+            chat_request = LLMChatRequest(messages=messages)
+
+            async with self._audit.span(
+                trace_id,
+                stage="llm",
+                type="llm.conversation",
+                summary=f"LLM conversation (multi-turn): {content[:80]!r}",
+                outcome="info",
+            ) as span:
+                logger.info(
+                    "llm.conversation trace_id=%s thread_id=%s turns=%d",
+                    trace_id, event.thread_id, len(bundle.conversation_history),
+                )
+                llm_response = await self._provider.chat(chat_request)
+                span.outcome = "success"
+                span.summary = f"LLM conversation reply: {llm_response.content[:80]!r}"
+
+            # Cache context bundle for debug endpoint
+            self._last_context[trace_id] = bundle
+            if len(self._last_context) > _MAX_CONTEXT_CACHE:
+                self._last_context.popitem(last=False)
+        else:
+            request = LLMRequest(
+                system_prompt=self._system_prompt,
+                user_message=content,
+            )
+
+            async with self._audit.span(
+                trace_id,
+                stage="llm",
+                type="llm.conversation",
+                summary=f"LLM conversation: {content[:80]!r}",
+                outcome="info",
+            ) as span:
+                logger.info("llm.conversation trace_id=%s", trace_id)
+                llm_response = await self._provider.complete(request)
+                span.outcome = "success"
+                span.summary = f"LLM conversation reply: {llm_response.content[:80]!r}"
 
         logger.info(
             "llm.conversation trace_id=%s provider=%s model=%s latency_ms=%d",
@@ -108,6 +147,10 @@ class LLMClient:
             llm_response.latency_ms,
         )
         return llm_response
+
+    def get_cached_context(self, trace_id: UUID) -> Any:
+        """Return the cached ContextBundle for a trace_id, or None."""
+        return self._last_context.get(trace_id)
 
     async def classify_intent(
         self,

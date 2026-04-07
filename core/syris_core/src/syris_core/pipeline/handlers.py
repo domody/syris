@@ -29,6 +29,7 @@ from ..schemas.events import MessageEvent
 from ..schemas.pipeline import RouteDecision
 from ..storage.db import session_scope
 from ..storage.models import RuleRow, ScheduleRow
+from ..storage.repos.events import EventRepo
 from ..storage.repos.rules import RuleRepo
 from ..storage.repos.schedules import ScheduleRepo
 from .executor import PipelineHandler
@@ -110,20 +111,36 @@ class LLMConversationHandler:
     """
     Primary pipeline handler for non-fastpath events.
 
-    Makes a single conversational LLM call and returns the response text.
+    Makes a conversational LLM call with thread-scoped context and returns
+    the response text. Persists the assistant reply as a MessageEvent so
+    future turns in the same thread can see it.
+
     The Responder dispatches it as-is (response_mode="passthrough") — no
     second LLM call is made.
-
-    This handler is the stub for the future agentic loop: tool calls,
-    multi-turn context, and MCP integration will be added here.
     """
 
-    def __init__(self, llm_client: LLMClient) -> None:
+    def __init__(
+        self,
+        llm_client: LLMClient,
+        session_maker: async_sessionmaker[AsyncSession],
+    ) -> None:
         self._llm = llm_client
+        self._session_maker = session_maker
 
     async def __call__(self, event: MessageEvent, decision: RouteDecision) -> str:
-        content = event.content or str(event.structured)
-        llm_response = await self._llm.chat(content, event.trace_id)
+        llm_response = await self._llm.chat(event)
+
+        # Persist assistant reply so conversation history is complete
+        reply_event = MessageEvent(
+            trace_id=event.trace_id,
+            thread_id=event.thread_id,
+            source="llm",
+            content=llm_response.content,
+            parent_event_id=event.event_id,
+        )
+        async with session_scope(self._session_maker) as session:
+            await EventRepo(session).create(reply_event)
+
         logger.info("llm_conversation.replied event_id=%s", event.event_id)
         return llm_response.content
 

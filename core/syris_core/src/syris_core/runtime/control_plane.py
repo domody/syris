@@ -12,6 +12,7 @@ from ..config import Settings
 from ..events.bus import EventBus
 from ..logging import configure_logging
 from ..llm.client import LLMClient
+from ..llm.context import ContextBuilder
 from ..llm.providers.ollama import OllamaProvider
 from ..observability.audit import AuditWriter
 from ..observability.heartbeat import HeartbeatService
@@ -132,14 +133,6 @@ class ControlPlane:
 
         audit_writer = AuditWriter(sessionmaker, bus=event_bus)
 
-        # LLM client (provider is configurable; defaults to Ollama)
-        ollama_provider = OllamaProvider(
-            self._settings.llm.base_url, self._settings.llm.model
-        )
-        llm_client = LLMClient(
-            ollama_provider, audit_writer, self._settings.llm.system_prompt
-        )
-
         # Safety
         autonomy_service = AutonomyService(sessionmaker)
         gate_checker = GateChecker(
@@ -157,6 +150,16 @@ class ControlPlane:
         )
         tool_registry = ToolRegistry()
         register_built_ins(tool_registry)
+
+        # LLM client with context builder (needs tool_registry to be populated)
+        ollama_provider = OllamaProvider(
+            self._settings.llm.base_url, self._settings.llm.model
+        )
+        context_builder = ContextBuilder(sessionmaker, tool_registry)
+        llm_client = LLMClient(
+            ollama_provider, audit_writer, self._settings.llm.system_prompt,
+            context_builder=context_builder,
+        )
 
         # Task engine — step handlers from registry (gate owned by StepRunner)
         step_handlers = tool_registry.as_step_handlers(tool_deps)
@@ -184,7 +187,7 @@ class ControlPlane:
             "rule.enable": make_rule_enable_handler(sessionmaker, audit_writer),
             "rule.disable": make_rule_disable_handler(sessionmaker, audit_writer),
             "rule.create": make_rule_create_handler(sessionmaker, audit_writer),
-            "llm_conversation": LLMConversationHandler(llm_client=llm_client),
+            "llm_conversation": LLMConversationHandler(llm_client=llm_client, session_maker=sessionmaker),
         }
 
         # Rules engine — evaluates IFTTT rules before routing
@@ -229,6 +232,8 @@ class ControlPlane:
         app.state.scheduler_loop = scheduler_loop
         app.state.watcher_loop = watcher_loop
         app.state.rules_engine = rules_engine
+        app.state.context_builder = context_builder
+        app.state.llm_client = llm_client
 
         self._app = app
         self._runtime = RuntimeState(

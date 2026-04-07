@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from ...schemas.llm import LLMRequest, LLMResponse
+from ...schemas.llm import LLMChatRequest, LLMRequest, LLMResponse
 from .base import BaseProvider
 
 logger = logging.getLogger(__name__)
@@ -51,6 +51,38 @@ class SGLangProvider(BaseProvider):
 
         logger.debug(
             "sglang.complete model=%s latency_ms=%d", self._model, latency_ms
+        )
+
+        return LLMResponse(
+            content=content,
+            model=data.get("model", self._model),
+            provider="sglang",
+            latency_ms=latency_ms,
+            prompt_tokens=usage.get("prompt_tokens"),
+            completion_tokens=usage.get("completion_tokens"),
+        )
+
+    async def chat(self, request: LLMChatRequest) -> LLMResponse:
+        """Multi-turn chat completion with full message history."""
+        messages = [{"role": m.role, "content": m.content} for m in request.messages]
+        payload: dict[str, Any] = {"model": self._model, "messages": messages}
+
+        t0 = time.monotonic()
+        async with httpx.AsyncClient(timeout=self._timeout_s) as client:
+            response = await client.post(
+                f"{self._base_url}{_CHAT_PATH}", json=payload
+            )
+        latency_ms = int((time.monotonic() - t0) * 1_000)
+
+        response.raise_for_status()
+        data = response.json()
+
+        content: str = data["choices"][0]["message"]["content"]
+        usage: dict[str, Any] = data.get("usage", {})
+
+        logger.debug(
+            "sglang.chat model=%s latency_ms=%d turns=%d",
+            self._model, latency_ms, len(messages),
         )
 
         return LLMResponse(

@@ -20,6 +20,7 @@ class EventRepo:
         row = MessageEventRow(
             event_id=event.event_id,
             trace_id=event.trace_id,
+            thread_id=event.thread_id,
             created_at=event.created_at,
             source=event.source,
             content=event.content,
@@ -45,5 +46,20 @@ class EventRepo:
         if trace_id is not None:
             stmt = stmt.where(MessageEventRow.trace_id == trace_id)
         stmt = stmt.offset(offset).limit(limit)
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_by_thread(
+        self,
+        thread_id: uuid.UUID,
+        limit: int = 50,
+    ) -> list[MessageEventRow]:
+        """Return events in a thread, oldest first (chronological order)."""
+        stmt = (
+            select(MessageEventRow)
+            .where(MessageEventRow.thread_id == thread_id)
+            .order_by(MessageEventRow.created_at.asc())
+            .limit(limit)
+        )
         result = await self._session.execute(stmt)
         return list(result.scalars().all())

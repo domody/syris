@@ -12,6 +12,7 @@ class RawInput(BaseModel):
     content: str | dict[str, Any]
     idempotency_key: Optional[str] = None
     trace_id: Optional[UUID] = None  # None → normalizer generates a new chain
+    thread_id: Optional[UUID] = None  # None → defaults to trace_id
     content_type: str = "text/plain"
 
 
@@ -27,6 +28,7 @@ class MessageEvent(BaseModel):
 
     event_id: UUID = Field(default_factory=uuid4)
     trace_id: UUID = Field(default_factory=uuid4)
+    thread_id: UUID = Field(default_factory=uuid4)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
