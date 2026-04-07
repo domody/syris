@@ -1,15 +1,40 @@
 "use client"
 
 import Link from "next/link"
-import { AlertTriangle, XCircle, RefreshCw, ExternalLink } from "lucide-react"
+import {
+  AlertTriangle,
+  XCircle,
+  RefreshCw,
+  ExternalLink,
+  CheckIcon,
+  Trash2Icon,
+  BanIcon,
+  XCircleIcon,
+  ChevronRightIcon,
+  AlarmCheck,
+  AlarmCheckIcon,
+} from "lucide-react"
 import {
   Card,
+  CardAction,
   CardContent,
+  CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button, buttonVariants } from "@workspace/ui/components/button"
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemSeparator,
+  ItemTitle,
+} from "@workspace/ui/components/item"
 import { StatusDot } from "@workspace/ui/components/status-dot"
 import { useDashboard } from "@/components/dashboard-context"
 import {
@@ -46,7 +71,7 @@ function Sparkline({ data }: { data: number[] }) {
     .join(" ")
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="h-10 w-full">
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-10 w-full bg-accent/50">
       <polyline
         fill="none"
         stroke="currentColor"
@@ -71,9 +96,9 @@ function AutonomyChanger() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <button className="cursor-pointer text-xs text-primary hover:underline">
-            [change]
-          </button>
+          <Button variant={"outline"} size={"xs"}>
+            Change
+          </Button>
         }
       />
       <DialogContent>
@@ -119,63 +144,56 @@ function AutonomyChanger() {
 
 // ── Status Strip ─────────────────────────────────────────────────────────────
 
+function capitalizeFirstLetter(val: string) {
+  return String(val).charAt(0).toUpperCase() + String(val).slice(1)
+}
+
 function StatusStrip() {
   const { pipelinePaused, togglePipeline, autonomyLevel } = useDashboard()
 
+  const statusMappable = [
+    {
+      title: "Status",
+      content: capitalizeFirstLetter(systemState.status),
+      badge: <StatusDot status={systemState.status} pulse />,
+    },
+    {
+      title: "Autonomy",
+      content: autonomyLevel,
+      badge: <AutonomyChanger />,
+    },
+    {
+      title: "Uptime",
+      content: systemState.uptime,
+    },
+    {
+      title: "Pipeline",
+      content: pipelinePaused ? "Paused" : "Active",
+      badge: <StatusDot status={pipelinePaused ? "degraded" : "healthy"} />,
+    },
+    {
+      title: "Last Heartbeat",
+      content: systemState.last_heartbeat,
+    },
+  ]
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      <Card size="sm">
-        <CardContent className="flex items-center gap-2">
-          <StatusDot status="healthy" pulse />
-          <div>
-            <p className="text-xs text-muted-foreground">Status</p>
-            <p className="text-sm font-medium capitalize">
-              {systemState.status}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card size="sm">
-        <CardContent className="flex items-center gap-2">
-          <Badge variant="outline">{autonomyLevel}</Badge>
-          <div>
-            <p className="text-xs text-muted-foreground">Autonomy</p>
-            <AutonomyChanger />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card size="sm">
-        <CardContent>
-          <p className="text-xs text-muted-foreground">Uptime</p>
-          <p className="text-sm font-medium">{systemState.uptime}</p>
-        </CardContent>
-      </Card>
-
-      <Card size="sm">
-        <CardContent className="flex items-center gap-2">
-          <div
-            className={`size-2 rounded-full ${pipelinePaused ? "bg-warning" : "bg-success"}`}
-          />
-          <div>
-            <p className="text-xs text-muted-foreground">Pipeline</p>
-            <button
-              onClick={togglePipeline}
-              className="cursor-pointer text-sm font-medium transition-colors hover:text-primary"
-            >
-              {pipelinePaused ? "paused" : "active"}
-            </button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card size="sm">
-        <CardContent>
-          <p className="text-xs text-muted-foreground">Last heartbeat</p>
-          <p className="text-sm font-medium">{systemState.last_heartbeat}</p>
-        </CardContent>
-      </Card>
+    <div className="grid h-min grid-cols-2 gap-4 sm:grid-cols-3 xl:w-[420px] xl:grid-cols-2">
+      {statusMappable.map((info) => {
+        return (
+          <Card className="size-sm" key={info.title}>
+            <CardContent className="h-full">
+              <div className="relative flex h-full flex-col gap-1">
+                <CardDescription>{info.title}</CardDescription>
+                <CardTitle className="mt-0 text-2xl">{info.content}</CardTitle>
+                <CardAction className="absolute top-0 right-0">
+                  {info.badge}
+                </CardAction>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   )
 }
@@ -189,53 +207,31 @@ function NeedsAttention() {
   const failedTasks = tasks.filter((t) => t.status === "failed")
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Needs Attention</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Pending Approvals */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-medium text-muted-foreground">
-              Pending Approvals ({pendingApprovals.length})
-            </h3>
+    <div className="grid grid-cols-3 gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Pending Approvals ({pendingApprovals.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ItemGroup className="gap-3">
             {pendingApprovals.map((approval) => (
-              <div
-                key={approval.id}
-                className="space-y-1.5 rounded-md border p-2.5"
-              >
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="mt-0.5 size-3 text-warning" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium">
-                      {approval.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      expires{" "}
-                      {new Date(approval.expires_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-1.5">
+              <Item key={approval.id} variant="muted">
+                <ItemMedia variant={"icon"}>
+                  <AlertTriangle className="text-warning" />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>{approval.title}</ItemTitle>
+                  <ItemDescription>
+                    expires{" "}
+                    {new Date(approval.expires_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
                   <Button
-                    size="xs"
-                    variant="success"
-                    onClick={() =>
-                      addToast({
-                        title: "Approved",
-                        description: approval.title,
-                        variant: "success",
-                      })
-                    }
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    size="xs"
+                    size="icon-sm"
                     variant="destructive"
                     onClick={() =>
                       addToast({
@@ -245,180 +241,314 @@ function NeedsAttention() {
                       })
                     }
                   >
-                    Deny
+                    <BanIcon />
                   </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Open Alarms + Failed Tasks */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-medium text-muted-foreground">
-              Open Alarms ({openAlarms.length})
-            </h3>
-            {openAlarms.map((alarm) => (
-              <div
-                key={alarm.id}
-                className="space-y-1.5 rounded-md border p-2.5"
-              >
-                <div className="flex items-start gap-2">
-                  <XCircle className="mt-0.5 size-3 text-destructive" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium">{alarm.title}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {alarm.detail}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-1.5">
                   <Button
-                    size="xs"
-                    variant="outline"
+                    size="icon-sm"
+                    variant="secondary"
                     onClick={() =>
                       addToast({
-                        title: "Alarm acknowledged",
+                        title: "Approved",
+                        description: approval.title,
+                        variant: "success",
+                      })
+                    }
+                  >
+                    <CheckIcon />
+                  </Button>
+                </ItemActions>
+              </Item>
+            ))}
+          </ItemGroup>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Open Alarms ({openAlarms.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ItemGroup>
+            {openAlarms.map((alarm) => (
+              <Item variant={"muted"}>
+                <ItemMedia variant={"icon"}>
+                  <XCircleIcon className="text-destructive" />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>{alarm.title}</ItemTitle>
+                  <ItemDescription>{alarm.detail}</ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <Button
+                    size="icon-sm"
+                    variant="secondary"
+                    onClick={() =>
+                      addToast({
+                        title: "Alarm Acknowledged",
                         variant: "default",
                       })
                     }
                   >
-                    Ack
+                    <AlarmCheckIcon />
                   </Button>
-                  <Link
-                    href={"/alarms"}
-                    className={buttonVariants({
-                      variant: "outline",
-                      size: "xs",
-                    })}
-                  >
-                    View
-                  </Link>
-                  {/* <Button
-                    size="xs"
-                    variant="outline"
-                    render={<Link href="/alarms" />}
-                    nativeButton={false}
-                  >
-                    View
-                  </Button> */}
-                </div>
-              </div>
+                </ItemActions>
+              </Item>
             ))}
-          </div>
-
-          {/* Failed Tasks */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-medium text-muted-foreground">
-              Failed Tasks ({failedTasks.length})
-            </h3>
+          </ItemGroup>
+        </CardContent>
+        <CardFooter className="mt-auto">
+          <Button className={"w-full"}>Alarms</Button>
+        </CardFooter>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Failed Tasks ({failedTasks.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ItemGroup className="gap-3">
             {failedTasks.map((task) => {
               const completedSteps = task.steps.filter(
                 (s) => s.status === "completed"
               ).length
+
               return (
-                <div
-                  key={task.task_id}
-                  className="space-y-1.5 rounded-md border p-2.5"
-                >
-                  <div className="flex items-start gap-2">
-                    <XCircle className="mt-0.5 size-3 text-destructive" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium">{task.handler}</p>
-                      <p className="text-xs text-muted-foreground">
-                        step {completedSteps}/{task.steps.length} · retries{" "}
-                        {task.retry_policy.max_attempts}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-1.5">
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      onClick={() =>
-                        addToast({
-                          title: "Task retry triggered",
-                          description: task.handler,
-                          variant: "default",
-                        })
-                      }
-                    >
-                      <RefreshCw className="size-3" />
-                      Retry
+                <Item variant={"muted"}>
+                  <ItemMedia variant={"icon"}>
+                    <XCircleIcon className="text-destructive" />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>{task.handler}</ItemTitle>
+                    <ItemDescription>
+                      step {completedSteps}/{task.steps.length} · retries{" "}
+                      {task.retry_policy.max_attempts}
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <Button size="icon-sm" variant="ghost">
+                      <ChevronRightIcon />
                     </Button>
-                    <Link
-                      href={`/tasks/${task.task_id}`}
-                      className={buttonVariants({
-                        variant: "outline",
-                        size: "xs",
-                      })}
-                    >
-                      View
-                    </Link>
-                    {/* <Button
-                      size="xs"
-                      variant="outline"
-                      render={<Link href={`/tasks/${task.task_id}`} />}
-                      nativeButton={false}
-                    >
-                      View
-                    </Button> */}
-                  </div>
-                </div>
+                  </ItemActions>
+                </Item>
               )
             })}
-          </div>
+          </ItemGroup>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+// ── Recent Audit ─────────────────────────────────────────────────────────────
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@workspace/ui/components/table"
+
+function RecentAudit() {
+  return (
+    <Card className="flex-1 gap-1">
+      <CardHeader>
+        <CardTitle>Recent Audit</CardTitle>
+        <CardAction>
+          <Link
+            href="/audit"
+            className={cn(buttonVariants({ variant: "link" }))}
+          >
+            View full log
+            <ExternalLink data-icon="inline-end" />
+          </Link>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[100px] text-xs text-muted-foreground">
+                Timestamp
+              </TableHead>
+              <TableHead className="w-[150px] text-xs text-muted-foreground">
+                Type
+              </TableHead>
+              <TableHead className="text-xs text-muted-foreground">
+                Summary
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {auditEvents.slice(0, 10).map((event) => (
+              <TableRow key={event.audit_id}>
+                <TableCell className="text-muted-foreground">
+                  {new Date(event.timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  })}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
+                      event.outcome === "success"
+                        ? "success"
+                        : event.outcome === "failure"
+                          ? "destructive"
+                          : event.outcome === "suppressed"
+                            ? "warning"
+                            : "secondary"
+                    }
+                  >
+                    {event.type}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-medium">{event.summary}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <div className="hidden space-y-0.5">
+          {auditEvents.slice(0, 10).map((evt) => (
+            <Link
+              key={evt.audit_id}
+              href={evt.trace_id ? `/traces/${evt.trace_id}` : "#"}
+              className="flex items-center gap-4 rounded-sm px-1 py-1 text-xs transition-colors hover:bg-muted"
+            >
+              <span className="w-20 shrink-0 font-mono text-muted-foreground tabular-nums">
+                {new Date(evt.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })}
+              </span>
+              <span className="w-40 shrink-0 truncate">
+                <Badge
+                  variant={
+                    evt.outcome === "success"
+                      ? "success"
+                      : evt.outcome === "failure"
+                        ? "destructive"
+                        : evt.outcome === "suppressed"
+                          ? "warning"
+                          : "secondary"
+                  }
+                >
+                  {evt.type}
+                </Badge>
+              </span>
+              <span className="flex-1 truncate text-muted-foreground">
+                {evt.summary}
+              </span>
+            </Link>
+          ))}
         </div>
       </CardContent>
     </Card>
   )
 }
 
-// ── Activity + Workload ──────────────────────────────────────────────────────
+// ── Acitvity ─────────────────────────────────────────────────────────────────
 
-function ActivityAndWorkload() {
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@workspace/ui/components/chart"
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  AreaChart,
+  Area,
+  XAxis,
+} from "recharts"
+import { cn } from "@/lib/utils"
+
+const chartData = sparklineData.map((value, index) => ({
+  time: String((60 / sparklineData.length) * index),
+  events: value,
+}))
+
+const chartConfig = {
+  events: {
+    label: "Events",
+    color: "var(--chart-1)",
+  },
+} satisfies ChartConfig
+
+function ActivityCard() {
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>Activity</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <p className="mb-1 text-xs text-muted-foreground">
-              Event throughput (last 1h)
-            </p>
-            <Sparkline data={sparklineData} />
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <span className="text-muted-foreground">Events today</span>
-              <p className="font-medium tabular-nums">
-                {systemState.events_today.toLocaleString()}
-              </p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Tool calls today</span>
-              <p className="font-medium tabular-nums">
-                {systemState.tool_calls_today}
-              </p>
-            </div>
-            <div className="col-span-2">
-              <span className="text-muted-foreground">Fast / Task / Gated</span>
-              <p className="font-medium tabular-nums">
-                {systemState.fast_count} / {systemState.task_count} /{" "}
-                {systemState.gated_count}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+    <Card className="flex flex-1">
+      <CardHeader>
+        <CardTitle>Activity</CardTitle>
+        <CardDescription>Event throughput (last 1h)</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ChartContainer className="h-[200px] w-full" config={chartConfig}>
+          <AreaChart
+            accessibilityLayer
+            data={chartData}
+            margin={{
+              left: 12,
+              right: 12,
+              top: 8,
+            }}
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="time"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              tickFormatter={(value) => value.slice(0, 3)}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent hideLabel />}
+            />
+            <Area
+              dataKey="events"
+              type="stepAfter"
+              stroke="var(--color-events)"
+              strokeWidth={2}
+              dot={false}
+            />
+          </AreaChart>
+        </ChartContainer>
+      </CardContent>
+      <CardFooter>
+        <ItemGroup className="sm:flex-row">
+          <Item variant={"muted"}>
+            <ItemContent>
+              <ItemDescription>Events today</ItemDescription>
+              <ItemTitle>1,247</ItemTitle>
+            </ItemContent>
+          </Item>
+          <Item variant={"muted"}>
+            <ItemContent>
+              <ItemDescription>Tool calls today</ItemDescription>
+              <ItemTitle>89</ItemTitle>
+            </ItemContent>
+          </Item>
+        </ItemGroup>
+      </CardFooter>
+    </Card>
+  )
+}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Workload Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1.5 text-xs">
+// ── Workload ──────────────────────────────────────────────────────────────────
+
+function WorkloadCard() {
+  return (
+    <Card className="h-min xl:w-[420px]">
+      <CardHeader>
+        <CardTitle>Workload Summary</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableBody>
             {[
               {
                 label: "Running tasks",
@@ -456,73 +586,17 @@ function ActivityAndWorkload() {
                 href: "/integrations",
               },
             ].map((row) => (
-              <Link
-                key={row.label}
-                href={row.href}
-                className="flex items-center justify-between rounded-sm px-1 py-0.5 transition-colors hover:bg-muted"
-              >
-                <span className="text-muted-foreground">{row.label}</span>
-                <span className="font-medium tabular-nums">{row.value}</span>
-              </Link>
+              <TableRow key={row.label}>
+                <TableCell className="text-muted-foreground">
+                  {row.label}
+                </TableCell>
+                <TableCell className="text-right font-medium tabular-nums">
+                  {row.value}
+                </TableCell>
+              </TableRow>
             ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-// ── Recent Audit ─────────────────────────────────────────────────────────────
-
-function RecentAudit() {
-  return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between">
-        <CardTitle>Recent Audit</CardTitle>
-        <Link
-          href="/audit"
-          className="flex items-center gap-1 text-xs text-primary hover:underline"
-        >
-          View full log
-          <ExternalLink className="size-3" />
-        </Link>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-0.5">
-          {auditEvents.slice(0, 10).map((evt) => (
-            <Link
-              key={evt.audit_id}
-              href={evt.trace_id ? `/traces/${evt.trace_id}` : "#"}
-              className="flex items-center gap-3 rounded-sm px-1 py-1 text-xs transition-colors hover:bg-muted"
-            >
-              <span className="w-20 shrink-0 font-mono text-muted-foreground tabular-nums">
-                {new Date(evt.timestamp).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                })}
-              </span>
-              <span className="w-40 shrink-0 truncate">
-                <Badge
-                  variant={
-                    evt.outcome === "success"
-                      ? "success"
-                      : evt.outcome === "failure"
-                        ? "destructive"
-                        : evt.outcome === "suppressed"
-                          ? "warning"
-                          : "secondary"
-                  }
-                >
-                  {evt.type}
-                </Badge>
-              </span>
-              <span className="flex-1 truncate text-muted-foreground">
-                {evt.summary}
-              </span>
-            </Link>
-          ))}
-        </div>
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   )
@@ -533,10 +607,15 @@ function RecentAudit() {
 export default function OverviewPage() {
   return (
     <div className="space-y-4 p-4">
-      <StatusStrip />
+      <div className="flex flex-col gap-4 xl:flex-row">
+        <ActivityCard />
+        <StatusStrip />
+      </div>
+      <div className="flex flex-col gap-4 xl:flex-row">
+        <RecentAudit />
+        <WorkloadCard />
+      </div>
       <NeedsAttention />
-      <ActivityAndWorkload />
-      <RecentAudit />
     </div>
   )
 }

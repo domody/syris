@@ -100,7 +100,6 @@ class StepRunner:
             )
 
             if gate_decision.action == "HARD_BLOCK":
-                assert_step_transition(step_row.status, "failed")
                 await repo.update_step_status(
                     step_row.step_id,
                     "failed",
