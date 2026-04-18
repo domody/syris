@@ -11,6 +11,8 @@ from .router import Router
 
 logger = logging.getLogger(__name__)
 
+CHAT_SOURCES: frozenset[str] = frozenset({"api.chat"})
+
 
 async def run_pipeline(
     raw: RawInput,
@@ -39,5 +41,11 @@ async def run_pipeline(
 
     decision = await router.route(event)
     result = await executor.execute(decision, event)
-    reply = await responder.respond(event, decision, result)
+
+    if event.source in CHAT_SOURCES:
+        reply = await responder.respond(event, decision, result)
+    else:
+        # stub: notification routing (e.g. push, webhook) will go here
+        reply = None
+
     return IngestResponse(execution=result, reply=reply)
