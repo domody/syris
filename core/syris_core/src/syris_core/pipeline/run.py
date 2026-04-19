@@ -11,7 +11,7 @@ from .router import Router
 
 logger = logging.getLogger(__name__)
 
-CHAT_SOURCES: frozenset[str] = frozenset({"api.chat"})
+CHAT_SOURCES: frozenset[str] = frozenset({"api.syris.chat"})
 
 
 async def run_pipeline(
