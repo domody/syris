@@ -41,8 +41,9 @@ class Executor:
     ) -> ExecutionResult:
         handler_fn = self._handlers.get(decision.handler)
 
+        _SILENT_NOOP_HANDLERS = {"unroutable", "llm_conversation"}
         if handler_fn is None:
-            if decision.handler != "unroutable":
+            if decision.handler not in _SILENT_NOOP_HANDLERS:
                 logger.warning(
                     "executor.no_handler handler=%s event_id=%s",
                     decision.handler,

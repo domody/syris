@@ -18,7 +18,6 @@ from ..observability.audit import AuditWriter
 from ..observability.heartbeat import HeartbeatService
 from ..pipeline.executor import Executor
 from ..pipeline.handlers import (
-    LLMConversationHandler,
     make_rule_create_handler,
     make_rule_disable_handler,
     make_rule_enable_handler,
@@ -47,6 +46,8 @@ from ..tools.registry import ToolRegistry
 from ..tasks.recovery import TaskRecovery
 from ..watchers.base import WatcherLoop
 from ..watchers.heartbeat import HeartbeatWatcher
+from ..notifications.notifier import Notifier
+from ..notifications.channels.ntfy import NtfyChannel
 
 logger = logging.getLogger(__name__)
 
@@ -178,8 +179,8 @@ class ControlPlane:
         async with session_scope(sessionmaker) as session:
             await recovery.reconcile(session)
 
-        # Pipeline executor: fastpath regex handler + LLM conversation handler
-        # ToolExecutor for direct pipeline dispatch carries the gate_checker
+        # Pipeline executor: fastpath regex handlers only.
+        # "llm_conversation" is handled by the Responder — no registration needed.
         tool_executor = ToolExecutor(tool_registry, tool_deps, gate_checker=gate_checker)
         pipeline_handlers = {
             "timer.set": make_timer_set_handler(sessionmaker),
@@ -187,7 +188,6 @@ class ControlPlane:
             "rule.enable": make_rule_enable_handler(sessionmaker, audit_writer),
             "rule.disable": make_rule_disable_handler(sessionmaker, audit_writer),
             "rule.create": make_rule_create_handler(sessionmaker, audit_writer),
-            "llm_conversation": LLMConversationHandler(llm_client=llm_client, session_maker=sessionmaker),
         }
 
         # Rules engine — evaluates IFTTT rules before routing
@@ -197,10 +197,14 @@ class ControlPlane:
         normalizer = Normalizer(audit_writer, session_maker=sessionmaker)
         router = Router(audit_writer)
         executor = Executor(audit_writer, handlers=pipeline_handlers)
-        responder = Responder(llm_client, audit_writer)
+        responder = Responder(llm_client, audit_writer, sessionmaker)
+        notifier = Notifier(audit_writer)
+
+        # Notification channels
+        notifier.register(NtfyChannel(topic="syris-f7k2mxqp94jw"))
 
         async def _pipeline(raw: RawInput) -> None:
-            await run_pipeline(raw, normalizer, router, executor, responder, rules_engine=rules_engine)
+            await run_pipeline(raw, normalizer, router, executor, responder, notifier=notifier, rules_engine=rules_engine)
 
         scheduler_loop = SchedulerLoop(sessionmaker, audit_writer, _pipeline)
         await scheduler_loop.start()
@@ -227,6 +231,7 @@ class ControlPlane:
         app.state.router = router
         app.state.executor = executor
         app.state.responder = responder
+        app.state.notifier = notifier
         app.state.autonomy_service = autonomy_service
         app.state.task_engine = task_engine
         app.state.scheduler_loop = scheduler_loop

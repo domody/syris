@@ -15,4 +15,5 @@ async def ingest(request: Request, body: RawInput) -> IngestResponse:
         router=request.app.state.router,
         executor=request.app.state.executor,
         responder=request.app.state.responder,
+        notifier=request.app.state.notifier,
     )

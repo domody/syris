@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 
 from ..rules.engine import RulesEngine
+from ..notifications.notifier import Notifier
 from ..schemas.events import RawInput
 from ..schemas.pipeline import IngestResponse
 from .executor import Executor
@@ -20,6 +21,7 @@ async def run_pipeline(
     router: Router,
     executor: Executor,
     responder: Responder,
+    notifier: Optional[Notifier] = None,
     rules_engine: Optional[RulesEngine] = None,
 ) -> IngestResponse:
     """Normalize → (Rules) → Route → Execute → Respond.
@@ -43,9 +45,17 @@ async def run_pipeline(
     result = await executor.execute(decision, event)
 
     if event.source in CHAT_SOURCES:
-        reply = await responder.respond(event, decision, result)
+        reply = await responder.respond(event, result)
     else:
         # stub: notification routing (e.g. push, webhook) will go here
         reply = None
+
+    if notifier is not None:
+        try:
+            await notifier.notify(event, decision, result)
+        except Exception:
+            logger.exception(
+                "notifer.notify failed event_id=%s — continuing", event.event_id
+            )
 
     return IngestResponse(execution=result, reply=reply)
