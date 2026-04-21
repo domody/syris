@@ -9,8 +9,8 @@ if TYPE_CHECKING:
 
 from ..observability.audit import AuditWriter
 from ..schemas.events import MessageEvent
-from ..schemas.llm import LLMChatRequest, LLMRequest, LLMResponse
-from ..schemas.pipeline import ExecutionResult, RouteDecision
+from ..schemas.llm import ChatMessage, LLMChatRequest, LLMRequest, LLMResponse
+from ..schemas.pipeline import ExecutionOutcome, ExecutionResult
 from .providers.base import BaseProvider
 
 logger = logging.getLogger(__name__)
@@ -39,67 +39,34 @@ class LLMClient:
         # Bounded cache of recent context bundles for the debug endpoint
         self._last_context: OrderedDict[UUID, Any] = OrderedDict()
 
-    async def respond(
+    async def chat(
         self,
         event: MessageEvent,
-        decision: RouteDecision,
-        result: ExecutionResult,
+        result: Optional[ExecutionResult] = None,
     ) -> LLMResponse:
-        """Build a prompt from *event* + *result* and call the provider.
-
-        Emits a single `stage="llm"` audit event with latency and outcome.
-        """
-        user_message = _build_user_message(event)
-        tool_result_context = _build_tool_result_context(result)
-
-        request = LLMRequest(
-            system_prompt=self._system_prompt,
-            user_message=user_message,
-            tool_result_context=tool_result_context,
-        )
-
-        async with self._audit.span(
-            event.trace_id,
-            stage="llm",
-            type="llm.response_completed",
-            summary=f"LLM responding to event {event.event_id} from {event.source}",
-            outcome="info",
-            ref_event_id=event.event_id,
-        ) as span:
-            logger.info(
-                "llm.response_completed event_id=%s",
-                event.event_id,
-            )
-            llm_response = await self._provider.complete(request)
-            span.outcome = "success"
-            span.summary = (
-                f"LLM response for event {event.event_id}: "
-                f"{llm_response.content[:80]!r}"
-            )
-
-        logger.info(
-            "llm.response_completed event_id=%s provider=%s model=%s latency_ms=%d",
-            event.event_id,
-            llm_response.provider,
-            llm_response.model,
-            llm_response.latency_ms,
-        )
-        return llm_response
-
-
-    async def chat(self, event: MessageEvent) -> LLMResponse:
         """Conversational LLM call with thread-scoped context.
 
-        When a ContextBuilder is configured, assembles full conversation
-        history and tool catalog into a multi-turn request. Falls back to
-        single-turn when no context builder is available.
+        Always uses the ContextBuilder for multi-turn history when available.
+        When *result* is provided and represents a completed execution (success
+        or failure), it is appended to the current user turn so the LLM can
+        reference what the system just did. Falls back to single-turn when no
+        context builder is configured.
         """
         content = event.content or str(event.structured)
         trace_id = event.trace_id
+        result_context = _build_result_context(result)
 
         if self._context_builder is not None:
             bundle = await self._context_builder.build(event)
             messages = self._context_builder.to_messages(bundle)
+
+            if result_context:
+                last = messages[-1]
+                messages[-1] = ChatMessage(
+                    role=last.role,
+                    content=f"{last.content}\n\n[Execution: {result_context}]",
+                )
+
             chat_request = LLMChatRequest(messages=messages)
 
             async with self._audit.span(
@@ -117,14 +84,17 @@ class LLMClient:
                 span.outcome = "success"
                 span.summary = f"LLM conversation reply: {llm_response.content[:80]!r}"
 
-            # Cache context bundle for debug endpoint
             self._last_context[trace_id] = bundle
             if len(self._last_context) > _MAX_CONTEXT_CACHE:
                 self._last_context.popitem(last=False)
         else:
+            user_message = content
+            if result_context:
+                user_message = f"{content}\n\n[Execution: {result_context}]"
+
             request = LLMRequest(
                 system_prompt=self._system_prompt,
-                user_message=content,
+                user_message=user_message,
             )
 
             async with self._audit.span(
@@ -262,16 +232,10 @@ class LLMClient:
         return tool_name, input_payload
 
 
-def _build_user_message(event: MessageEvent) -> str:
-    """Derive the user-turn text from a MessageEvent."""
-    if isinstance(event.content, str):
-        return event.content
-    # Structured content — use a compact representation
-    return str(event.content)
-
-
-def _build_tool_result_context(result: ExecutionResult) -> str | None:
-    """Include execution detail as context when it is meaningful."""
-    if result.outcome.value in ("success", "failure"):
+def _build_result_context(result: Optional[ExecutionResult]) -> str | None:
+    """Return a short execution summary when the result is meaningful."""
+    if result is None:
+        return None
+    if result.outcome in (ExecutionOutcome.SUCCESS, ExecutionOutcome.FAILURE):
         return f"handler={result.handler} outcome={result.outcome.value} detail={result.detail}"
     return None

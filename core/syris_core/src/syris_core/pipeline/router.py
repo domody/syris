@@ -42,13 +42,11 @@ class Router:
     async def route(self, event: MessageEvent) -> RouteDecision:
         handler, reason = self._resolve_handler(event)
 
-        response_mode = "passthrough" if handler == "llm_conversation" else "llm_response"
         decision = RouteDecision(
             event_id=event.event_id,
             trace_id=event.trace_id,
             handler=handler,
             reason=reason,
-            response_mode=response_mode,
         )
 
         await self._audit.emit(

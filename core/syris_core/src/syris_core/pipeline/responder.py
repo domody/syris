@@ -1,59 +1,60 @@
 import logging
 from typing import Any, Callable, Coroutine, Optional
 
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
 from ..llm.client import LLMClient
 from ..observability.audit import AuditWriter
 from ..schemas.events import MessageEvent
-from ..schemas.pipeline import ExecutionResult, RouteDecision
+from ..schemas.pipeline import ExecutionResult
+from ..storage.db import session_scope
+from ..storage.repos.events import EventRepo
 
 logger = logging.getLogger(__name__)
 
-# Optional hook for dispatching a reply back to the originating channel.
-# Signature: (event, response_text) → None. Injected at construction time;
-# when absent the response is generated but not dispatched externally.
 DispatchHook = Callable[[MessageEvent, str], Coroutine[Any, Any, None]]
 
 
 class Responder:
     """Generates an LLM reply and emits a response.sent audit event.
 
-    Returns the reply text so the caller can include it in the HTTP response.
-    Returns None for silent-mode events.
-
-    An optional *dispatch* hook can be injected to send the reply back to
-    the originating channel (e.g. a Slack adapter). Without it the reply is
-    returned to the caller and audited but not forwarded anywhere externally.
+    Single termination point for all chat-origin events. Always calls
+    client.chat() with full thread history; passes the execution result
+    when one exists so the LLM can reference what the system just did.
+    Persists the reply as a MessageEvent for conversation continuity.
     """
 
     def __init__(
         self,
         client: LLMClient,
         audit: AuditWriter,
+        session_maker: async_sessionmaker[AsyncSession],
         dispatch: Optional[DispatchHook] = None,
     ) -> None:
         self._client = client
         self._audit = audit
+        self._session_maker = session_maker
         self._dispatch = dispatch
 
     async def respond(
         self,
         event: MessageEvent,
-        decision: RouteDecision,
         result: ExecutionResult,
-    ) -> Optional[str]:
-        """Compose and (optionally) dispatch a reply.
+    ) -> str:
+        """Compose, persist, and (optionally) dispatch a reply."""
+        llm_response = await self._client.chat(event, result=result)
 
-        Returns the reply text when a reply is generated, or None for
-        silent-mode events.
-        """
-        if decision.response_mode == "silent":
-            return None
+        reply = llm_response.content
 
-        if decision.response_mode == "passthrough":
-            reply = result.detail
-        else:
-            llm_response = await self._client.respond(event, decision, result)
-            reply = llm_response.content
+        reply_event = MessageEvent(
+            trace_id=event.trace_id,
+            thread_id=event.thread_id,
+            source="llm",
+            content=reply,
+            parent_event_id=event.event_id,
+        )
+        async with session_scope(self._session_maker) as session:
+            await EventRepo(session).create(reply_event)
 
         if self._dispatch is not None:
             await self._dispatch(event, reply)

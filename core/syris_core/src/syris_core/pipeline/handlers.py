@@ -1,15 +1,9 @@
 """
 Pipeline handler implementations.
 
-Only two handlers live here:
-
-  make_timer_set_handler   — Fastpath for regex-matched timer/reminder events.
-                             Bypasses the LLM entirely for low-latency scheduling.
-
-  LLMConversationHandler   — Primary handler for all non-fastpath events.
-                             Makes a single conversational LLM call and returns
-                             the response text. The Responder dispatches it as-is
-                             (passthrough mode — no second LLM call).
+Fastpath handlers match specific regex patterns and bypass the LLM for low-latency
+execution. Non-fastpath events route to "llm_conversation" (no handler registered);
+the Responder handles the LLM call for those.
 
 All other system capabilities (schedules, tasks, approvals, autonomy) are
 tools in the tool registry (tools/built_in/) and are invoked through the
@@ -22,14 +16,12 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from ..llm.client import LLMClient
 from ..observability.audit import AuditWriter
 from ..scheduler.loop import compute_initial_next_run
 from ..schemas.events import MessageEvent
 from ..schemas.pipeline import RouteDecision
 from ..storage.db import session_scope
 from ..storage.models import RuleRow, ScheduleRow
-from ..storage.repos.events import EventRepo
 from ..storage.repos.rules import RuleRepo
 from ..storage.repos.schedules import ScheduleRepo
 from .executor import PipelineHandler
@@ -106,43 +98,6 @@ def make_timer_set_handler(
 
     return handler
 
-
-class LLMConversationHandler:
-    """
-    Primary pipeline handler for non-fastpath events.
-
-    Makes a conversational LLM call with thread-scoped context and returns
-    the response text. Persists the assistant reply as a MessageEvent so
-    future turns in the same thread can see it.
-
-    The Responder dispatches it as-is (response_mode="passthrough") — no
-    second LLM call is made.
-    """
-
-    def __init__(
-        self,
-        llm_client: LLMClient,
-        session_maker: async_sessionmaker[AsyncSession],
-    ) -> None:
-        self._llm = llm_client
-        self._session_maker = session_maker
-
-    async def __call__(self, event: MessageEvent, decision: RouteDecision) -> str:
-        llm_response = await self._llm.chat(event)
-
-        # Persist assistant reply so conversation history is complete
-        reply_event = MessageEvent(
-            trace_id=event.trace_id,
-            thread_id=event.thread_id,
-            source="llm",
-            content=llm_response.content,
-            parent_event_id=event.event_id,
-        )
-        async with session_scope(self._session_maker) as session:
-            await EventRepo(session).create(reply_event)
-
-        logger.info("llm_conversation.replied event_id=%s", event.event_id)
-        return llm_response.content
 
 
 def make_rule_list_handler(
