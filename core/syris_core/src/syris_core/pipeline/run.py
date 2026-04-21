@@ -47,15 +47,15 @@ async def run_pipeline(
     if event.source in CHAT_SOURCES:
         reply = await responder.respond(event, result)
     else:
-        # stub: notification routing (e.g. push, webhook) will go here
         reply = None
+        
+        if notifier is not None:
+            try:
+                await notifier.notify(event, decision, result)
+            except Exception:
+                logger.exception(
+                    "notifer.notify failed event_id=%s — continuing", event.event_id
+                )
 
-    if notifier is not None:
-        try:
-            await notifier.notify(event, decision, result)
-        except Exception:
-            logger.exception(
-                "notifer.notify failed event_id=%s — continuing", event.event_id
-            )
 
     return IngestResponse(execution=result, reply=reply)
