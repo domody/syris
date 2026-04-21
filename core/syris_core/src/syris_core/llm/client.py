@@ -5,13 +5,26 @@ from typing import TYPE_CHECKING, Any, Optional
 from uuid import UUID
 
 if TYPE_CHECKING:
+    from ..tools.executor import ToolExecutor
+    from ..tools.registry import ToolRegistry
     from .context import ContextBuilder
 
 from ..observability.audit import AuditWriter
 from ..schemas.events import MessageEvent
-from ..schemas.llm import ChatMessage, LLMChatRequest, LLMRequest, LLMResponse
+from ..schemas.llm import (
+    ChatMessage,
+    LLMChatRequest,
+    LLMRequest,
+    LLMResponse,
+    ToolDefinition,
+)
 from ..schemas.pipeline import ExecutionOutcome, ExecutionResult
-from .providers.base import BaseProvider
+from ..tools.executor import (
+    ToolGatedError,
+    ToolNotFoundError,
+    ToolValidationError,
+)
+from .providers.base import BaseProvider, ToolRunner
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +44,15 @@ class LLMClient:
         audit: AuditWriter,
         system_prompt: str,
         context_builder: Optional["ContextBuilder"] = None,
+        tool_executor: Optional["ToolExecutor"] = None,
+        tool_registry: Optional["ToolRegistry"] = None,
     ) -> None:
         self._provider = provider
         self._audit = audit
         self._system_prompt = system_prompt
         self._context_builder = context_builder
+        self._tool_executor = tool_executor
+        self._tool_registry = tool_registry
         # Bounded cache of recent context bundles for the debug endpoint
         self._last_context: OrderedDict[UUID, Any] = OrderedDict()
 
@@ -68,6 +85,7 @@ class LLMClient:
                 )
 
             chat_request = LLMChatRequest(messages=messages)
+            tools_list, tool_runner_fn = self._build_tool_calling(trace_id)
 
             async with self._audit.span(
                 trace_id,
@@ -80,9 +98,15 @@ class LLMClient:
                     "llm.conversation trace_id=%s thread_id=%s turns=%d",
                     trace_id, event.thread_id, len(bundle.conversation_history),
                 )
-                llm_response = await self._provider.chat(chat_request)
+                llm_response = await self._provider.chat(
+                    chat_request, tools=tools_list, tool_runner=tool_runner_fn,
+                )
                 span.outcome = "success"
-                span.summary = f"LLM conversation reply: {llm_response.content[:80]!r}"
+                span.summary = (
+                    f"LLM conversation reply "
+                    f"({llm_response.tool_iterations or 0} tool rounds): "
+                    f"{llm_response.content[:80]!r}"
+                )
 
             self._last_context[trace_id] = bundle
             if len(self._last_context) > _MAX_CONTEXT_CACHE:
@@ -121,6 +145,54 @@ class LLMClient:
     def get_cached_context(self, trace_id: UUID) -> Any:
         """Return the cached ContextBundle for a trace_id, or None."""
         return self._last_context.get(trace_id)
+
+    def _build_tool_calling(
+        self,
+        trace_id: UUID,
+    ) -> tuple[list[ToolDefinition] | None, ToolRunner | None]:
+        """Build the tools list + per-request tool_runner closure.
+
+        Returns (None, None) when the executor or registry are not wired —
+        the provider then runs as plain chat. Otherwise the closure
+        captures *trace_id*, dispatches through the gated ToolExecutor,
+        and coerces every failure mode into a JSON tool message so the
+        provider loop never aborts mid-turn.
+        """
+        if self._tool_executor is None or self._tool_registry is None:
+            return None, None
+
+        tools_list = self._tool_registry.llm_openai_tools()
+        executor = self._tool_executor
+
+        async def _run_tool(
+            name: str, args: dict[str, Any], tool_call_id: str
+        ) -> str:
+            idem = f"llm:{trace_id}:{tool_call_id}"
+            try:
+                result = await executor.execute(
+                    name, args, trace_id=trace_id, idempotency_key=idem,
+                )
+                return json.dumps(
+                    {"summary": result.summary, "data": result.data},
+                    default=str,
+                )
+            except ToolGatedError as exc:
+                return json.dumps(
+                    {"error": "gated", "action": exc.gate_action, "message": str(exc)}
+                )
+            except ToolNotFoundError as exc:
+                return json.dumps(
+                    {"error": "tool_not_found", "message": str(exc)}
+                )
+            except ToolValidationError as exc:
+                return json.dumps(
+                    {"error": "validation_failed", "message": str(exc)}
+                )
+            except Exception as exc:
+                logger.exception("tool_runner unexpected failure tool=%s", name)
+                return json.dumps({"error": "unexpected", "message": str(exc)})
+
+        return tools_list, _run_tool
 
     async def classify_intent(
         self,

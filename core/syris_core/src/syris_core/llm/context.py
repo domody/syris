@@ -96,7 +96,7 @@ class ContextBuilder:
 
             stmt = (
                 select(AuditEventRow)
-                .where(AuditEventRow.trace_id == event.trace_id)
+                .where(AuditEventRow.trace_id == event.trace_id) # type: ignore
                 .order_by(AuditEventRow.timestamp.desc())
                 .limit(10)
             )

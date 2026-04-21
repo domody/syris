@@ -152,6 +152,10 @@ class ControlPlane:
         tool_registry = ToolRegistry()
         register_built_ins(tool_registry)
 
+        # Construct ToolExecutor early — LLMClient and pipeline share the
+        # same gated instance for LLM-initiated and direct dispatch.
+        tool_executor = ToolExecutor(tool_registry, tool_deps, gate_checker=gate_checker)
+
         # LLM client with context builder (needs tool_registry to be populated)
         ollama_provider = OllamaProvider(
             self._settings.llm.base_url, self._settings.llm.model
@@ -160,6 +164,8 @@ class ControlPlane:
         llm_client = LLMClient(
             ollama_provider, audit_writer, self._settings.llm.system_prompt,
             context_builder=context_builder,
+            tool_executor=tool_executor,
+            tool_registry=tool_registry,
         )
 
         # Task engine — step handlers from registry (gate owned by StepRunner)
@@ -181,7 +187,6 @@ class ControlPlane:
 
         # Pipeline executor: fastpath regex handlers only.
         # "llm_conversation" is handled by the Responder — no registration needed.
-        tool_executor = ToolExecutor(tool_registry, tool_deps, gate_checker=gate_checker)
         pipeline_handlers = {
             "timer.set": make_timer_set_handler(sessionmaker),
             "rule.list": make_rule_list_handler(sessionmaker),

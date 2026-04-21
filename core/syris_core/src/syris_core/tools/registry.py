@@ -7,6 +7,7 @@ is effectively immutable for the lifetime of the process.
 import logging
 from typing import Any, Callable, Coroutine, Iterator
 
+from ..schemas.llm import ToolDefinition, ToolFunctionSpec
 from .base import BaseTool, ToolDeps
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,19 @@ class ToolRegistry:
             lines.append(f"    args: {args_str}")
 
         return "\n".join(lines)
+
+    def llm_openai_tools(self) -> list[ToolDefinition]:
+        """Return OpenAI-format tool definitions for native function calling."""
+        return [
+            ToolDefinition(
+                function=ToolFunctionSpec(
+                    name=cls.name,
+                    description=cls.description,
+                    parameters=cls.args_schema.model_json_schema(),
+                )
+            )
+            for cls in (self._tools[n] for n in self.names())
+        ]
 
     def as_step_handlers(self, deps: ToolDeps) -> dict[str, StepHandler]:
         """

@@ -4,8 +4,8 @@ from typing import Any
 
 import httpx
 
-from ...schemas.llm import LLMChatRequest, LLMRequest, LLMResponse
-from .base import BaseProvider
+from ...schemas.llm import LLMChatRequest, LLMRequest, LLMResponse, ToolDefinition
+from .base import BaseProvider, ToolRunner
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +62,18 @@ class SGLangProvider(BaseProvider):
             completion_tokens=usage.get("completion_tokens"),
         )
 
-    async def chat(self, request: LLMChatRequest) -> LLMResponse:
-        """Multi-turn chat completion with full message history."""
+    async def chat(
+        self,
+        request: LLMChatRequest,
+        *,
+        tools: list[ToolDefinition] | None = None,
+        tool_runner: ToolRunner | None = None,
+    ) -> LLMResponse:
+        """Multi-turn chat completion with full message history.
+
+        Tool calling is not yet implemented for SGLang — *tools* and
+        *tool_runner* are accepted for interface parity but ignored.
+        """
         messages = [{"role": m.role, "content": m.content} for m in request.messages]
         payload: dict[str, Any] = {"model": self._model, "messages": messages}
 
