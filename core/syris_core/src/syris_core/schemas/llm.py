@@ -80,5 +80,6 @@ class LLMResponse(BaseModel):
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
     tool_iterations: Optional[int] = None  # number of round-trips when tool-calling
+    thinking: Optional[str] = None  # extended thinking output, when supported by provider
 
     model_config = {"frozen": True}

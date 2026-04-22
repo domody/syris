@@ -117,7 +117,7 @@ class OllamaProvider(BaseProvider):
 
                 response.raise_for_status()
                 data = response.json()
-
+                thinking: str | None = data.get("thinking")
                 msg = data["choices"][0]["message"]
                 content: str | None = msg.get("content")
                 tool_calls_raw: list[dict[str, Any]] | None = msg.get("tool_calls")
@@ -158,6 +158,7 @@ class OllamaProvider(BaseProvider):
                         prompt_tokens=last_usage.get("prompt_tokens"),
                         completion_tokens=last_usage.get("completion_tokens"),
                         tool_iterations=iteration,
+                        thinking=thinking
                     )
 
                 # Execute every tool call in this turn (sequential).
@@ -197,6 +198,7 @@ class OllamaProvider(BaseProvider):
             prompt_tokens=last_usage.get("prompt_tokens"),
             completion_tokens=last_usage.get("completion_tokens"),
             tool_iterations=_MAX_TOOL_ITERATIONS,
+            thinking=thinking
         )
 
 

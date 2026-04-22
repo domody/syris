@@ -45,17 +45,16 @@ async def run_pipeline(
     result = await executor.execute(decision, event)
 
     if event.source in CHAT_SOURCES:
-        reply = await responder.respond(event, result)
+        thinking, reply = await responder.respond(event, result)
     else:
-        reply = None
-        
-        if notifier is not None:
-            try:
-                await notifier.notify(event, decision, result)
-            except Exception:
-                logger.exception(
-                    "notifer.notify failed event_id=%s — continuing", event.event_id
-                )
+        thinking, reply = None, None
 
+    if notifier is not None:
+        try:
+            await notifier.notify(event, decision, result)
+        except Exception:
+            logger.exception(
+                "notifer.notify failed event_id=%s — continuing", event.event_id
+            )
 
-    return IngestResponse(execution=result, reply=reply)
+    return IngestResponse(execution=result, reply=reply, thinking=thinking)

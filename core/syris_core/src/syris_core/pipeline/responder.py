@@ -40,10 +40,15 @@ class Responder:
         self,
         event: MessageEvent,
         result: ExecutionResult,
-    ) -> str:
-        """Compose, persist, and (optionally) dispatch a reply."""
+    ) -> tuple[str | None, str]:
+        """Compose, persist, and (optionally) dispatch a reply.
+
+        Returns (thinking, reply) — thinking is None when the provider does
+        not emit extended thinking output.
+        """
         llm_response = await self._client.chat(event, result=result)
 
+        thinking = llm_response.thinking
         reply = llm_response.content
 
         reply_event = MessageEvent(
@@ -77,4 +82,4 @@ class Responder:
             event.source,
             len(reply),
         )
-        return reply
+        return thinking, reply

@@ -50,3 +50,4 @@ class IngestResponse(BaseModel):
 
     execution: ExecutionResult
     reply: Optional[str] = None
+    thinking: Optional[str] = None
