@@ -9,9 +9,9 @@ from .version import VERSION
 class LLMSettings(BaseModel):
     """Configuration for the LLM provider used by the responder."""
 
-    provider: Literal["sglang", "ollama"] = "ollama"
+    provider: Literal["sglang", "ollama", "groq", "cerebras"] = "groq"
     base_url: str = "http://localhost:11434"
-    model: str = "gemma4:latest"
+    model: str = "llama-3.1-8b-instant"
     timeout_s: int = Field(default=30, ge=1, le=300)
     system_prompt: str = (
         "You are SYRIS, an always-on automation control plane. "

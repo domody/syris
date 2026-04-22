@@ -13,7 +13,11 @@ from ..events.bus import EventBus
 from ..logging import configure_logging
 from ..llm.client import LLMClient
 from ..llm.context import ContextBuilder
+from ..llm.providers.base import BaseProvider
+from ..llm.providers.cerebras import CerebrasProvider
+from ..llm.providers.groq import GroqProvider
 from ..llm.providers.ollama import OllamaProvider
+from ..llm.providers.sglang import SGLangProvider
 from ..observability.audit import AuditWriter
 from ..observability.heartbeat import HeartbeatService
 from ..pipeline.executor import Executor
@@ -72,6 +76,22 @@ class _SessionedApprovalRepo:
     async def create(self, approval: Approval) -> ApprovalRow:
         async with session_scope(self._sm) as session:
             return await ApprovalRepo(session).create(approval)
+
+
+def _build_llm_provider(settings: Settings) -> BaseProvider:
+    """Instantiate the configured LLM provider from settings."""
+    llm = settings.llm
+    match llm.provider:
+        case "ollama":
+            return OllamaProvider(llm.base_url, llm.model, llm.timeout_s)
+        case "sglang":
+            return SGLangProvider(llm.base_url, llm.model, llm.timeout_s)
+        case "groq":
+            return GroqProvider(llm.model, llm.timeout_s)
+        case "cerebras":
+            return CerebrasProvider(llm.model, llm.timeout_s)
+        case _:
+            raise ValueError(f"Unknown LLM provider: {llm.provider!r}")
 
 
 async def _noop_get_secret(connector_id: str, key: str) -> str:
@@ -157,12 +177,10 @@ class ControlPlane:
         tool_executor = ToolExecutor(tool_registry, tool_deps, gate_checker=gate_checker)
 
         # LLM client with context builder (needs tool_registry to be populated)
-        ollama_provider = OllamaProvider(
-            self._settings.llm.base_url, self._settings.llm.model
-        )
+        llm_provider = _build_llm_provider(self._settings)
         context_builder = ContextBuilder(sessionmaker, tool_registry)
         llm_client = LLMClient(
-            ollama_provider, audit_writer, self._settings.llm.system_prompt,
+            llm_provider, audit_writer, self._settings.llm.system_prompt,
             context_builder=context_builder,
             tool_executor=tool_executor,
             tool_registry=tool_registry,
