@@ -5,6 +5,7 @@ from ..schemas.notifications import Notification, NotificationChannel
 from ..schemas.events import MessageEvent
 from ..schemas.pipeline import RouteDecision, ExecutionResult
 
+
 class Notifier:
     def __init__(self, audit: AuditWriter):
         self._audit = audit
@@ -16,17 +17,19 @@ class Notifier:
     async def notify(self, event: MessageEvent, decision: RouteDecision, result: ExecutionResult) -> None:
         notification = self._build(event, decision, result)
 
-        await asyncio.gather(
-            *(channel.send(notification) for channel in self._channels),
-            return_exceptions=True
-        )
-        
-        # Alternative method for sequential notification sending is below
-        # If one notification hangs, then everything blocks, above method
-        # is safer.
-        
-        # for channel in self._channels:
-        #     await channel.send(notification)
+        async with self._audit.span(
+            event.trace_id,
+            stage="notification",
+            type="notification.sent",
+            summary=f"Sending notification via {len(self._channels)} channel(s) for handler={decision.handler}",
+            ref_event_id=event.event_id,
+        ) as span:
+            await asyncio.gather(
+                *(channel.send(notification) for channel in self._channels),
+                return_exceptions=True,
+            )
+            span.outcome = "success"
+            span.summary = f"Notification sent via {len(self._channels)} channel(s) for handler={decision.handler} source={event.source}"
 
     def _build(self, event: MessageEvent, decision: RouteDecision, result: ExecutionResult) -> Notification:
         return Notification(

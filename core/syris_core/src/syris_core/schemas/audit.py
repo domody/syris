@@ -19,6 +19,7 @@ AuditStage = Literal[
     "mcp",
     "task",
     "llm",
+    "notification",
 ]
  
 RiskLevel = Literal["low", "medium", "high", "critical"]
