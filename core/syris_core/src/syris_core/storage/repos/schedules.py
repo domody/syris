@@ -37,6 +37,11 @@ class ScheduleRepo:
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
+    async def find_by_name(self, name: str) -> list[ScheduleRow]:
+        stmt = select(ScheduleRow).where(ScheduleRow.name == name)
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     async def update_fields(self, schedule_id: UUID, **fields: Any) -> Optional[ScheduleRow]:
         fields["updated_at"] = datetime.now(timezone.utc)
         stmt = (

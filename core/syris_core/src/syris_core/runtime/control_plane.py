@@ -22,10 +22,18 @@ from ..observability.audit import AuditWriter
 from ..observability.heartbeat import HeartbeatService
 from ..pipeline.executor import Executor
 from ..pipeline.handlers import (
-    make_rule_create_handler,
+    make_approval_approve_handler,
+    make_approval_deny_handler,
+    make_approval_list_handler,
+    make_autonomy_set_handler,
     make_rule_disable_handler,
     make_rule_enable_handler,
     make_rule_list_handler,
+    make_schedule_cancel_handler,
+    make_schedule_list_handler,
+    make_schedule_pause_handler,
+    make_task_cancel_handler,
+    make_task_status_handler,
     make_timer_set_handler,
 )
 from ..rules.engine import RulesEngine
@@ -207,11 +215,20 @@ class ControlPlane:
         # Pipeline executor: fastpath regex handlers only.
         # "llm_conversation" is handled by the Responder — no registration needed.
         pipeline_handlers = {
-            "timer.set": make_timer_set_handler(sessionmaker),
-            "rule.list": make_rule_list_handler(sessionmaker),
-            "rule.enable": make_rule_enable_handler(sessionmaker, audit_writer),
-            "rule.disable": make_rule_disable_handler(sessionmaker, audit_writer),
-            "rule.create": make_rule_create_handler(sessionmaker, audit_writer),
+            "timer.set":        make_timer_set_handler(sessionmaker),
+            "task.status":      make_task_status_handler(sessionmaker),
+            "task.cancel":      make_task_cancel_handler(sessionmaker, audit_writer),
+            "autonomy.set":     make_autonomy_set_handler(autonomy_service, audit_writer),
+            "approval.list":    make_approval_list_handler(sessionmaker),
+            "approval.approve": make_approval_approve_handler(sessionmaker, audit_writer),
+            "approval.deny":    make_approval_deny_handler(sessionmaker, audit_writer),
+            "schedule.list":    make_schedule_list_handler(sessionmaker),
+            "schedule.cancel":  make_schedule_cancel_handler(sessionmaker, audit_writer),
+            "schedule.pause":   make_schedule_pause_handler(sessionmaker, audit_writer),
+            "rule.list":        make_rule_list_handler(sessionmaker),
+            "rule.enable":      make_rule_enable_handler(sessionmaker, audit_writer),
+            "rule.disable":     make_rule_disable_handler(sessionmaker, audit_writer),
+            # rule.create: no fastpath route, not registered
         }
 
         # Rules engine — evaluates IFTTT rules before routing

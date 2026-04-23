@@ -17,6 +17,7 @@ from ..schemas.llm import (
     LLMRequest,
     LLMResponse,
     ToolDefinition,
+    ToolCallFunction,
 )
 from ..schemas.pipeline import ExecutionOutcome, ExecutionResult
 from ..tools.executor import (

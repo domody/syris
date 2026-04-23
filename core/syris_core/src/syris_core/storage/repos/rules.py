@@ -29,6 +29,11 @@ class RuleRepo:
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
+    async def find_by_name(self, name: str) -> list[RuleRow]:
+        stmt = select(RuleRow).where(RuleRow.name == name)
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     async def update_fields(self, rule_id: UUID, **fields: Any) -> Optional[RuleRow]:
         fields["updated_at"] = datetime.now(timezone.utc)
         stmt = (
