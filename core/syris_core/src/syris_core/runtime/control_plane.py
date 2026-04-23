@@ -171,7 +171,8 @@ class ControlPlane:
         )
         tool_registry = ToolRegistry()
         register_built_ins(tool_registry)
-
+        logger.info("Built In tools registered: %s", tool_registry._tools)
+        
         # Construct ToolExecutor early — LLMClient and pipeline share the
         # same gated instance for LLM-initiated and direct dispatch.
         tool_executor = ToolExecutor(tool_registry, tool_deps, gate_checker=gate_checker)

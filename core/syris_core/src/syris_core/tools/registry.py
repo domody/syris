@@ -107,6 +107,20 @@ class ToolRegistry:
             for cls in (self._tools[n] for n in self.names())
         ]
 
+    def llm_namespace_catalog(self) -> list[str]:
+        """Return sorted unique namespace prefixes from all registered tool names.
+
+        A namespace is the segment before the first dot in a tool name.
+        Example: 'schedule.create', 'schedule.list', 'task.cancel' → ['schedule', 'task'].
+        Used by LLMambiguityRouter to give the LLM a coarse capability surface
+        without exposing full tool definitions.
+        """
+        namespaces: set[str] = set()
+        for name in self._tools:
+            dot_idx = name.find(".")
+            namespaces.add(name[:dot_idx] if dot_idx > 0 else name)
+        return sorted(namespaces)
+
     def as_step_handlers(self, deps: ToolDeps) -> dict[str, StepHandler]:
         """
         Build a dict[str, StepHandler] for TaskEngine injection.

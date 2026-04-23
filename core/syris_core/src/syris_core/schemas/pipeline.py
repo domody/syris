@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class RouteDecision(BaseModel):
@@ -51,3 +51,42 @@ class IngestResponse(BaseModel):
     execution: ExecutionResult
     reply: Optional[str] = None
     thinking: Optional[str] = None
+
+
+class AmbiguityDecision(str, enum.Enum):
+    TOOL_CALL = "tool_call"
+    AGENT = "agent"
+    NOTIFY = "notify"
+    DISCARD = "discard"
+    ESCALATE = "escalate"
+
+
+class LLMRoutingDecision(BaseModel):
+    """Output of LLMambiguityRouter — a coarse routing decision for a non-chat event.
+
+    namespace is populated ONLY for tool_call decisions; the model_validator
+    enforces this for any construction path.
+    """
+
+    decision: AmbiguityDecision
+    namespace: Optional[str] = None
+    reason: str
+    # TODO: replace self-reported confidence with deterministic scoring derived
+    # from token-level log-probabilities once the provider surfaces them.
+    confidence: float = 0.0
+
+    model_config = {"frozen": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_namespace(cls, values: dict) -> dict:
+        """Strip namespace for any non-tool_call decision."""
+        decision_raw = values.get("decision")
+        decision_val = (
+            decision_raw.value
+            if isinstance(decision_raw, AmbiguityDecision)
+            else decision_raw
+        )
+        if decision_val != AmbiguityDecision.TOOL_CALL.value:
+            values["namespace"] = None
+        return values
