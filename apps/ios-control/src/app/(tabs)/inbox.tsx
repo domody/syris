@@ -16,8 +16,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Middot } from "@/components/mid-dot";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import { Middot } from "@/components/ui/mid-dot";
 import { Colors } from "@/constants/theme";
 
 // ─── Types ────────────────────────────────────────────────────────────────────

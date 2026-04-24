@@ -8,9 +8,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { LiveActivityCard } from "@/components/live-activity";
+import { Middot } from "@/components/mid-dot";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Middot } from "@/components/ui/mid-dot";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatusDot } from "@/components/ui/status-dot";
 import { TraceId } from "@/components/ui/trace-id";
@@ -193,7 +194,7 @@ export default function OverviewScreen() {
           }
         />
 
-        <Pressable className="bg-blue-500/10 dark:bg-blue-400/10 border border-blue-500/20 dark:border-blue-400/20 rounded-xl p-4 active:opacity-70">
+        <LiveActivityCard>
           <View className="flex-row justify-between items-center mb-2">
             <View className="flex-row items-center gap-2">
               <SymbolView
@@ -213,25 +214,22 @@ export default function OverviewScreen() {
               00:47
             </Text>
           </View>
-
           <Text className="text-[15px] font-medium tracking-tight text-foreground mb-2">
             Drafting daily brief <Middot /> step 3 of 5
           </Text>
-
           <View className="h-1 bg-border rounded-full overflow-hidden mb-2.5">
             <View
               className="h-full bg-blue-500 dark:bg-blue-400 rounded-full"
               style={{ width: "60%" }}
             />
           </View>
-
           <View className="flex-row items-center gap-1.5">
             <Badge label="LLM" variant="info" />
             <Text className="text-[10px] font-mono text-muted">
               synthesizing calendar + mail triage
             </Text>
           </View>
-        </Pressable>
+        </LiveActivityCard>
 
         {/* ── Needs Attention ── */}
         <SectionHeader
