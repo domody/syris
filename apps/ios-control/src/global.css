@@ -1,9 +1,70 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+
+@import "nativewind/theme";
+
+/* Design tokens — dark values are primary (default), matching SYRIS Control surface */
+@theme {
+  --color-background: oklch(0.145 0 0);
+  --color-surface: oklch(0.205 0 0);
+  --color-border: oklch(1 0 0 / 10%);
+  --color-foreground: oklch(0.985 0 0);
+  --color-muted: oklch(0.708 0 0);
+  --color-accent: oklch(0.6238 0.1499 251.76);
+  --color-success: oklch(0.696 0.17 145.7);
+  --color-warning: oklch(0.773 0.168 72.2);
+  --color-error: oklch(0.704 0.191 22.216);
+  --color-info: oklch(0.6238 0.1499 251.76);
+
+  /* Extended SYRIS tokens */
+  --color-card: oklch(0.205 0 0);
+  --color-secondary: oklch(0.274 0.006 286.033);
+  --color-popover: oklch(0.21 0.006 285.885);
+  --color-destructive: oklch(0.704 0.191 22.216);
+  --color-pending: oklch(0.6238 0.1499 251.76);
+
+  /* Radius scale */
+  --radius: 0.45rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+}
+
+/* Light mode overrides — SYRIS Docs surface */
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-background: oklch(1 0 0);
+    --color-surface: oklch(0.985 0 0);
+    --color-border: oklch(0.92 0.004 286.32);
+    --color-foreground: oklch(0.141 0.005 285.823);
+    --color-muted: oklch(0.552 0.016 285.938);
+    --color-accent: oklch(0.6238 0.1499 251.76);
+    --color-success: oklch(0.527 0.154 150.069);
+    --color-warning: oklch(0.7618 0.163 72);
+    --color-error: oklch(0.577 0.245 27.325);
+    --color-info: oklch(0.6238 0.1499 251.76);
+
+    --color-card: oklch(1 0 0);
+    --color-secondary: oklch(0.967 0.001 286.375);
+    --color-popover: oklch(1 0 0);
+    --color-destructive: oklch(0.577 0.245 27.325);
+    --color-pending: oklch(0.6238 0.1499 251.76);
+  }
+}
+
+/* Fonts — unchanged from original */
 :root {
   --font-display:
-    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
-    Segoe UI Symbol, Noto Color Emoji;
+    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif,
+    Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
   --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
-  --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    Liberation Mono, Courier New, monospace;
+  --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo,
+    'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
 }

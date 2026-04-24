@@ -1,0 +1,57 @@
+# Expo / React Native build output 
+.expo/
+dist/
+build/
+android/
+ios/
+web-build/
+expo-env.d.ts
+
+# Metro bundler 
+.metro-health-check*
+metro.config.js.bak
+
+# Dependencies 
+node_modules/
+
+# Bun 
+bun.lockb
+.bun/
+
+# NativeWind / Tailwind generated 
+.tailwind/
+nativewind-env.d.ts
+
+# Editor 
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS noise 
+.DS_Store
+Thumbs.db
+
+# Environment / secrets 
+.env
+.env.*
+!.env.example
+
+# Logs 
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript build info 
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Jest / coverage (no tests yet, but ignore if added) 
+coverage/
+.jest-cache/
+
+# Misc generated 
+*.orig
+.cache/
+tmp/
