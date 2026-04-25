@@ -4,9 +4,6 @@
     "appVersionSource": "remote"
   },
   "build": {
-    "base": {
-      "projectRootDirectory": "apps/ios-control"
-    },
     "development": {
       "developmentClient": true,
       "distribution": "internal"
