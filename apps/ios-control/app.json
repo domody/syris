@@ -1,14 +1,18 @@
 {
   "expo": {
     "name": "ios-control",
-    "slug": "ios-control",
+    "slug": "syris-ios-control",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "ioscontrol",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.syris.control",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -39,6 +43,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ef34958c-0338-4e7c-b4c2-f3eaf7a2245d"
+      }
+    },
+    "owner": "domody"
   }
 }
