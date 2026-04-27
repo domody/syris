@@ -1,11 +1,12 @@
 import { useTheme } from "@shopify/restyle";
+import { GlassView } from "expo-glass-effect";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useRef, useState } from "react";
 import {
+  FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -23,8 +24,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { TraceId } from "@/components/ui/trace-id";
-import { monoFont, type Theme } from "@/theme";
 import { useSystemStore } from "@/stores/use-system-store";
+import { monoFont, type Theme } from "@/theme";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -92,7 +93,8 @@ const INITIAL_EXCHANGES: Exchange[] = [
       traceId: "01JH7A4K6N",
       timestamp: "09:14:23",
       taskId: "tsk_01JH7B2QX",
-      summary: "morning_brief agent queued — calendar + mail triage, daily digest generation",
+      summary:
+        "morning_brief agent queued — calendar + mail triage, daily digest generation",
       steps: 5,
     },
   },
@@ -313,7 +315,10 @@ function ThinkingBubble() {
         withRepeat(
           withSequence(
             withTiming(1, { duration: 480, easing: Easing.inOut(Easing.ease) }),
-            withTiming(0.4, { duration: 480, easing: Easing.inOut(Easing.ease) }),
+            withTiming(0.4, {
+              duration: 480,
+              easing: Easing.inOut(Easing.ease),
+            }),
             withTiming(0.4, { duration: 240 }),
           ),
           -1,
@@ -358,7 +363,14 @@ function ThinkingBubble() {
         <Animated.View style={[dotStyle, s2]} />
         <Animated.View style={[dotStyle, s3]} />
       </View>
-      <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted, paddingHorizontal: 4 }}>
+      <Text
+        style={{
+          fontSize: 10,
+          fontFamily: monoFont,
+          color: colors.muted,
+          paddingHorizontal: 4,
+        }}
+      >
         routing · rules → LLM fallback
       </Text>
     </View>
@@ -400,10 +412,14 @@ function TaskCreatedContent({ r }: { r: TaskCreatedResponse }) {
           gap: 6,
         }}
       >
-        <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 17 }}>
+        <Text
+          style={{ fontSize: 12, color: colors.foreground, lineHeight: 17 }}
+        >
           {r.summary}
         </Text>
-        <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted }}>
+        <Text
+          style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted }}
+        >
           {r.taskId}
         </Text>
       </View>
@@ -427,19 +443,44 @@ function ApprovalContent({ r }: { r: ApprovalSurfacedResponse }) {
           borderColor: "rgba(234,179,8,0.25)", // yellow-500/25 one-off border
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <Text style={{ fontSize: 12, fontWeight: "600", color: colors.warningEmphasis }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "600",
+              color: colors.warningEmphasis,
+            }}
+          >
             Approval required
           </Text>
-          <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted }}>
+          <Text
+            style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted }}
+          >
             {r.approvalId}
           </Text>
           <Badge label={r.riskLevel} variant={RISK_BADGE[r.riskLevel]} />
-          <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.warningMid }}>
+          <Text
+            style={{
+              fontSize: 10,
+              fontFamily: monoFont,
+              color: colors.warningMid,
+            }}
+          >
             exp {r.expiresIn}
           </Text>
         </View>
-        <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 17 }}>{r.why}</Text>
+        <Text
+          style={{ fontSize: 12, color: colors.foreground, lineHeight: 17 }}
+        >
+          {r.why}
+        </Text>
         <View
           style={{
             backgroundColor: colors.codeBg,
@@ -469,7 +510,13 @@ function ApprovalContent({ r }: { r: ApprovalSurfacedResponse }) {
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.successEmphasis }}>
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "600",
+                color: colors.successEmphasis,
+              }}
+            >
               Approve
             </Text>
           </Pressable>
@@ -484,7 +531,13 @@ function ApprovalContent({ r }: { r: ApprovalSurfacedResponse }) {
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.errorEmphasis }}>
+            <Text
+              style={{
+                fontSize: 12,
+                fontWeight: "600",
+                color: colors.errorEmphasis,
+              }}
+            >
               Deny
             </Text>
           </Pressable>
@@ -499,19 +552,26 @@ function ApprovalContent({ r }: { r: ApprovalSurfacedResponse }) {
             paddingHorizontal: 12,
             borderRadius: 12,
             backgroundColor:
-              decision === "approved" ? colors.successSubtle10 : colors.errorSubtle10,
+              decision === "approved"
+                ? colors.successSubtle10
+                : colors.errorSubtle10,
           }}
         >
           <Text
             style={{
               fontSize: 12,
               fontWeight: "600",
-              color: decision === "approved" ? colors.successEmphasis : colors.errorEmphasis,
+              color:
+                decision === "approved"
+                  ? colors.successEmphasis
+                  : colors.errorEmphasis,
             }}
           >
             {decision === "approved" ? "Approved" : "Denied"}
           </Text>
-          <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted }}>
+          <Text
+            style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted }}
+          >
             {nowTimestamp()}
           </Text>
         </View>
@@ -534,7 +594,10 @@ function DryRunContent({ r }: { r: DryRunResponse }) {
         }}
       >
         {r.preview.map((line, i) => (
-          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+          <View
+            key={i}
+            style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}
+          >
             <Text
               style={{
                 fontSize: 11,
@@ -631,9 +694,13 @@ function ChatBubbleSys({ response }: { response: SyrisResponse }) {
         <TraceId value={response.traceId} />
       </View>
       {response.kind === "task_created" && <TaskCreatedContent r={response} />}
-      {response.kind === "approval_surfaced" && <ApprovalContent r={response} />}
+      {response.kind === "approval_surfaced" && (
+        <ApprovalContent r={response} />
+      )}
       {response.kind === "dry_run" && <DryRunContent r={response} />}
-      {response.kind === "informational" && <InformationalContent r={response} />}
+      {response.kind === "informational" && (
+        <InformationalContent r={response} />
+      )}
       {response.kind === "general_chat" && <GeneralChatContent r={response} />}
     </View>
   );
@@ -641,23 +708,37 @@ function ChatBubbleSys({ response }: { response: SyrisResponse }) {
 
 // ─── Exchange entry ───────────────────────────────────────────────────────────
 
-function ExchangeEntry({ exchange }: { exchange: Exchange }) {
+function ExchangeEntry({ item }: { item: Exchange }) {
   const { colors } = useTheme<Theme>();
   return (
     <View style={{ gap: 6 }}>
       <View style={{ alignItems: "flex-end", gap: 2 }}>
-        <ChatBubbleUser command={exchange.command} />
-        <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted, paddingHorizontal: 4 }}>
-          {exchange.timestamp}
+        <ChatBubbleUser command={item.command} />
+        <Text
+          style={{
+            fontSize: 10,
+            fontFamily: monoFont,
+            color: colors.muted,
+            paddingHorizontal: 4,
+          }}
+        >
+          {item.timestamp}
         </Text>
       </View>
-      {exchange.response === null ? (
+      {item.response === null ? (
         <ThinkingBubble />
       ) : (
         <View style={{ alignItems: "flex-start", gap: 2 }}>
-          <ChatBubbleSys response={exchange.response} />
-          <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted, paddingHorizontal: 4 }}>
-            {exchange.response.timestamp}
+          <ChatBubbleSys response={item.response} />
+          <Text
+            style={{
+              fontSize: 10,
+              fontFamily: monoFont,
+              color: colors.muted,
+              paddingHorizontal: 4,
+            }}
+          >
+            {item.response.timestamp}
           </Text>
         </View>
       )}
@@ -680,20 +761,23 @@ function FloatingInputBar({ onSend }: { onSend: (text: string) => void }) {
   };
 
   return (
-    <View
+    <GlassView
       style={{
         marginHorizontal: 12,
         marginBottom: 20,
-        borderRadius: borderRadii.pill,
-        backgroundColor: colors.card,
+        borderRadius: borderRadii.full,
+        // backgroundColor: colors.card,
         borderWidth: 1,
-        borderColor: colors.border,
+        // borderColor: colors.border,
         flexDirection: "row",
         alignItems: "center",
         paddingVertical: 10,
         paddingRight: 10,
         paddingLeft: 14,
         gap: 10,
+        // position: "absolute",
+        // top: 4,
+        // left: 8,
       }}
     >
       <SymbolView
@@ -725,12 +809,16 @@ function FloatingInputBar({ onSend }: { onSend: (text: string) => void }) {
         })}
       >
         <SymbolView
-          name={{ ios: "arrow.up", android: "arrow_upward", web: "arrow_upward" }}
+          name={{
+            ios: "arrow.up",
+            android: "arrow_upward",
+            web: "arrow_upward",
+          }}
           size={16}
           tintColor={canSend ? colors.white : colors.muted}
         />
       </Pressable>
-    </View>
+    </GlassView>
   );
 }
 
@@ -763,15 +851,18 @@ export default function CommandScreen() {
   const autonomy = autonomyLevel ?? "A3";
 
   const [exchanges, setExchanges] = useState<Exchange[]>(INITIAL_EXCHANGES);
-  const scrollRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    const id = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 80);
+    const id = setTimeout(
+      () => flatListRef.current?.scrollToEnd({ animated: false }),
+      80,
+    );
     return () => clearTimeout(id);
   }, []);
 
   useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
+    flatListRef.current?.scrollToEnd({ animated: true });
   }, [exchanges.length]);
 
   const handleSend = (command: string) => {
@@ -783,67 +874,110 @@ export default function CommandScreen() {
       { id, timestamp: now, autonomy, command, response: null },
     ]);
 
-    setTimeout(() => {
-      const template = DEMO_RESPONSES[demoIdx % DEMO_RESPONSES.length]!;
-      demoIdx += 1;
-      setExchanges((prev) =>
-        prev.map((ex) =>
-          ex.id === id
-            ? { ...ex, response: { ...template, timestamp: nowTimestamp() } }
-            : ex,
-        ),
-      );
-    }, 2100 + Math.random() * 600);
+    setTimeout(
+      () => {
+        const template = DEMO_RESPONSES[demoIdx % DEMO_RESPONSES.length]!;
+        demoIdx += 1;
+        setExchanges((prev) =>
+          prev.map((ex) =>
+            ex.id === id
+              ? { ...ex, response: { ...template, timestamp: nowTimestamp() } }
+              : ex,
+          ),
+        );
+      },
+      2100 + Math.random() * 600,
+    );
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView
+      style={{
+        flex: 1,
+        backgroundColor: colors.background,
+      }}
+    >
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView
-          ref={scrollRef}
+        <View style={{ flex: 1, position: "relative" }}>
+          {/* <ScrollView
+          ref={flatListRef}
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingTop: 16,
             paddingBottom: 32,
             gap: 10,
+            // position: "relative",
+            backgroundColor: "#ff0000",
           }}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="interactive"
-        >
-          <View
-            style={{
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              borderRadius: borderRadii.xl,
-              backgroundColor: colors.codeBg,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
           >
-            <Text
-              style={{
-                fontSize: 11,
-                fontFamily: monoFont,
-                textAlign: "center",
-                color: colors.muted,
-              }}
-            >
-              <Text style={{ color: colors.foreground }}>Command interface</Text>
-              {" · not a chatbot. Messages are ingested as events through the normal pipeline."}
-            </Text>
-          </View>
-
           {exchanges.map((ex) => (
             <ExchangeEntry key={ex.id} exchange={ex} />
-          ))}
-        </ScrollView>
-
-        <FloatingInputBar onSend={handleSend} />
+          ))} */}
+          <FlatList
+            ref={flatListRef}
+            data={exchanges}
+            keyExtractor={(exhange) => exhange.id}
+            contentContainerStyle={{
+              gap: 10,
+              paddingHorizontal: 16,
+              paddingTop: 16,
+              paddingBottom: 256,
+            }}
+            renderItem={({ item }) => <ExchangeEntry item={item} />}
+            onContentSizeChange={() =>
+              flatListRef.current?.scrollToEnd({ animated: false })
+            }
+            showsVerticalScrollIndicator={false}
+            keyboardDismissMode="interactive"
+          />
+          <View
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+            }}
+          >
+            <FloatingInputBar onSend={handleSend} />
+          </View>
+          {/* </ScrollView> */}
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+// <View
+//   style={{
+//     paddingHorizontal: 12,
+//     paddingVertical: 10,
+//     borderRadius: borderRadii.xl,
+//     backgroundColor: colors.codeBg,
+//     borderWidth: 1,
+//     borderColor: colors.border,
+//   }}
+// >
+//   <Text
+//     style={{
+//       fontSize: 11,
+//       fontFamily: monoFont,
+//       textAlign: "center",
+//       color: colors.muted,
+//     }}
+//   >
+//     <Text style={{ color: colors.foreground }}>
+//       Command interface
+//     </Text>
+//     {
+//       " · not a chatbot. Messages are ingested as events through the normal pipeline."
+//     }
+//   </Text>
+// </View>
