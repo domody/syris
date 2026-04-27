@@ -1,9 +1,9 @@
+import { useTheme } from "@shopify/restyle";
 import { SymbolView } from "expo-symbols";
 import {
   Pressable,
   ScrollView,
   Text,
-  useColorScheme,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,7 +15,7 @@ import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StatusDot } from "@/components/ui/status-dot";
 import { TraceId } from "@/components/ui/trace-id";
-import { Colors } from "@/constants/theme";
+import { monoFont, type Theme } from "@/theme";
 import { useSystemStore } from "@/stores/use-system-store";
 
 const SPARKLINE_DATA = [
@@ -44,45 +44,26 @@ type SubsystemEntry = {
 };
 
 const SUBSYSTEMS: SubsystemEntry[] = [
-  {
-    name: "Home · HomeKit",
-    status: "healthy",
-    iconIos: "house",
-    iconAndroid: "home",
-    volume: "412/24h",
-  },
-  {
-    name: "Calendar · iCloud",
-    status: "healthy",
-    iconIos: "calendar",
-    iconAndroid: "calendar_today",
-    volume: "31/24h",
-  },
-  {
-    name: "Mail triage",
-    status: "healthy",
-    iconIos: "envelope",
-    iconAndroid: "mail",
-    volume: "78/24h",
-  },
-  {
-    name: "Sensors · foyer",
-    status: "degraded",
-    iconIos: "sensor.tag.radiowaves.forward",
-    iconAndroid: "sensors",
-    volume: "1.1k/24h",
-  },
+  { name: "Home · HomeKit", status: "healthy", iconIos: "house", iconAndroid: "home", volume: "412/24h" },
+  { name: "Calendar · iCloud", status: "healthy", iconIos: "calendar", iconAndroid: "calendar_today", volume: "31/24h" },
+  { name: "Mail triage", status: "healthy", iconIos: "envelope", iconAndroid: "mail", volume: "78/24h" },
+  { name: "Sensors · foyer", status: "degraded", iconIos: "sensor.tag.radiowaves.forward", iconAndroid: "sensors", volume: "1.1k/24h" },
 ];
 
 function Sparkline({ data }: { data: number[] }) {
+  const { colors, borderRadii } = useTheme<Theme>();
   const max = Math.max(...data);
   return (
-    <View className="flex-row items-end gap-px" style={{ height: 44 }}>
+    <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 1, height: 44 }}>
       {data.map((v, i) => (
         <View
           key={i}
-          className="flex-1 rounded-sm bg-blue-500/40 dark:bg-blue-400/40"
-          style={{ height: (v / max) * 44 }}
+          style={{
+            flex: 1,
+            borderRadius: borderRadii.xs,
+            backgroundColor: colors.accentSubtle40,
+            height: (v / max) * 44,
+          }}
         />
       ))}
     </View>
@@ -90,19 +71,51 @@ function Sparkline({ data }: { data: number[] }) {
 }
 
 function AutonomyPill({ level }: { level: string | null }) {
+  const { colors, spacing, borderRadii } = useTheme<Theme>();
+
   if (!level) {
     return (
-      <View className="flex-row items-center px-3 py-1 rounded-full border border-border bg-surface">
-        <Text className="text-muted text-xs font-mono">— autonomy</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: spacing[12],
+          paddingVertical: spacing[4],
+          borderRadius: borderRadii.full,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.surface,
+        }}
+      >
+        <Text style={{ color: colors.muted, fontSize: 12, fontFamily: monoFont }}>
+          — autonomy
+        </Text>
       </View>
     );
   }
   return (
-    <View className="flex-row items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 dark:bg-blue-400/15">
-      <Text className="text-blue-600 dark:text-blue-400 text-sm font-semibold font-mono">
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing[6],
+        paddingHorizontal: spacing[12],
+        paddingVertical: spacing[4],
+        borderRadius: borderRadii.full,
+        backgroundColor: colors.accentSubtle,
+      }}
+    >
+      <Text
+        style={{
+          color: colors.accentMid,
+          fontSize: 14,
+          fontWeight: "600",
+          fontFamily: monoFont,
+        }}
+      >
         {level}
       </Text>
-      <Text className="text-zinc-500 dark:text-zinc-400 text-xs">
+      <Text style={{ color: colors.chipInactiveLabel, fontSize: 12 }}>
         scoped autonomy
       </Text>
     </View>
@@ -117,8 +130,7 @@ function AuditLevelBadge({ level }: { level: AuditLevel }) {
 
 export default function OverviewScreen() {
   const { autonomyLevel, systemHealth } = useSystemStore();
-  const colorScheme = useColorScheme() ?? "dark";
-  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
+  const { colors, spacing, borderRadii } = useTheme<Theme>();
 
   const healthLabel = systemHealth
     ? systemHealth.charAt(0).toUpperCase() + systemHealth.slice(1)
@@ -131,16 +143,35 @@ export default function OverviewScreen() {
         : "success";
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        className="flex-1"
-        contentContainerClassName="px-4 pb-8 gap-4"
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: spacing[16],
+          paddingBottom: spacing[32],
+          gap: spacing[16],
+        }}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Header ── */}
-        <View className="flex-row items-center justify-between pt-3 pb-4">
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingTop: spacing[12],
+            paddingBottom: spacing[16],
+          }}
+        >
           <View>
-            <Text className="text-2xl font-semibold tracking-tight text-foreground">
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "600",
+                letterSpacing: -0.6,
+                color: colors.foreground,
+              }}
+            >
               Overview
             </Text>
           </View>
@@ -149,36 +180,58 @@ export default function OverviewScreen() {
 
         {/* ── System Health Hero ── */}
         <Card>
-          <View className="flex-row justify-between items-start">
-            <View className="flex-1">
-              <View className="flex-row items-center gap-2 mb-1.5">
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing[8], marginBottom: spacing[6] }}>
                 <StatusDot variant={healthDotVariant} />
-                <Text className="text-xs font-mono tracking-widest uppercase text-muted">
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontFamily: monoFont,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    color: colors.muted,
+                  }}
+                >
                   Entity online
                 </Text>
               </View>
-              <Text className="text-2xl font-semibold tracking-tight text-foreground">
+              <Text
+                style={{
+                  fontSize: 24,
+                  fontWeight: "600",
+                  letterSpacing: -0.6,
+                  color: colors.foreground,
+                }}
+              >
                 {healthLabel}
               </Text>
-              <Text className="text-xs text-muted mt-1 font-mono">
+              <Text
+                style={{
+                  fontSize: 10,
+                  color: colors.muted,
+                  marginTop: spacing[4],
+                  fontFamily: monoFont,
+                }}
+              >
                 14d 03:22:07 <Middot /> 7 subsystems reachable
               </Text>
             </View>
           </View>
 
-          <View className="mt-3.5">
-            <View className="flex-row justify-between mb-1">
-              <Text className="text-[10px] font-mono text-muted tracking-wider">
+          <View style={{ marginTop: spacing[14] }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: spacing[4] }}>
+              <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted, letterSpacing: 0.5 }}>
                 PIPELINE <Middot /> 24H
               </Text>
-              <Text className="text-[10px] font-mono text-muted">
+              <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted }}>
                 1,284 events <Middot /> 3 errors
               </Text>
             </View>
             <Sparkline data={SPARKLINE_DATA} />
-            <View className="flex-row justify-between mt-1">
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: spacing[4] }}>
               {["00:00", "06:00", "12:00", "18:00", "NOW"].map((label) => (
-                <Text key={label} className="text-[9px] font-mono text-muted">
+                <Text key={label} style={{ fontSize: 9, fontFamily: monoFont, color: colors.muted }}>
                   {label}
                 </Text>
               ))}
@@ -190,42 +243,67 @@ export default function OverviewScreen() {
         <SectionHeader
           title="Active agents"
           trailing={
-            <Text className="text-xs font-mono text-muted">1 running</Text>
+            <Text style={{ fontSize: 12, fontFamily: monoFont, color: colors.muted }}>
+              1 running
+            </Text>
           }
         />
 
         <LiveActivityCard>
-          <View className="flex-row justify-between items-center mb-2">
-            <View className="flex-row items-center gap-2">
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing[8] }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing[8] }}>
               <SymbolView
-                name={{
-                  ios: "arrow.triangle.2.circlepath",
-                  android: "autorenew",
-                  web: "autorenew",
-                }}
+                name={{ ios: "arrow.triangle.2.circlepath", android: "autorenew", web: "autorenew" }}
                 size={14}
                 tintColor={colors.accent}
               />
-              <Text className="text-xs font-mono tracking-wider text-muted">
+              <Text style={{ fontSize: 12, fontFamily: monoFont, letterSpacing: 0.5, color: colors.muted }}>
                 Agent <Middot /> morning_brief
               </Text>
             </View>
-            <Text className="text-xs font-mono text-muted tabular-nums">
+            <Text
+              style={{
+                fontSize: 12,
+                fontFamily: monoFont,
+                color: colors.muted,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
               00:47
             </Text>
           </View>
-          <Text className="text-[15px] font-medium tracking-tight text-foreground mb-2">
+          <Text
+            style={{
+              fontSize: 15,
+              fontWeight: "500",
+              letterSpacing: -0.3,
+              color: colors.foreground,
+              marginBottom: spacing[8],
+            }}
+          >
             Drafting daily brief <Middot /> step 3 of 5
           </Text>
-          <View className="h-1 bg-border rounded-full overflow-hidden mb-2.5">
+          <View
+            style={{
+              height: 4,
+              backgroundColor: colors.border,
+              borderRadius: borderRadii.full,
+              overflow: "hidden",
+              marginBottom: spacing[10],
+            }}
+          >
             <View
-              className="h-full bg-blue-500 dark:bg-blue-400 rounded-full"
-              style={{ width: "60%" }}
+              style={{
+                height: "100%",
+                backgroundColor: colors.info,
+                borderRadius: borderRadii.full,
+                width: "60%",
+              }}
             />
           </View>
-          <View className="flex-row items-center gap-1.5">
+          <View style={{ flexDirection: "row", alignItems: "center", gap: spacing[6] }}>
             <Badge label="LLM" variant="info" />
-            <Text className="text-[10px] font-mono text-muted">
+            <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted }}>
               synthesizing calendar + mail triage
             </Text>
           </View>
@@ -237,69 +315,99 @@ export default function OverviewScreen() {
           trailing={<Badge label="2 pending" variant="warning" />}
         />
 
-        <View className="bg-surface rounded-xl overflow-hidden">
+        <View style={{ backgroundColor: colors.surface, borderRadius: borderRadii.xl, overflow: "hidden" }}>
           {/* Approval row */}
-          <Pressable className="flex-row items-center gap-3 px-4 py-3 active:opacity-70">
-            <View className="w-9 h-9 rounded-xl bg-yellow-500/20 dark:bg-yellow-400/20 items-center justify-center">
+          <Pressable
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              gap: spacing[12],
+              paddingHorizontal: spacing[16],
+              paddingVertical: spacing[12],
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: borderRadii.xl,
+                backgroundColor: colors.warningSubtle20,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <SymbolView
-                name={{
-                  ios: "lock.shield",
-                  android: "shield_lock",
-                  web: "shield_lock",
-                }}
+                name={{ ios: "lock.shield", android: "shield_lock", web: "shield_lock" }}
                 size={16}
                 tintColor={colors.warning}
               />
             </View>
-            <View className="flex-1 min-w-0">
-              <Text className="text-sm font-medium text-foreground">
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>
                 Unlock front door <Middot /> Dad
               </Text>
-              <View className="flex-row items-center gap-1.5 mt-0.5 flex-wrap">
-                <Text className="text-xs font-mono text-muted">
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing[6], marginTop: spacing[2], flexWrap: "wrap" }}>
+                <Text style={{ fontSize: 12, fontFamily: monoFont, color: colors.muted }}>
                   apr_01JH7A4K
                 </Text>
-                <Text className="text-xs text-muted">
+                <Text style={{ fontSize: 12, color: colors.muted }}>
                   <Middot />
                 </Text>
-                <Text className="text-xs text-muted">approval required</Text>
-                <Text className="text-xs text-muted">
+                <Text style={{ fontSize: 12, color: colors.muted }}>approval required</Text>
+                <Text style={{ fontSize: 12, color: colors.muted }}>
                   <Middot />
                 </Text>
                 <Badge label="medium" variant="warning" />
               </View>
             </View>
-            <Text className="text-xs text-muted">2m</Text>
+            <Text style={{ fontSize: 12, color: colors.muted }}>2m</Text>
           </Pressable>
 
-          <View className="h-px bg-border mx-4" />
+          <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: spacing[16] }} />
 
           {/* Escalation row */}
-          <Pressable className="flex-row items-center gap-3 px-4 py-3 active:opacity-70">
-            <View className="w-9 h-9 rounded-xl bg-blue-500/15 dark:bg-blue-400/15 items-center justify-center">
+          <Pressable
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              gap: spacing[12],
+              paddingHorizontal: spacing[16],
+              paddingVertical: spacing[12],
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: borderRadii.xl,
+                backgroundColor: colors.accentSubtle,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <SymbolView
                 name={{ ios: "brain", android: "memory", web: "memory" }}
                 size={16}
                 tintColor={colors.accent}
               />
             </View>
-            <View className="flex-1 min-w-0">
-              <Text className="text-sm font-medium text-foreground">
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>
                 Intent unclear <Middot /> garage SMS
               </Text>
-              <View className="flex-row items-center gap-1.5 mt-0.5">
-                <Text className="text-xs font-mono text-muted">
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing[6], marginTop: spacing[2] }}>
+                <Text style={{ fontSize: 12, fontFamily: monoFont, color: colors.muted }}>
                   esc_01JH7A9P
                 </Text>
-                <Text className="text-xs text-muted">
+                <Text style={{ fontSize: 12, color: colors.muted }}>
                   <Middot />
                 </Text>
-                <Text className="text-xs text-muted">
-                  select interpretation
-                </Text>
+                <Text style={{ fontSize: 12, color: colors.muted }}>select interpretation</Text>
               </View>
             </View>
-            <Text className="text-xs text-muted">6m</Text>
+            <Text style={{ fontSize: 12, color: colors.muted }}>6m</Text>
           </Pressable>
         </View>
 
@@ -307,25 +415,36 @@ export default function OverviewScreen() {
         <SectionHeader
           title="Recent activity"
           trailing={
-            <Text className="text-xs font-mono text-blue-500 dark:text-blue-400">
+            <Text style={{ fontSize: 12, fontFamily: monoFont, color: colors.accentMid }}>
               Tail →
             </Text>
           }
         />
 
-        <View className="bg-surface rounded-xl px-3 py-1">
+        <View style={{ backgroundColor: colors.surface, borderRadius: borderRadii.xl, paddingHorizontal: spacing[12], paddingVertical: spacing[4] }}>
           {AUDIT_ROWS.map(([time, level, type, traceId], i) => (
             <View
               key={i}
-              className={`flex-row items-center gap-2 py-2 ${i < AUDIT_ROWS.length - 1 ? "border-b border-border" : ""}`}
+              style={[
+                {
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: spacing[8],
+                  paddingVertical: spacing[8],
+                },
+                i < AUDIT_ROWS.length - 1 && {
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.border,
+                },
+              ]}
             >
-              <Text className="text-[10px] font-mono text-muted w-14">
+              <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted, width: 56 }}>
                 {time}
               </Text>
-              <AuditLevelBadge level={level} />
-              <View className="flex-1 flex-row items-center gap-1 min-w-0 overflow-hidden">
+              <AuditLevelBadge level={level as AuditLevel} />
+              <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: spacing[4], minWidth: 0, overflow: "hidden" }}>
                 <Text
-                  className="text-[10px] font-mono text-foreground shrink"
+                  style={{ fontSize: 10, fontFamily: monoFont, color: colors.foreground, flexShrink: 1 }}
                   numberOfLines={1}
                 >
                   {type} <Middot />{" "}
@@ -339,52 +458,58 @@ export default function OverviewScreen() {
         {/* ── Subsystems ── */}
         <SectionHeader title="Subsystems" />
 
-        <View className="bg-surface rounded-xl overflow-hidden">
+        <View style={{ backgroundColor: colors.surface, borderRadius: borderRadii.xl, overflow: "hidden" }}>
           {SUBSYSTEMS.map((sys, i) => (
             <View key={i}>
-              <Pressable className="flex-row items-center gap-3 px-4 py-3 active:opacity-70">
-                <View className="w-8 h-8 rounded-xl bg-zinc-200 dark:bg-zinc-800 items-center justify-center">
+              <Pressable
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: spacing[12],
+                  paddingHorizontal: spacing[16],
+                  paddingVertical: spacing[12],
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: borderRadii.xl,
+                    backgroundColor: colors.elementBg,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   <SymbolView
-                    name={{
-                      ios: sys.iconIos,
-                      android: sys.iconAndroid,
-                      web: sys.iconAndroid,
-                    }}
+                    name={{ ios: sys.iconIos, android: sys.iconAndroid, web: sys.iconAndroid }}
                     size={15}
-                    tintColor={colors.textSecondary}
+                    tintColor={colors.muted}
                   />
                 </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-medium text-foreground">
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground }}>
                     {sys.name}
                   </Text>
-                  <View className="flex-row items-center gap-1.5 mt-0.5">
-                    <StatusDot
-                      variant={
-                        sys.status === "degraded" ? "warning" : "success"
-                      }
-                    />
-                    <Text className="text-xs text-muted">{sys.status}</Text>
-                    <Text className="text-xs text-muted">
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: spacing[6], marginTop: spacing[2] }}>
+                    <StatusDot variant={sys.status === "degraded" ? "warning" : "success"} />
+                    <Text style={{ fontSize: 12, color: colors.muted }}>{sys.status}</Text>
+                    <Text style={{ fontSize: 12, color: colors.muted }}>
                       <Middot />
                     </Text>
-                    <Text className="text-xs font-mono text-muted">
+                    <Text style={{ fontSize: 12, fontFamily: monoFont, color: colors.muted }}>
                       {sys.volume}
                     </Text>
                   </View>
                 </View>
                 <SymbolView
-                  name={{
-                    ios: "chevron.right",
-                    android: "chevron_right",
-                    web: "chevron_right",
-                  }}
+                  name={{ ios: "chevron.right", android: "chevron_right", web: "chevron_right" }}
                   size={12}
-                  tintColor={colors.textSecondary}
+                  tintColor={colors.muted}
                 />
               </Pressable>
               {i < SUBSYSTEMS.length - 1 && (
-                <View className="h-px bg-border mx-4" />
+                <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: spacing[16] }} />
               )}
             </View>
           ))}

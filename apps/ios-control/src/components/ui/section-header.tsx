@@ -1,4 +1,7 @@
-import { Text, View } from 'react-native';
+import { useTheme } from "@shopify/restyle";
+import { Text, View } from "react-native";
+
+import type { Theme } from "@/theme";
 
 type SectionHeaderProps = {
   title: string;
@@ -6,10 +9,28 @@ type SectionHeaderProps = {
 };
 
 export function SectionHeader({ title, trailing }: SectionHeaderProps) {
+  const { colors, spacing } = useTheme<Theme>();
   return (
-    <View className="flex-row items-center gap-3 py-2 justify-between">
-      <Text className="text-xs font-semibold uppercase tracking-widest text-muted">{title}</Text>
-      {/* <View className="flex-1 h-px bg-border" /> */}
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing[12],
+        paddingVertical: spacing[8],
+        justifyContent: "space-between",
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 10,
+          fontWeight: "600",
+          textTransform: "uppercase",
+          letterSpacing: 1.5,
+          color: colors.muted,
+        }}
+      >
+        {title}
+      </Text>
       {trailing}
     </View>
   );

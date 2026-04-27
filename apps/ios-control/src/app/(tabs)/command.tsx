@@ -1,5 +1,6 @@
-import { SymbolView } from 'expo-symbols';
-import { useEffect, useRef, useState } from 'react';
+import { useTheme } from "@shopify/restyle";
+import { SymbolView } from "expo-symbols";
+import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -7,9 +8,8 @@ import {
   ScrollView,
   Text,
   TextInput,
-  useColorScheme,
   View,
-} from 'react-native';
+} from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -18,32 +18,29 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
-} from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Badge, type BadgeVariant } from '@/components/ui/badge';
-import { TraceId } from '@/components/ui/trace-id';
-import { Colors } from '@/constants/theme';
-import { useSystemStore } from '@/stores/use-system-store';
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { TraceId } from "@/components/ui/trace-id";
+import { monoFont, type Theme } from "@/theme";
+import { useSystemStore } from "@/stores/use-system-store";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+type RiskLevel = "low" | "medium" | "high" | "critical";
 
-type BaseResponse = {
-  traceId: string;
-  timestamp: string;
-};
+type BaseResponse = { traceId: string; timestamp: string };
 
 type TaskCreatedResponse = BaseResponse & {
-  kind: 'task_created';
+  kind: "task_created";
   taskId: string;
   summary: string;
   steps: number;
 };
 
 type ApprovalSurfacedResponse = BaseResponse & {
-  kind: 'approval_surfaced';
+  kind: "approval_surfaced";
   approvalId: string;
   why: string;
   what: string;
@@ -52,18 +49,18 @@ type ApprovalSurfacedResponse = BaseResponse & {
 };
 
 type DryRunResponse = BaseResponse & {
-  kind: 'dry_run';
+  kind: "dry_run";
   preview: string[];
   note: string;
 };
 
 type InformationalResponse = BaseResponse & {
-  kind: 'informational';
+  kind: "informational";
   answer: string;
 };
 
 type GeneralChatResponse = BaseResponse & {
-  kind: 'general_chat';
+  kind: "general_chat";
   text: string;
 };
 
@@ -86,75 +83,75 @@ type Exchange = {
 
 const INITIAL_EXCHANGES: Exchange[] = [
   {
-    id: 'ex1',
-    timestamp: '09:14:22',
-    autonomy: 'A3',
-    command: 'run morning_brief with calendar focus',
+    id: "ex1",
+    timestamp: "09:14:22",
+    autonomy: "A3",
+    command: "run morning_brief with calendar focus",
     response: {
-      kind: 'task_created',
-      traceId: '01JH7A4K6N',
-      timestamp: '09:14:23',
-      taskId: 'tsk_01JH7B2QX',
-      summary: 'morning_brief agent queued — calendar + mail triage, daily digest generation',
+      kind: "task_created",
+      traceId: "01JH7A4K6N",
+      timestamp: "09:14:23",
+      taskId: "tsk_01JH7B2QX",
+      summary: "morning_brief agent queued — calendar + mail triage, daily digest generation",
       steps: 5,
     },
   },
   {
-    id: 'ex2',
-    timestamp: '09:21:05',
-    autonomy: 'A3',
-    command: 'unlock front door for Dad',
+    id: "ex2",
+    timestamp: "09:21:05",
+    autonomy: "A3",
+    command: "unlock front door for Dad",
     response: {
-      kind: 'approval_surfaced',
-      traceId: '01JH7A9P3M',
-      timestamp: '09:21:06',
-      approvalId: 'apr_01JH7A4K',
-      why: 'HomeKit device action exceeds A3 scope — home-device unlock requires explicit approval',
+      kind: "approval_surfaced",
+      traceId: "01JH7A9P3M",
+      timestamp: "09:21:06",
+      approvalId: "apr_01JH7A4K",
+      why: "HomeKit device action exceeds A3 scope — home-device unlock requires explicit approval",
       what: 'POST /connectors/homekit {"device":"front_door","action":"unlock"}',
-      riskLevel: 'medium',
-      expiresIn: '3:47',
+      riskLevel: "medium",
+      expiresIn: "3:47",
     },
   },
   {
-    id: 'ex3',
-    timestamp: '09:33:11',
-    autonomy: 'A0',
-    command: 'dim kitchen lights to 40% and play jazz',
+    id: "ex3",
+    timestamp: "09:33:11",
+    autonomy: "A0",
+    command: "dim kitchen lights to 40% and play jazz",
     response: {
-      kind: 'dry_run',
-      traceId: '01JH7B1XZ2',
-      timestamp: '09:33:12',
+      kind: "dry_run",
+      traceId: "01JH7B1XZ2",
+      timestamp: "09:33:12",
       preview: [
-        'HomeKit · kitchen ceiling → 40% brightness',
-        'HomeKit · kitchen spots → 40% brightness',
-        'Music · AirPlay kitchen → Jazz Radio (Apple Music)',
+        "HomeKit · kitchen ceiling → 40% brightness",
+        "HomeKit · kitchen spots → 40% brightness",
+        "Music · AirPlay kitchen → Jazz Radio (Apple Music)",
       ],
-      note: 'Autonomy A0 active — suggest-only mode, no actions will execute',
+      note: "Autonomy A0 active — suggest-only mode, no actions will execute",
     },
   },
   {
-    id: 'ex4',
-    timestamp: '09:41:58',
-    autonomy: 'A3',
-    command: 'how many events came through the pipeline today?',
+    id: "ex4",
+    timestamp: "09:41:58",
+    autonomy: "A3",
+    command: "how many events came through the pipeline today?",
     response: {
-      kind: 'informational',
-      traceId: '01JH7B3KQW',
-      timestamp: '09:41:59',
+      kind: "informational",
+      traceId: "01JH7B3KQW",
+      timestamp: "09:41:59",
       answer:
-        '1,284 events processed (09:00–09:41 UTC). 3 errors, 2 suppressed. Pipeline p95 latency is 340ms — within normal range.',
+        "1,284 events processed (09:00–09:41 UTC). 3 errors, 2 suppressed. Pipeline p95 latency is 340ms — within normal range.",
     },
   },
   {
-    id: 'ex5',
-    timestamp: '09:47:30',
-    autonomy: 'A3',
-    command: 'what does A2 autonomy mean exactly?',
+    id: "ex5",
+    timestamp: "09:47:30",
+    autonomy: "A3",
+    command: "what does A2 autonomy mean exactly?",
     response: {
-      kind: 'general_chat',
-      traceId: '01JH7B5RPX',
-      timestamp: '09:47:31',
-      text: 'A2 auto-executes low-risk actions without approval. Medium and high-risk actions are still gated. Risk level is classified at route time using tool definitions and connector scope rules.',
+      kind: "general_chat",
+      traceId: "01JH7B5RPX",
+      timestamp: "09:47:31",
+      text: "A2 auto-executes low-risk actions without approval. Medium and high-risk actions are still gated. Risk level is classified at route time using tool definitions and connector scope rules.",
     },
   },
 ];
@@ -162,63 +159,139 @@ const INITIAL_EXCHANGES: Exchange[] = [
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const RISK_BADGE: Record<RiskLevel, BadgeVariant> = {
-  low: 'success',
-  medium: 'warning',
-  high: 'error',
-  critical: 'error',
+  low: "success",
+  medium: "warning",
+  high: "error",
+  critical: "error",
 };
 
 function nowTimestamp(): string {
   const d = new Date();
   return [d.getHours(), d.getMinutes(), d.getSeconds()]
-    .map((n) => String(n).padStart(2, '0'))
-    .join(':');
+    .map((n) => String(n).padStart(2, "0"))
+    .join(":");
 }
 
 // ─── Lane ────────────────────────────────────────────────────────────────────
 
-type Lane = 'fast' | 'task' | 'gated' | 'llm';
+type Lane = "fast" | "task" | "gated" | "llm";
 
-function laneForKind(kind: SyrisResponse['kind']): Lane {
-  if (kind === 'task_created') return 'task';
-  if (kind === 'approval_surfaced') return 'gated';
-  if (kind === 'dry_run') return 'fast';
-  return 'llm';
+function laneForKind(kind: SyrisResponse["kind"]): Lane {
+  if (kind === "task_created") return "task";
+  if (kind === "approval_surfaced") return "gated";
+  if (kind === "dry_run") return "fast";
+  return "llm";
 }
 
 // ─── Lane chip ────────────────────────────────────────────────────────────────
 
 function LaneChip({ lane }: { lane: Lane }) {
-  if (lane === 'fast') {
+  const { colors } = useTheme<Theme>();
+
+  if (lane === "fast") {
     return (
-      <View className="h-4 px-1.5 rounded-[4px] items-center justify-center bg-green-500/15 dark:bg-green-400/15">
-        <Text className="text-[9px] font-semibold font-mono tracking-widest uppercase text-green-700 dark:text-green-400">
+      <View
+        style={{
+          height: 16,
+          paddingHorizontal: 6,
+          borderRadius: 4,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.successSubtle,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 9,
+            fontWeight: "600",
+            fontFamily: monoFont,
+            letterSpacing: 0.9,
+            textTransform: "uppercase",
+            color: colors.successEmphasis,
+          }}
+        >
           Fast path
         </Text>
       </View>
     );
   }
-  if (lane === 'task') {
+  if (lane === "task") {
     return (
-      <View className="h-4 px-1.5 rounded-[4px] items-center justify-center bg-blue-500/15 dark:bg-blue-400/15">
-        <Text className="text-[9px] font-semibold font-mono tracking-widest uppercase text-blue-700 dark:text-blue-400">
+      <View
+        style={{
+          height: 16,
+          paddingHorizontal: 6,
+          borderRadius: 4,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.accentSubtle,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 9,
+            fontWeight: "600",
+            fontFamily: monoFont,
+            letterSpacing: 0.9,
+            textTransform: "uppercase",
+            color: colors.accentEmphasis,
+          }}
+        >
           Task created
         </Text>
       </View>
     );
   }
-  if (lane === 'gated') {
+  if (lane === "gated") {
     return (
-      <View className="h-4 px-1.5 rounded-[4px] items-center justify-center bg-yellow-500/15 dark:bg-yellow-400/15">
-        <Text className="text-[9px] font-semibold font-mono tracking-widest uppercase text-yellow-700 dark:text-yellow-400">
+      <View
+        style={{
+          height: 16,
+          paddingHorizontal: 6,
+          borderRadius: 4,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.warningSubtle,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 9,
+            fontWeight: "600",
+            fontFamily: monoFont,
+            letterSpacing: 0.9,
+            textTransform: "uppercase",
+            color: colors.warningEmphasis,
+          }}
+        >
           Gated · approval
         </Text>
       </View>
     );
   }
   return (
-    <View className="h-4 px-1.5 rounded-[4px] items-center justify-center bg-zinc-100 dark:bg-zinc-800 border border-border">
-      <Text className="text-[9px] font-semibold font-mono tracking-widest uppercase text-zinc-600 dark:text-zinc-300">
+    <View
+      style={{
+        height: 16,
+        paddingHorizontal: 6,
+        borderRadius: 4,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: colors.elementBgSubtle,
+        borderWidth: 1,
+        borderColor: colors.border,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 9,
+          fontWeight: "600",
+          fontFamily: monoFont,
+          letterSpacing: 0.9,
+          textTransform: "uppercase",
+          color: colors.llmLaneText,
+        }}
+      >
         LLM lane
       </Text>
     </View>
@@ -228,6 +301,7 @@ function LaneChip({ lane }: { lane: Lane }) {
 // ─── Thinking bubble ──────────────────────────────────────────────────────────
 
 function ThinkingBubble() {
+  const { colors } = useTheme<Theme>();
   const o1 = useSharedValue(0.4);
   const o2 = useSharedValue(0.4);
   const o3 = useSharedValue(0.4);
@@ -255,14 +329,38 @@ function ThinkingBubble() {
   const s2 = useAnimatedStyle(() => ({ opacity: o2.value }));
   const s3 = useAnimatedStyle(() => ({ opacity: o3.value }));
 
+  const dotStyle = {
+    width: 5,
+    height: 5,
+    borderRadius: 9999,
+    backgroundColor: colors.muted,
+  };
+
   return (
-    <View className="items-start gap-1">
-      <View className="bg-card border border-border rounded-tl-2xl rounded-tr-2xl rounded-bl-[4px] rounded-br-2xl px-3 py-2 flex-row items-center gap-[5px]">
-        <Animated.View style={s1} className="w-[5px] h-[5px] rounded-full bg-muted" />
-        <Animated.View style={s2} className="w-[5px] h-[5px] rounded-full bg-muted" />
-        <Animated.View style={s3} className="w-[5px] h-[5px] rounded-full bg-muted" />
+    <View style={{ alignItems: "flex-start", gap: 4 }}>
+      <View
+        style={{
+          backgroundColor: colors.card,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+          borderBottomLeftRadius: 4,
+          borderBottomRightRadius: 16,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 5,
+        }}
+      >
+        <Animated.View style={[dotStyle, s1]} />
+        <Animated.View style={[dotStyle, s2]} />
+        <Animated.View style={[dotStyle, s3]} />
       </View>
-      <Text className="text-[10px] font-mono text-muted px-1">routing · rules → LLM fallback</Text>
+      <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted, paddingHorizontal: 4 }}>
+        routing · rules → LLM fallback
+      </Text>
     </View>
   );
 }
@@ -270,89 +368,152 @@ function ThinkingBubble() {
 // ─── Sys bubble content ───────────────────────────────────────────────────────
 
 function UnderstoodRow({ label }: { label: string }) {
+  const { colors } = useTheme<Theme>();
   return (
-    <View className="gap-1">
-      <Text className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted">
+    <View style={{ gap: 4 }}>
+      <Text
+        style={{
+          fontSize: 10,
+          fontWeight: "600",
+          letterSpacing: 0.8,
+          textTransform: "uppercase",
+          color: colors.muted,
+        }}
+      >
         Understood
       </Text>
-      <Text className="text-[12.5px] text-foreground">{label}</Text>
+      <Text style={{ fontSize: 12.5, color: colors.foreground }}>{label}</Text>
     </View>
   );
 }
 
 function TaskCreatedContent({ r }: { r: TaskCreatedResponse }) {
+  const { colors } = useTheme<Theme>();
   return (
     <>
       <UnderstoodRow label={`Task · ${r.steps} steps`} />
-      <View className="border-t border-border pt-1.5 gap-1.5">
-        <Text className="text-[12px] text-foreground leading-snug">{r.summary}</Text>
-        <Text className="text-[10px] font-mono text-muted">{r.taskId}</Text>
+      <View
+        style={{
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          paddingTop: 6,
+          gap: 6,
+        }}
+      >
+        <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 17 }}>
+          {r.summary}
+        </Text>
+        <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted }}>
+          {r.taskId}
+        </Text>
       </View>
     </>
   );
 }
 
 function ApprovalContent({ r }: { r: ApprovalSurfacedResponse }) {
-  const [decision, setDecision] = useState<'approved' | 'denied' | null>(null);
+  const { colors } = useTheme<Theme>();
+  const [decision, setDecision] = useState<"approved" | "denied" | null>(null);
 
   return (
     <>
       <View
-        className="p-2.5 rounded-lg bg-yellow-500/10 dark:bg-yellow-400/10 gap-2"
-        style={{ borderWidth: 1, borderColor: 'rgba(234,179,8,0.25)' }}
+        style={{
+          padding: 10,
+          borderRadius: 8,
+          backgroundColor: colors.warningSubtle10,
+          gap: 8,
+          borderWidth: 1,
+          borderColor: "rgba(234,179,8,0.25)", // yellow-500/25 one-off border
+        }}
       >
-        <View className="flex-row items-center gap-2 flex-wrap">
-          <Text className="text-[12px] font-semibold text-yellow-700 dark:text-yellow-400">
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: colors.warningEmphasis }}>
             Approval required
           </Text>
-          <Text className="text-[10px] font-mono text-muted">{r.approvalId}</Text>
+          <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted }}>
+            {r.approvalId}
+          </Text>
           <Badge label={r.riskLevel} variant={RISK_BADGE[r.riskLevel]} />
-          <Text className="text-[10px] font-mono text-yellow-600 dark:text-yellow-400">
+          <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.warningMid }}>
             exp {r.expiresIn}
           </Text>
         </View>
-        <Text className="text-[12px] text-foreground leading-snug">{r.why}</Text>
-        <View className="bg-zinc-100 dark:bg-zinc-900 rounded-lg px-3 py-2">
-          <Text className="font-mono text-[10px] text-muted" numberOfLines={2}>
+        <Text style={{ fontSize: 12, color: colors.foreground, lineHeight: 17 }}>{r.why}</Text>
+        <View
+          style={{
+            backgroundColor: colors.codeBg,
+            borderRadius: 8,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+          }}
+        >
+          <Text
+            style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted }}
+            numberOfLines={2}
+          >
             {r.what}
           </Text>
         </View>
       </View>
       {decision === null ? (
-        <View className="flex-row gap-2">
+        <View style={{ flexDirection: "row", gap: 8 }}>
           <Pressable
-            onPress={() => setDecision('approved')}
-            className="flex-1 items-center py-2.5 rounded-xl bg-green-500/15 dark:bg-green-400/15 active:opacity-70"
+            onPress={() => setDecision("approved")}
+            style={({ pressed }) => ({
+              flex: 1,
+              alignItems: "center",
+              paddingVertical: 10,
+              borderRadius: 12,
+              backgroundColor: colors.successSubtle,
+              opacity: pressed ? 0.7 : 1,
+            })}
           >
-            <Text className="text-[12px] font-semibold text-green-700 dark:text-green-400">
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.successEmphasis }}>
               Approve
             </Text>
           </Pressable>
           <Pressable
-            onPress={() => setDecision('denied')}
-            className="flex-1 items-center py-2.5 rounded-xl bg-red-500/10 dark:bg-red-400/10 active:opacity-70"
+            onPress={() => setDecision("denied")}
+            style={({ pressed }) => ({
+              flex: 1,
+              alignItems: "center",
+              paddingVertical: 10,
+              borderRadius: 12,
+              backgroundColor: colors.errorSubtle10,
+              opacity: pressed ? 0.7 : 1,
+            })}
           >
-            <Text className="text-[12px] font-semibold text-red-700 dark:text-red-400">Deny</Text>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.errorEmphasis }}>
+              Deny
+            </Text>
           </Pressable>
         </View>
       ) : (
         <View
-          className={`flex-row items-center gap-2 py-2.5 px-3 rounded-xl ${
-            decision === 'approved'
-              ? 'bg-green-500/10 dark:bg-green-400/10'
-              : 'bg-red-500/10 dark:bg-red-400/10'
-          }`}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            paddingVertical: 10,
+            paddingHorizontal: 12,
+            borderRadius: 12,
+            backgroundColor:
+              decision === "approved" ? colors.successSubtle10 : colors.errorSubtle10,
+          }}
         >
           <Text
-            className={`text-[12px] font-semibold ${
-              decision === 'approved'
-                ? 'text-green-700 dark:text-green-400'
-                : 'text-red-700 dark:text-red-400'
-            }`}
+            style={{
+              fontSize: 12,
+              fontWeight: "600",
+              color: decision === "approved" ? colors.successEmphasis : colors.errorEmphasis,
+            }}
           >
-            {decision === 'approved' ? 'Approved' : 'Denied'}
+            {decision === "approved" ? "Approved" : "Denied"}
           </Text>
-          <Text className="text-[10px] font-mono text-muted">{nowTimestamp()}</Text>
+          <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted }}>
+            {nowTimestamp()}
+          </Text>
         </View>
       )}
     </>
@@ -360,14 +521,41 @@ function ApprovalContent({ r }: { r: ApprovalSurfacedResponse }) {
 }
 
 function DryRunContent({ r }: { r: DryRunResponse }) {
+  const { colors } = useTheme<Theme>();
   return (
     <>
       <UnderstoodRow label={r.note} />
-      <View className="border-t border-border pt-1.5 gap-1">
+      <View
+        style={{
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          paddingTop: 6,
+          gap: 4,
+        }}
+      >
         {r.preview.map((line, i) => (
-          <View key={i} className="flex-row items-start gap-2">
-            <Text className="text-[11px] font-mono text-green-600 dark:text-green-400 mt-px">→</Text>
-            <Text className="text-[12px] font-mono text-foreground flex-1 leading-snug">{line}</Text>
+          <View key={i} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+            <Text
+              style={{
+                fontSize: 11,
+                fontFamily: monoFont,
+                color: colors.successMid,
+                marginTop: 1,
+              }}
+            >
+              →
+            </Text>
+            <Text
+              style={{
+                fontSize: 12,
+                fontFamily: monoFont,
+                color: colors.foreground,
+                flex: 1,
+                lineHeight: 17,
+              }}
+            >
+              {line}
+            </Text>
           </View>
         ))}
       </View>
@@ -376,40 +564,77 @@ function DryRunContent({ r }: { r: DryRunResponse }) {
 }
 
 function InformationalContent({ r }: { r: InformationalResponse }) {
+  const { colors } = useTheme<Theme>();
   return (
-    <Text className="text-[12.5px] text-foreground leading-relaxed">{r.answer}</Text>
+    <Text style={{ fontSize: 12.5, color: colors.foreground, lineHeight: 20 }}>
+      {r.answer}
+    </Text>
   );
 }
 
 function GeneralChatContent({ r }: { r: GeneralChatResponse }) {
+  const { colors } = useTheme<Theme>();
   return (
-    <Text className="text-[12.5px] text-foreground leading-relaxed">{r.text}</Text>
+    <Text style={{ fontSize: 12.5, color: colors.foreground, lineHeight: 20 }}>
+      {r.text}
+    </Text>
   );
 }
 
 // ─── Chat bubbles ─────────────────────────────────────────────────────────────
 
 function ChatBubbleUser({ command }: { command: string }) {
+  const { colors } = useTheme<Theme>();
   return (
-    <View className="self-end max-w-[82%] bg-accent px-[13px] py-[9px] rounded-tl-2xl rounded-tr-2xl rounded-bl-2xl rounded-br-[4px]">
-      <Text className="text-[13px] text-white leading-[1.45]">{command}</Text>
+    <View
+      style={{
+        alignSelf: "flex-end",
+        maxWidth: "82%",
+        backgroundColor: colors.accent,
+        paddingHorizontal: 13,
+        paddingVertical: 9,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        borderBottomLeftRadius: 16,
+        borderBottomRightRadius: 4,
+      }}
+    >
+      <Text style={{ fontSize: 13, color: colors.white, lineHeight: 19 }}>
+        {command}
+      </Text>
     </View>
   );
 }
 
 function ChatBubbleSys({ response }: { response: SyrisResponse }) {
+  const { colors } = useTheme<Theme>();
   const lane = laneForKind(response.kind);
   return (
-    <View className="self-start max-w-[92%] bg-card border border-border px-3 py-2.5 rounded-tl-2xl rounded-tr-2xl rounded-bl-[4px] rounded-br-2xl gap-2">
-      <View className="flex-row items-center gap-1.5">
+    <View
+      style={{
+        alignSelf: "flex-start",
+        maxWidth: "92%",
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        borderBottomLeftRadius: 4,
+        borderBottomRightRadius: 16,
+        gap: 8,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <LaneChip lane={lane} />
         <TraceId value={response.traceId} />
       </View>
-      {response.kind === 'task_created' && <TaskCreatedContent r={response} />}
-      {response.kind === 'approval_surfaced' && <ApprovalContent r={response} />}
-      {response.kind === 'dry_run' && <DryRunContent r={response} />}
-      {response.kind === 'informational' && <InformationalContent r={response} />}
-      {response.kind === 'general_chat' && <GeneralChatContent r={response} />}
+      {response.kind === "task_created" && <TaskCreatedContent r={response} />}
+      {response.kind === "approval_surfaced" && <ApprovalContent r={response} />}
+      {response.kind === "dry_run" && <DryRunContent r={response} />}
+      {response.kind === "informational" && <InformationalContent r={response} />}
+      {response.kind === "general_chat" && <GeneralChatContent r={response} />}
     </View>
   );
 }
@@ -417,18 +642,21 @@ function ChatBubbleSys({ response }: { response: SyrisResponse }) {
 // ─── Exchange entry ───────────────────────────────────────────────────────────
 
 function ExchangeEntry({ exchange }: { exchange: Exchange }) {
+  const { colors } = useTheme<Theme>();
   return (
-    <View className="gap-1.5">
-      <View className="items-end gap-0.5">
+    <View style={{ gap: 6 }}>
+      <View style={{ alignItems: "flex-end", gap: 2 }}>
         <ChatBubbleUser command={exchange.command} />
-        <Text className="text-[10px] font-mono text-muted px-1">{exchange.timestamp}</Text>
+        <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted, paddingHorizontal: 4 }}>
+          {exchange.timestamp}
+        </Text>
       </View>
       {exchange.response === null ? (
         <ThinkingBubble />
       ) : (
-        <View className="items-start gap-0.5">
+        <View style={{ alignItems: "flex-start", gap: 2 }}>
           <ChatBubbleSys response={exchange.response} />
-          <Text className="text-[10px] font-mono text-muted px-1">
+          <Text style={{ fontSize: 10, fontFamily: monoFont, color: colors.muted, paddingHorizontal: 4 }}>
             {exchange.response.timestamp}
           </Text>
         </View>
@@ -439,40 +667,46 @@ function ExchangeEntry({ exchange }: { exchange: Exchange }) {
 
 // ─── Floating input bar ───────────────────────────────────────────────────────
 
-function FloatingInputBar({
-  onSend,
-  placeholderColor,
-}: {
-  onSend: (text: string) => void;
-  placeholderColor: string;
-}) {
-  const [text, setText] = useState('');
+function FloatingInputBar({ onSend }: { onSend: (text: string) => void }) {
+  const { colors, borderRadii } = useTheme<Theme>();
+  const [text, setText] = useState("");
   const canSend = text.trim().length > 0;
-
-  const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme === 'dark' ? 'dark' : 'light'];
 
   const handleSend = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
     onSend(trimmed);
-    setText('');
+    setText("");
   };
 
   return (
-    <View className="mx-3 mb-5 rounded-[22px] bg-card border border-border flex-row items-center py-[10px] pr-[10px] pl-[14px] gap-[10px]">
+    <View
+      style={{
+        marginHorizontal: 12,
+        marginBottom: 20,
+        borderRadius: borderRadii.pill,
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 10,
+        paddingRight: 10,
+        paddingLeft: 14,
+        gap: 10,
+      }}
+    >
       <SymbolView
-        name={{ ios: 'terminal', android: 'code', web: 'code' }}
+        name={{ ios: "terminal", android: "code", web: "code" }}
         size={16}
-        tintColor={colors.textSecondary}
+        tintColor={colors.muted}
       />
       <TextInput
         value={text}
         onChangeText={setText}
         placeholder="Tell SYRIS what to do…"
-        placeholderTextColor={placeholderColor}
-        className="flex-1 text-[14px] text-foreground"
-        style={{ height: 40 }}
+        placeholderTextColor={colors.muted}
+        style={{ flex: 1, fontSize: 14, color: colors.foreground, height: 40 }}
         returnKeyType="send"
         blurOnSubmit
         onSubmitEditing={handleSend}
@@ -480,14 +714,20 @@ function FloatingInputBar({
       <Pressable
         onPress={handleSend}
         disabled={!canSend}
-        className={`w-10 h-10 rounded-full items-center justify-center ${
-          canSend ? 'bg-accent active:opacity-70' : 'bg-zinc-200 dark:bg-zinc-800'
-        }`}
+        style={({ pressed }) => ({
+          width: 40,
+          height: 40,
+          borderRadius: borderRadii.full,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: canSend ? colors.accent : colors.elementBg,
+          opacity: canSend && pressed ? 0.7 : 1,
+        })}
       >
         <SymbolView
-          name={{ ios: 'arrow.up', android: 'arrow_upward', web: 'arrow_upward' }}
+          name={{ ios: "arrow.up", android: "arrow_upward", web: "arrow_upward" }}
           size={16}
-          tintColor={canSend ? '#ffffff' : colors.textSecondary}
+          tintColor={canSend ? colors.white : colors.muted}
         />
       </Pressable>
     </View>
@@ -498,18 +738,19 @@ function FloatingInputBar({
 
 const DEMO_RESPONSES: SyrisResponse[] = [
   {
-    kind: 'informational',
-    traceId: '01DEMO0001',
-    timestamp: '',
+    kind: "informational",
+    traceId: "01DEMO0001",
+    timestamp: "",
     answer:
-      'No matching rule or connector found. Try rephrasing or check available connectors via the audit log.',
+      "No matching rule or connector found. Try rephrasing or check available connectors via the audit log.",
   },
   {
-    kind: 'task_created',
-    traceId: '01DEMO0002',
-    timestamp: '',
-    taskId: 'tsk_demo_01',
-    summary: 'Command queued as a one-off task. SYRIS will execute when resources are available.',
+    kind: "task_created",
+    traceId: "01DEMO0002",
+    timestamp: "",
+    taskId: "tsk_demo_01",
+    summary:
+      "Command queued as a one-off task. SYRIS will execute when resources are available.",
     steps: 2,
   },
 ];
@@ -518,9 +759,8 @@ let demoIdx = 0;
 
 export default function CommandScreen() {
   const { autonomyLevel } = useSystemStore();
-  const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme === 'dark' ? 'dark' : 'light'];
-  const autonomy = autonomyLevel ?? 'A3';
+  const { colors, borderRadii } = useTheme<Theme>();
+  const autonomy = autonomyLevel ?? "A3";
 
   const [exchanges, setExchanges] = useState<Exchange[]>(INITIAL_EXCHANGES);
   const scrollRef = useRef<ScrollView>(null);
@@ -557,22 +797,43 @@ export default function CommandScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           ref={scrollRef}
-          className="flex-1"
-          contentContainerClassName="px-4 pt-4 pb-8 gap-[10px]"
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 16,
+            paddingBottom: 32,
+            gap: 10,
+          }}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="interactive"
         >
-          <View className="px-3 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-border">
-            <Text className="text-[11px] font-mono text-center text-muted">
-              <Text className="text-foreground">Command interface</Text>
-              {' · not a chatbot. Messages are ingested as events through the normal pipeline.'}
+          <View
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderRadius: borderRadii.xl,
+              backgroundColor: colors.codeBg,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 11,
+                fontFamily: monoFont,
+                textAlign: "center",
+                color: colors.muted,
+              }}
+            >
+              <Text style={{ color: colors.foreground }}>Command interface</Text>
+              {" · not a chatbot. Messages are ingested as events through the normal pipeline."}
             </Text>
           </View>
 
@@ -581,7 +842,7 @@ export default function CommandScreen() {
           ))}
         </ScrollView>
 
-        <FloatingInputBar onSend={handleSend} placeholderColor={colors.textSecondary} />
+        <FloatingInputBar onSend={handleSend} />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

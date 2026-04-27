@@ -1,13 +1,15 @@
-import { View } from 'react-native';
+import { useTheme } from "@shopify/restyle";
+import { View } from "react-native";
 
-import type { BadgeVariant } from './badge';
+import type { BadgeVariant } from "./badge";
+import type { Theme } from "@/theme";
 
-const dotClasses: Record<BadgeVariant, string> = {
-  success: 'bg-green-500 dark:bg-green-400',
-  warning: 'bg-yellow-500 dark:bg-yellow-400',
-  error: 'bg-red-500 dark:bg-red-400',
-  info: 'bg-blue-500 dark:bg-blue-400',
-  neutral: 'bg-zinc-400 dark:bg-zinc-500',
+const DOT_COLOR_KEY: Record<BadgeVariant, keyof Theme["colors"]> = {
+  success: "success",
+  warning: "dotWarning",
+  error: "error",
+  info: "info",
+  neutral: "dotNeutral",
 };
 
 type StatusDotProps = {
@@ -15,5 +17,15 @@ type StatusDotProps = {
 };
 
 export function StatusDot({ variant }: StatusDotProps) {
-  return <View className={`w-2 h-2 rounded-full ${dotClasses[variant]}`} />;
+  const { colors } = useTheme<Theme>();
+  return (
+    <View
+      style={{
+        width: 8,
+        height: 8,
+        borderRadius: 9999,
+        backgroundColor: colors[DOT_COLOR_KEY[variant]] as string,
+      }}
+    />
+  );
 }

@@ -1,10 +1,10 @@
+import { useTheme } from "@shopify/restyle";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
 import {
   Pressable,
   ScrollView,
   Text,
-  useColorScheme,
   View,
 } from "react-native";
 import Animated, {
@@ -18,13 +18,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Middot } from "@/components/mid-dot";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import { Colors } from "@/constants/theme";
+import { monoFont, type Theme } from "@/theme";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type RiskLevel = "low" | "medium" | "high" | "critical";
 type FilterId = "all" | "action" | "agent" | "info" | "alarm";
-type CardColors = (typeof Colors)[keyof typeof Colors];
+type CardColors = Theme["colors"];
 
 type ApprovalItem = {
   id: string;
@@ -91,8 +91,7 @@ const INITIAL_INBOX: InboxItem[] = [
     unread: true,
     time: "2m",
     title: "Approval needed <Middot /> unlock door",
-    snippet:
-      "Dad requested front door unlock. Action exceeds A3 home-device scope.",
+    snippet: "Dad requested front door unlock. Action exceeds A3 home-device scope.",
     approvalId: "apr_01JH7A4K",
     riskLevel: "medium",
     expiresIn: "3:47",
@@ -103,8 +102,7 @@ const INITIAL_INBOX: InboxItem[] = [
     unread: true,
     time: "6m",
     title: "Intent unclear <Middot /> garage SMS",
-    snippet:
-      '"yo can you close up when you leave" — 3 possible interpretations.',
+    snippet: '"yo can you close up when you leave" — 3 possible interpretations.',
     escalationId: "esc_01JH7A9P",
   },
   {
@@ -185,15 +183,24 @@ function filterItems(items: InboxItem[], filter: FilterId): InboxItem[] {
 // ─── Atoms ────────────────────────────────────────────────────────────────────
 
 function UnreadDot() {
+  const { colors } = useTheme<Theme>();
   return (
     <View
-      className="absolute w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400"
-      style={{ left: 6, top: 22 }}
+      style={{
+        position: "absolute",
+        width: 6,
+        height: 6,
+        borderRadius: 9999,
+        backgroundColor: colors.info,
+        left: 6,
+        top: 22,
+      }}
     />
   );
 }
 
 function LiveDot() {
+  const { colors } = useTheme<Theme>();
   const opacity = useSharedValue(1);
 
   useEffect(() => {
@@ -208,111 +215,143 @@ function LiveDot() {
 
   return (
     <Animated.View
-      style={animStyle}
-      className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-400"
+      style={[
+        {
+          width: 8,
+          height: 8,
+          borderRadius: 9999,
+          backgroundColor: colors.info,
+        },
+        animStyle,
+      ]}
     />
   );
 }
 
 // ─── Card variants ────────────────────────────────────────────────────────────
 
-function ApprovalCard({
-  item,
-  colors,
-}: {
-  item: ApprovalItem;
-  colors: CardColors;
-}) {
+function ApprovalCard({ item, colors }: { item: ApprovalItem; colors: CardColors }) {
   return (
-    <Pressable className="relative flex-row items-start gap-2.5 px-3.5 py-3 active:opacity-70">
+    <Pressable
+      style={({ pressed }) => ({
+        position: "relative",
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
       {item.unread && <UnreadDot />}
-      <View className="w-9 h-9 rounded-[10px] bg-yellow-500/15 dark:bg-yellow-400/15 items-center justify-center shrink-0">
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          backgroundColor: colors.warningSubtle,
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
         <SymbolView
           name={{ ios: "lock.fill", android: "lock", web: "lock" }}
           size={16}
           tintColor={colors.warning}
         />
       </View>
-      <View className="flex-1 min-w-0">
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text
-          className="text-[13px] font-medium leading-tight text-foreground"
+          style={{ fontSize: 13, fontWeight: "500", lineHeight: 18, color: colors.foreground }}
           numberOfLines={1}
         >
           {item.title}
         </Text>
         <Text
-          className="text-[11px] leading-snug text-muted mt-0.5"
+          style={{ fontSize: 11, lineHeight: 16, color: colors.muted, marginTop: 2 }}
           numberOfLines={2}
         >
           {item.snippet}
         </Text>
-        <View className="flex-row items-center gap-2 mt-1.5 flex-wrap">
-          <Text className="font-mono text-[10px] text-muted">
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+          <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted }}>
             {item.approvalId}
           </Text>
-          <Text className="text-[10px] text-zinc-300 dark:text-zinc-700">
+          <Text style={{ fontSize: 10, color: colors.separatorMuted }}>
             <Middot />
           </Text>
-          <Badge
-            label={item.riskLevel}
-            variant={RISK_VARIANT[item.riskLevel]}
-          />
-          <Text className="text-[10px] text-zinc-300 dark:text-zinc-700">
+          <Badge label={item.riskLevel} variant={RISK_VARIANT[item.riskLevel]} />
+          <Text style={{ fontSize: 10, color: colors.separatorMuted }}>
             <Middot />
           </Text>
-          <Text className="font-mono text-[10px] text-yellow-600 dark:text-yellow-400">
+          <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.warningMid }}>
             exp {item.expiresIn}
           </Text>
         </View>
       </View>
-      <Text className="font-mono text-[10px] text-muted shrink-0 mt-0.5">
+      <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted, flexShrink: 0, marginTop: 2 }}>
         {item.time}
       </Text>
     </Pressable>
   );
 }
 
-function EscalationCard({
-  item,
-  colors,
-}: {
-  item: EscalationItem;
-  colors: CardColors;
-}) {
+function EscalationCard({ item, colors }: { item: EscalationItem; colors: CardColors }) {
   return (
-    <Pressable className="relative flex-row items-start gap-2.5 px-3.5 py-3 active:opacity-70">
+    <Pressable
+      style={({ pressed }) => ({
+        position: "relative",
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
       {item.unread && <UnreadDot />}
-      <View className="w-9 h-9 rounded-[10px] bg-blue-500/15 dark:bg-blue-400/15 items-center justify-center shrink-0">
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          backgroundColor: colors.accentSubtle,
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
         <SymbolView
           name={{ ios: "brain", android: "memory", web: "memory" }}
           size={16}
           tintColor={colors.accent}
         />
       </View>
-      <View className="flex-1 min-w-0">
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text
-          className="text-[13px] font-medium leading-tight text-foreground"
+          style={{ fontSize: 13, fontWeight: "500", lineHeight: 18, color: colors.foreground }}
           numberOfLines={1}
         >
           {item.title}
         </Text>
         <Text
-          className="text-[11px] leading-snug text-muted mt-0.5"
+          style={{ fontSize: 11, lineHeight: 16, color: colors.muted, marginTop: 2 }}
           numberOfLines={2}
         >
           {item.snippet}
         </Text>
-        <View className="flex-row items-center gap-2 mt-1.5">
-          <Text className="font-mono text-[10px] text-muted">
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
+          <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted }}>
             {item.escalationId}
           </Text>
-          <Text className="text-[10px] text-zinc-300 dark:text-zinc-700">
+          <Text style={{ fontSize: 10, color: colors.separatorMuted }}>
             <Middot />
           </Text>
-          <Text className="text-[10px] text-muted">select interpretation</Text>
+          <Text style={{ fontSize: 10, color: colors.muted }}>select interpretation</Text>
         </View>
       </View>
-      <Text className="font-mono text-[10px] text-muted shrink-0 mt-0.5">
+      <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted, flexShrink: 0, marginTop: 2 }}>
         {item.time}
       </Text>
     </Pressable>
@@ -321,23 +360,39 @@ function EscalationCard({
 
 function AgentCard({ item, colors }: { item: AgentItem; colors: CardColors }) {
   return (
-    <Pressable className="relative flex-row items-start gap-2.5 px-3.5 py-3 active:opacity-70">
+    <Pressable
+      style={({ pressed }) => ({
+        position: "relative",
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
       {item.unread && <UnreadDot />}
-      <View className="w-9 h-9 rounded-[10px] bg-blue-500/20 dark:bg-blue-400/20 items-center justify-center shrink-0">
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          backgroundColor: colors.accentSubtle20,
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
         <SymbolView
-          name={{
-            ios: "arrow.triangle.2.circlepath",
-            android: "autorenew",
-            web: "autorenew",
-          }}
+          name={{ ios: "arrow.triangle.2.circlepath", android: "autorenew", web: "autorenew" }}
           size={16}
           tintColor={colors.accent}
         />
       </View>
-      <View className="flex-1 min-w-0">
-        <View className="flex-row items-center gap-2">
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Text
-            className="flex-1 text-[13px] font-medium leading-tight text-foreground"
+            style={{ flex: 1, fontSize: 13, fontWeight: "500", lineHeight: 18, color: colors.foreground }}
             numberOfLines={1}
           >
             {item.title}
@@ -345,22 +400,22 @@ function AgentCard({ item, colors }: { item: AgentItem; colors: CardColors }) {
           <LiveDot />
         </View>
         <Text
-          className="text-[11px] leading-snug text-muted mt-0.5"
+          style={{ fontSize: 11, lineHeight: 16, color: colors.muted, marginTop: 2 }}
           numberOfLines={2}
         >
           {item.snippet}
         </Text>
-        <View className="flex-row items-center gap-2 mt-1.5">
-          <Text className="font-mono text-[10px] text-muted">{item.runId}</Text>
-          <Text className="text-[10px] text-zinc-300 dark:text-zinc-700">
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
+          <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted }}>{item.runId}</Text>
+          <Text style={{ fontSize: 10, color: colors.separatorMuted }}>
             <Middot />
           </Text>
-          <Text className="font-mono text-[10px] text-muted">
+          <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted }}>
             elapsed {item.elapsed}
           </Text>
         </View>
       </View>
-      <Text className="font-mono text-[10px] text-muted shrink-0 mt-0.5">
+      <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted, flexShrink: 0, marginTop: 2 }}>
         {item.time}
       </Text>
     </Pressable>
@@ -369,61 +424,69 @@ function AgentCard({ item, colors }: { item: AgentItem; colors: CardColors }) {
 
 function InfoCard({ item, colors }: { item: InfoItem; colors: CardColors }) {
   return (
-    <Pressable className="relative flex-row items-start gap-2.5 px-3.5 py-3 active:opacity-70">
+    <Pressable
+      style={({ pressed }) => ({
+        position: "relative",
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
       {item.unread && <UnreadDot />}
-      <View className="w-9 h-9 rounded-[10px] bg-zinc-100 dark:bg-zinc-800 items-center justify-center shrink-0">
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          backgroundColor: colors.elementBgSubtle,
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
         {item.eventId.startsWith("evt_") ? (
           <SymbolView
-            name={{
-              ios: "sensor.tag.radiowaves.forward",
-              android: "sensors",
-              web: "sensors",
-            }}
+            name={{ ios: "sensor.tag.radiowaves.forward", android: "sensors", web: "sensors" }}
             size={16}
-            tintColor={colors.textSecondary}
+            tintColor={colors.muted}
           />
         ) : item.eventId.startsWith("tmr_") ? (
           <SymbolView
-            name={{
-              ios: "checkmark.circle.fill",
-              android: "check_circle",
-              web: "check_circle",
-            }}
+            name={{ ios: "checkmark.circle.fill", android: "check_circle", web: "check_circle" }}
             size={16}
-            tintColor={colors.textSecondary}
+            tintColor={colors.muted}
           />
         ) : (
           <SymbolView
-            name={{
-              ios: "calendar",
-              android: "calendar_today",
-              web: "calendar_today",
-            }}
+            name={{ ios: "calendar", android: "calendar_today", web: "calendar_today" }}
             size={16}
-            tintColor={colors.textSecondary}
+            tintColor={colors.muted}
           />
         )}
       </View>
-      <View className="flex-1 min-w-0">
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text
-          className="text-[13px] font-medium leading-tight text-foreground"
+          style={{ fontSize: 13, fontWeight: "500", lineHeight: 18, color: colors.foreground }}
           numberOfLines={1}
         >
           {item.title}
         </Text>
         <Text
-          className="text-[11px] leading-snug text-muted mt-0.5"
+          style={{ fontSize: 11, lineHeight: 16, color: colors.muted, marginTop: 2 }}
           numberOfLines={2}
         >
           {item.snippet}
         </Text>
-        <View className="flex-row items-center mt-1.5">
-          <Text className="font-mono text-[10px] text-muted">
+        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 6 }}>
+          <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted }}>
             {item.eventId}
           </Text>
         </View>
       </View>
-      <Text className="font-mono text-[10px] text-muted shrink-0 mt-0.5">
+      <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted, flexShrink: 0, marginTop: 2 }}>
         {item.time}
       </Text>
     </Pressable>
@@ -432,39 +495,55 @@ function InfoCard({ item, colors }: { item: InfoItem; colors: CardColors }) {
 
 function AlarmCard({ item, colors }: { item: AlarmItem; colors: CardColors }) {
   return (
-    <Pressable className="relative flex-row items-start gap-2.5 px-3.5 py-3 active:opacity-70">
+    <Pressable
+      style={({ pressed }) => ({
+        position: "relative",
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
       {item.unread && <UnreadDot />}
-      <View className="w-9 h-9 rounded-[10px] bg-red-500/15 dark:bg-red-400/15 items-center justify-center shrink-0">
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          backgroundColor: colors.errorSubtle,
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
         <SymbolView
-          name={{
-            ios: "exclamationmark.triangle.fill",
-            android: "warning",
-            web: "warning",
-          }}
+          name={{ ios: "exclamationmark.triangle.fill", android: "warning", web: "warning" }}
           size={16}
           tintColor={colors.error}
         />
       </View>
-      <View className="flex-1 min-w-0">
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text
-          className="text-[13px] font-medium leading-tight text-foreground"
+          style={{ fontSize: 13, fontWeight: "500", lineHeight: 18, color: colors.foreground }}
           numberOfLines={1}
         >
           {item.title}
         </Text>
         <Text
-          className="text-[11px] leading-snug text-muted mt-0.5"
+          style={{ fontSize: 11, lineHeight: 16, color: colors.muted, marginTop: 2 }}
           numberOfLines={2}
         >
           {item.snippet}
         </Text>
-        <View className="flex-row items-center gap-2 mt-1.5">
-          <Text className="font-mono text-[10px] text-muted">
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
+          <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted }}>
             {item.alarmId}
           </Text>
           {item.autocleared && (
             <>
-              <Text className="text-[10px] text-zinc-300 dark:text-zinc-700">
+              <Text style={{ fontSize: 10, color: colors.separatorMuted }}>
                 <Middot />
               </Text>
               <Badge label="auto-cleared" variant="neutral" />
@@ -472,7 +551,7 @@ function AlarmCard({ item, colors }: { item: AlarmItem; colors: CardColors }) {
           )}
         </View>
       </View>
-      <Text className="font-mono text-[10px] text-muted shrink-0 mt-0.5">
+      <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted, flexShrink: 0, marginTop: 2 }}>
         {item.time}
       </Text>
     </Pressable>
@@ -491,13 +570,13 @@ function InboxRow({
   return (
     <>
       {item.kind === "approval" && <ApprovalCard item={item} colors={colors} />}
-      {item.kind === "escalation" && (
-        <EscalationCard item={item} colors={colors} />
-      )}
+      {item.kind === "escalation" && <EscalationCard item={item} colors={colors} />}
       {item.kind === "agent" && <AgentCard item={item} colors={colors} />}
       {item.kind === "info" && <InfoCard item={item} colors={colors} />}
       {item.kind === "alarm" && <AlarmCard item={item} colors={colors} />}
-      {!isLast && <View className="h-px bg-border mx-3.5" />}
+      {!isLast && (
+        <View style={{ height: 1, backgroundColor: colors.border, marginHorizontal: 14 }} />
+      )}
     </>
   );
 }
@@ -513,8 +592,7 @@ const FILTER_DEFS: { id: FilterId; label: string }[] = [
 ];
 
 export default function InboxScreen() {
-  const colorScheme = useColorScheme() ?? "dark";
-  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
+  const { colors, borderRadii } = useTheme<Theme>();
 
   const [filter, setFilter] = useState<FilterId>("all");
   const [items, setItems] = useState<InboxItem[]>(INITIAL_INBOX);
@@ -526,9 +604,7 @@ export default function InboxScreen() {
   const countFor = (id: FilterId) => {
     switch (id) {
       case "action":
-        return items.filter(
-          (it) => it.kind === "approval" || it.kind === "escalation",
-        ).length;
+        return items.filter((it) => it.kind === "approval" || it.kind === "escalation").length;
       case "agent":
         return items.filter((it) => it.kind === "agent").length;
       case "info":
@@ -541,20 +617,38 @@ export default function InboxScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        className="flex-1"
-        contentContainerClassName="pb-8"
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Header ── */}
-        <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
-          <Text className="text-2xl font-semibold tracking-tight text-foreground">
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 16,
+            paddingTop: 12,
+            paddingBottom: 8,
+          }}
+        >
+          <Text
+            style={{ fontSize: 24, fontWeight: "600", letterSpacing: -0.6, color: colors.foreground }}
+          >
             Inbox
           </Text>
           {unreadCount > 0 && (
-            <View className="px-2 py-0.5 rounded-full bg-blue-500/15 dark:bg-blue-400/15">
-              <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+            <View
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                borderRadius: borderRadii.full,
+                backgroundColor: colors.accentSubtle,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "600", color: colors.accentMid }}>
                 {unreadCount} unread
               </Text>
             </View>
@@ -565,7 +659,7 @@ export default function InboxScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerClassName="flex-row gap-1.5 px-4 pb-3"
+          contentContainerStyle={{ flexDirection: "row", gap: 6, paddingHorizontal: 16, paddingBottom: 12 }}
         >
           {FILTER_DEFS.map((f) => {
             const active = filter === f.id;
@@ -573,26 +667,33 @@ export default function InboxScreen() {
               <Pressable
                 key={f.id}
                 onPress={() => setFilter(f.id)}
-                className={`flex-row items-center gap-1.5 rounded-lg px-3 shrink-0 active:opacity-70 ${
-                  active ? "bg-foreground" : "bg-zinc-200 dark:bg-zinc-800"
-                }`}
-                style={{ height: 30 }}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  borderRadius: borderRadii.md,
+                  paddingHorizontal: 12,
+                  flexShrink: 0,
+                  height: 30,
+                  backgroundColor: active ? colors.foreground : colors.elementBg,
+                  opacity: pressed ? 0.7 : 1,
+                })}
               >
                 <Text
-                  className={`text-[12px] font-semibold ${
-                    active
-                      ? "text-white dark:text-black"
-                      : "text-zinc-500 dark:text-zinc-400"
-                  }`}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "600",
+                    color: active ? colors.chipActiveText : colors.chipInactiveLabel,
+                  }}
                 >
                   {f.label}
                 </Text>
                 <Text
-                  className={`text-[10px] font-mono ${
-                    active
-                      ? "text-white/70 dark:text-black/70"
-                      : "text-zinc-400 dark:text-zinc-600"
-                  }`}
+                  style={{
+                    fontSize: 10,
+                    fontFamily: monoFont,
+                    color: (active ? colors.chipActiveCount : colors.chipInactiveCount) as string,
+                  }}
                 >
                   {countFor(f.id)}
                 </Text>
@@ -603,7 +704,14 @@ export default function InboxScreen() {
 
         {/* ── Inbox list ── */}
         {visible.length > 0 ? (
-          <View className="bg-surface rounded-xl overflow-hidden mx-4">
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: borderRadii.xl,
+              overflow: "hidden",
+              marginHorizontal: 16,
+            }}
+          >
             {visible.map((item, i) => (
               <InboxRow
                 key={item.id}
@@ -614,29 +722,35 @@ export default function InboxScreen() {
             ))}
           </View>
         ) : (
-          <View className="items-center justify-center py-16 mx-4">
-            <Text className="text-sm text-muted">Nothing here</Text>
+          <View style={{ alignItems: "center", justifyContent: "center", paddingVertical: 64, marginHorizontal: 16 }}>
+            <Text style={{ fontSize: 14, color: colors.muted }}>Nothing here</Text>
           </View>
         )}
 
         {/* ── Clear informational ── */}
         {hasInfo && (
           <Pressable
-            onPress={() =>
-              setItems((prev) => prev.filter((it) => it.kind !== "info"))
-            }
-            className="self-center flex-row items-center gap-1.5 mt-4 px-4 py-2 rounded-full border border-border active:opacity-60"
+            onPress={() => setItems((prev) => prev.filter((it) => it.kind !== "info"))}
+            style={({ pressed }) => ({
+              alignSelf: "center",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 16,
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderRadius: borderRadii.full,
+              borderWidth: 1,
+              borderColor: colors.border,
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
             <SymbolView
-              name={{
-                ios: "trash",
-                android: "delete_outline",
-                web: "delete_outline",
-              }}
+              name={{ ios: "trash", android: "delete_outline", web: "delete_outline" }}
               size={12}
-              tintColor={colors.textSecondary}
+              tintColor={colors.muted}
             />
-            <Text className="text-xs text-muted">Clear all informational</Text>
+            <Text style={{ fontSize: 12, color: colors.muted }}>Clear all informational</Text>
           </Pressable>
         )}
       </ScrollView>

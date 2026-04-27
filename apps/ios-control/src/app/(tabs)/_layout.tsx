@@ -1,27 +1,24 @@
-import { Tabs } from 'expo-router';
-import { useColorScheme } from 'react-native';
-
-import { Colors } from '@/constants/theme';
+import { NativeTabs } from "expo-router/build/native-tabs";
 
 export default function TabsLayout() {
-  const colorScheme = useColorScheme() ?? 'dark';
-  const colors = Colors[colorScheme === 'dark' ? 'dark' : 'light'];
-
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: {
-          backgroundColor: colors.background,
-          borderTopColor: colors.border,
-        },
-      }}>
-      <Tabs.Screen name="index" options={{ title: 'Overview' }} />
-      <Tabs.Screen name="inbox" options={{ title: 'Inbox' }} />
-      <Tabs.Screen name="command" options={{ title: 'Command' }} />
-      <Tabs.Screen name="audit" options={{ title: 'Audit' }} />
-    </Tabs>
+    <NativeTabs>
+      <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger.Label>Overview</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="house" md="home" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="inbox">
+        <NativeTabs.Trigger.Label>Inbox</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="bell" md="notifications_none" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="command">
+        <NativeTabs.Trigger.Label>Command</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="apple.terminal" md="terminal" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="audit">
+        <NativeTabs.Trigger.Label>Audit</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="waveform.path.ecg" md="vital_signs" />
+      </NativeTabs.Trigger>
+    </NativeTabs>
   );
 }

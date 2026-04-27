@@ -1,3 +1,5 @@
-export function Middot({ ...props }: React.ComponentProps<"span">) {
-  return <span aria-hidden="true" {...props}>&middot;</span>;
+import { Text } from "react-native"
+
+export function Middot() {
+  return <Text>&middot;</Text>;
 }

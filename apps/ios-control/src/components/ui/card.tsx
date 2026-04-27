@@ -1,19 +1,30 @@
-import { Pressable, View } from 'react-native';
+import { useTheme } from "@shopify/restyle";
+import { Pressable, View } from "react-native";
+
+import type { Theme } from "@/theme";
 
 type CardProps = {
   children: React.ReactNode;
   onPress?: () => void;
-  className?: string;
 };
 
-export function Card({ children, onPress, className = '' }: CardProps) {
-  const base = `bg-surface rounded-xl p-4 ${className}`;
+export function Card({ children, onPress }: CardProps) {
+  const { colors, spacing, borderRadii } = useTheme<Theme>();
+  const baseStyle = {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadii.xl,
+    padding: spacing[16],
+  };
+
   if (onPress) {
     return (
-      <Pressable onPress={onPress} className={`${base} active:opacity-70`}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [baseStyle, pressed && { opacity: 0.7 }]}
+      >
         {children}
       </Pressable>
     );
   }
-  return <View className={base}>{children}</View>;
+  return <View style={baseStyle}>{children}</View>;
 }

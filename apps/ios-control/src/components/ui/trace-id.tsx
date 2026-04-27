@@ -1,12 +1,16 @@
-import * as Clipboard from 'expo-clipboard';
-import { useState } from 'react';
-import { Pressable, Text } from 'react-native';
+import * as Clipboard from "expo-clipboard";
+import { useState } from "react";
+import { Pressable, Text } from "react-native";
+import { useTheme } from "@shopify/restyle";
+
+import { monoFont, type Theme } from "@/theme";
 
 type TraceIdProps = {
   value: string;
 };
 
 export function TraceId({ value }: TraceIdProps) {
+  const { colors } = useTheme<Theme>();
   const [copied, setCopied] = useState(false);
 
   const handlePress = async () => {
@@ -16,9 +20,18 @@ export function TraceId({ value }: TraceIdProps) {
   };
 
   return (
-    <Pressable onPress={handlePress} className="active:opacity-60">
-      <Text className="font-mono text-xs text-muted">
-        {copied ? 'copied!' : value}
+    <Pressable
+      onPress={handlePress}
+      style={({ pressed }) => pressed && { opacity: 0.6 }}
+    >
+      <Text
+        style={{
+          fontFamily: monoFont,
+          fontSize: 12,
+          color: colors.muted,
+        }}
+      >
+        {copied ? "copied!" : value}
       </Text>
     </Pressable>
   );
