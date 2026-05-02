@@ -15,7 +15,7 @@ import type { SymbolViewProps } from "expo-symbols";
 
 import { AutonomyPill } from "@/components/autonomy-pill";
 import { monoFont, type Theme } from "@/theme";
-import type { RiskLevel } from "@/types/common";
+import type { RiskLevel } from "@/types";
 import type {
   StepState,
   StepKind,
@@ -27,8 +27,8 @@ import type {
   Task,
   TaskStatus,
   StepRef,
-} from "@/types/api/task";
-import type { FilterKey, TabView } from "@/types/ui/task-details";
+} from "@/types";
+import type { FilterKey, TabView } from "@/types";
 
 // Type assertion required: SymbolView name prop is a string literal union (SFSymbols7_0),
 // not plain string. All values passed to sym() are valid SF Symbol names.

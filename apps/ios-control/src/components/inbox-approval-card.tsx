@@ -7,8 +7,8 @@ import { Middot } from "@/components/mid-dot";
 import { Badge } from "@/components/ui/badge";
 import { RISK_VARIANT } from "@/helpers/inbox";
 import { monoFont } from "@/theme";
-import type { ApprovalItem } from "@/types/api/inbox";
-import type { CardColors } from "@/types/ui/inbox";
+import type { ApprovalItem } from "@/types";
+import type { CardColors } from "@/types";
 
 export function ApprovalCard({
   item,

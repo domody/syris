@@ -1,4 +1,4 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import {
@@ -20,7 +20,7 @@ import { TraceDetail } from "@/components/audit-trace-detail";
 import { AUDIT_EVENTS } from "@/data/mock";
 import { ALL_OUTCOMES, buildFeedItems, getToolNames } from "@/helpers/audit";
 import { type Theme } from "@/theme";
-import type { Density, Filters } from "@/types/ui/audit";
+import type { Density, Filters } from "@/types";
 
 export default function AuditScreen() {
   const { colors } = useTheme<Theme>();

@@ -5,8 +5,8 @@ import { UnreadDot } from "@/components/inbox-unread-dot";
 import { Middot } from "@/components/mid-dot";
 import { Badge } from "@/components/ui/badge";
 import { monoFont } from "@/theme";
-import type { AlarmItem } from "@/types/api/inbox";
-import type { CardColors } from "@/types/ui/inbox";
+import type { AlarmItem } from "@/types";
+import type { CardColors } from "@/types";
 
 export function AlarmCard({
   item,

@@ -1,6 +1,6 @@
 ﻿import type { BadgeVariant } from "@/components/ui/badge";
-import type { RiskLevel } from "@/types/common";
-import type { Lane, SyrisResponse } from "@/types/api/responses";
+import type { RiskLevel } from "@/types";
+import type { Lane, SyrisResponse } from "@/types";
 
 export const RISK_BADGE: Record<RiskLevel, BadgeVariant> = {
   low: "success",

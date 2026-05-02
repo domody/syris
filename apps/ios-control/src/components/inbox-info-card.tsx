@@ -4,8 +4,8 @@ import { Pressable, Text, View } from "react-native";
 
 import { UnreadDot } from "@/components/inbox-unread-dot";
 import { monoFont } from "@/theme";
-import type { InfoItem } from "@/types/api/inbox";
-import type { CardColors } from "@/types/ui/inbox";
+import type { InfoItem } from "@/types";
+import type { CardColors } from "@/types";
 
 export function InfoCard({
   item,

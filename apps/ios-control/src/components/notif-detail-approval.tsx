@@ -18,8 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { RISK_VARIANT } from "@/helpers/inbox";
 import { useBiometricGate } from "@/hooks/use-biometric-gate";
 import { monoFont, type Theme } from "@/theme";
-import type { ApprovalItem } from "@/types/api/inbox";
-import type { ApprovalState } from "@/types/ui/notif-detail-approval";
+import type { ApprovalItem } from "@/types";
+import type { ApprovalState } from "@/types";
 
 function formatTime(s: number): string {
   const m = Math.floor(s / 60);

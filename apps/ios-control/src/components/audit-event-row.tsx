@@ -1,4 +1,4 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { Text, View } from "react-native";
 
 import { OutcomePill } from "@/components/audit-outcome-pill";
@@ -10,8 +10,8 @@ import {
     outcomeStripeColor,
 } from "@/helpers/audit";
 import { monoFont, type Theme } from "@/theme";
-import type { AuditEvent } from "@/types/api/audit";
-import type { Density } from "@/types/ui/audit";
+import type { AuditEvent } from "@/types";
+import type { Density } from "@/types";
 
 export function EventRow({
   event,

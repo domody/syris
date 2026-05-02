@@ -1,10 +1,10 @@
-import type { Theme } from "@/theme";
+﻿import type { Theme } from "@/theme";
 import type {
     AuditEvent,
     AuditEventOutcome,
     AuditEventStage,
-} from "@/types/api/audit";
-import type { FeedItem } from "@/types/ui/audit";
+} from "@/types";
+import type { FeedItem } from "@/types";
 
 export const ALL_STAGES: AuditEventStage[] = [
   "normalize",

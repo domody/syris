@@ -10,7 +10,7 @@ import { TaskCreatedContent } from "@/components/command-task-created-content";
 import { TraceId } from "@/components/ui/trace-id";
 import { laneForKind } from "@/helpers/command";
 import type { Theme } from "@/theme";
-import type { SyrisResponse } from "@/types/api/responses";
+import type { SyrisResponse } from "@/types";
 
 export function ChatBubbleSys({ response }: { response: SyrisResponse }) {
   const { colors } = useTheme<Theme>();

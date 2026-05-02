@@ -1,9 +1,9 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { Text, View } from "react-native";
 
 import { outcomeCount } from "@/helpers/audit";
 import type { Theme } from "@/theme";
-import type { AuditEvent } from "@/types/api/audit";
+import type { AuditEvent } from "@/types";
 
 export function SummaryStrip({ events }: { events: AuditEvent[] }) {
   const { colors } = useTheme<Theme>();

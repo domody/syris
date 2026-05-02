@@ -2,7 +2,7 @@
 import { Text } from "react-native";
 
 import type { Theme } from "@/theme";
-import type { InformationalResponse } from "@/types/api/responses";
+import type { InformationalResponse } from "@/types";
 
 export function InformationalContent({ r }: { r: InformationalResponse }) {
   const { colors } = useTheme<Theme>();

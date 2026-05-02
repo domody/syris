@@ -3,7 +3,7 @@ import { Text, View } from "react-native";
 
 import { UnderstoodRow } from "@/components/command-understood-row";
 import { monoFont, type Theme } from "@/theme";
-import type { TaskCreatedResponse } from "@/types/api/responses";
+import type { TaskCreatedResponse } from "@/types";
 
 export function TaskCreatedContent({ r }: { r: TaskCreatedResponse }) {
   const { colors } = useTheme<Theme>();

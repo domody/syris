@@ -14,7 +14,7 @@ import {
 } from "@/components/notif-detail-helpers";
 import { Badge } from "@/components/ui/badge";
 import { type Theme } from "@/theme";
-import type { InfoItem } from "@/types/api/inbox";
+import type { InfoItem } from "@/types";
 
 export function InfoDetail({ item }: { item: InfoItem }) {
   const router = useRouter();

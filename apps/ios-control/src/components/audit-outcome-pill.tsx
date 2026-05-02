@@ -1,4 +1,4 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { Text, View } from "react-native";
 
 import {
@@ -7,7 +7,7 @@ import {
     outcomeLabelColor,
 } from "@/helpers/audit";
 import { monoFont, type Theme } from "@/theme";
-import type { AuditEventOutcome } from "@/types/api/audit";
+import type { AuditEventOutcome } from "@/types";
 
 export function OutcomePill({ outcome }: { outcome: AuditEventOutcome }) {
   const { colors } = useTheme<Theme>();

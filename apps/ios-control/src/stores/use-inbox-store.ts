@@ -1,6 +1,6 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 
-import type { InboxState } from '@/types/store';
+import type { InboxState } from "@/types";
 
 export const useInboxStore = create<InboxState>(() => ({
   notifications: [],

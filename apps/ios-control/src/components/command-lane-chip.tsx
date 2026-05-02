@@ -2,7 +2,7 @@
 import { Text, View } from "react-native";
 
 import { monoFont, type Theme } from "@/theme";
-import type { Lane } from "@/types/api/responses";
+import type { Lane } from "@/types";
 
 export function LaneChip({ lane }: { lane: Lane }) {
   const { colors } = useTheme<Theme>();

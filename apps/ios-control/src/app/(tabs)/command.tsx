@@ -9,7 +9,7 @@ import { DEMO_RESPONSES, INITIAL_EXCHANGES } from "@/data/mock";
 import { nowTimestamp } from "@/helpers/command";
 import { useSystemStore } from "@/stores/use-system-store";
 import type { Theme } from "@/theme";
-import type { Exchange } from "@/types/api/responses";
+import type { Exchange } from "@/types";
 
 let demoIdx = 0;
 

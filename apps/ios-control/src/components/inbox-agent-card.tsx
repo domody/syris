@@ -6,8 +6,8 @@ import { LiveDot } from "@/components/inbox-live-dot";
 import { UnreadDot } from "@/components/inbox-unread-dot";
 import { Middot } from "@/components/mid-dot";
 import { monoFont } from "@/theme";
-import type { AgentItem } from "@/types/api/inbox";
-import type { CardColors } from "@/types/ui/inbox";
+import type { AgentItem } from "@/types";
+import type { CardColors } from "@/types";
 
 export function AgentCard({
   item,

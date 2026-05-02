@@ -8,8 +8,8 @@ import { InboxRow } from "@/components/inbox-row";
 import { INITIAL_INBOX } from "@/data/mock";
 import { FILTER_DEFS, filterItems } from "@/helpers/inbox";
 import { monoFont, type Theme } from "@/theme";
-import type { InboxItem } from "@/types/api/inbox";
-import type { FilterId } from "@/types/ui/inbox";
+import type { InboxItem } from "@/types";
+import type { FilterId } from "@/types";
 
 export default function InboxScreen() {
   const { colors, borderRadii, spacing } = useTheme<Theme>();

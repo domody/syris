@@ -5,8 +5,8 @@ import { AlarmCard } from "@/components/inbox-alarm-card";
 import { ApprovalCard } from "@/components/inbox-approval-card";
 import { EscalationCard } from "@/components/inbox-escalation-card";
 import { InfoCard } from "@/components/inbox-info-card";
-import type { InboxItem } from "@/types/api/inbox";
-import type { CardColors } from "@/types/ui/inbox";
+import type { InboxItem } from "@/types";
+import type { CardColors } from "@/types";
 
 export function InboxRow({
   item,

@@ -1,4 +1,4 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 
@@ -8,8 +8,8 @@ import type { Theme } from "@/theme";
 import type {
     AuditEventOutcome,
     AuditEventStage,
-} from "@/types/api/audit";
-import type { Filters } from "@/types/ui/audit";
+} from "@/types";
+import type { Filters } from "@/types";
 
 export function FilterSheet({
   visible,

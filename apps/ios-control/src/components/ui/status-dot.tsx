@@ -1,7 +1,7 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { View } from "react-native";
 
-import type { BadgeVariant } from "@/types/ui/badge";
+import type { BadgeVariant } from "@/types";
 import type { Theme } from "@/theme";
 
 const DOT_COLOR_KEY: Record<BadgeVariant, keyof Theme["colors"]> = {

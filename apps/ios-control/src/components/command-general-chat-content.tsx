@@ -2,7 +2,7 @@
 import { Text } from "react-native";
 
 import type { Theme } from "@/theme";
-import type { GeneralChatResponse } from "@/types/api/responses";
+import type { GeneralChatResponse } from "@/types";
 
 export function GeneralChatContent({ r }: { r: GeneralChatResponse }) {
   const { colors } = useTheme<Theme>();

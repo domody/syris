@@ -20,7 +20,7 @@ import {
 } from "@/components/notif-detail-helpers";
 import { Badge } from "@/components/ui/badge";
 import { monoFont, type Theme } from "@/theme";
-import type { AgentItem } from "@/types/api/inbox";
+import type { AgentItem } from "@/types";
 
 const STEPS = [
   {

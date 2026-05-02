@@ -1,5 +1,5 @@
-import { Badge } from "@/components/ui/badge";
-import type { AuditLevel } from "@/types/common";
+﻿import { Badge } from "@/components/ui/badge";
+import type { AuditLevel } from "@/types";
 
 export function AuditLevelBadge({ level }: { level: AuditLevel }) {
   if (level === "error") return <Badge label="error" variant="error" />;

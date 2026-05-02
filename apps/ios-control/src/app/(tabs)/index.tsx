@@ -1,4 +1,4 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { SymbolView } from "expo-symbols";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,7 +16,7 @@ import { TraceId } from "@/components/ui/trace-id";
 import { AUDIT_ROWS, SPARKLINE_DATA, SUBSYSTEMS } from "@/data/mock";
 import { useSystemStore } from "@/stores/use-system-store";
 import { monoFont, type Theme } from "@/theme";
-import type { AuditLevel } from "@/types/common";
+import type { AuditLevel } from "@/types";
 
 export default function OverviewScreen() {
   const { autonomyLevel, systemHealth } = useSystemStore();

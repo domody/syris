@@ -15,7 +15,7 @@ import {
 } from "@/components/notif-detail-helpers";
 import { Badge } from "@/components/ui/badge";
 import { monoFont, type Theme } from "@/theme";
-import type { EscalationItem } from "@/types/api/inbox";
+import type { EscalationItem } from "@/types";
 
 const INTERPRETATIONS = [
   {

@@ -1,9 +1,9 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { Text, View } from "react-native";
 
 import { stageColorKey } from "@/helpers/audit";
 import { monoFont, type Theme } from "@/theme";
-import type { AuditEventStage } from "@/types/api/audit";
+import type { AuditEventStage } from "@/types";
 
 export function StageChip({ stage }: { stage: AuditEventStage }) {
   const { colors } = useTheme<Theme>();

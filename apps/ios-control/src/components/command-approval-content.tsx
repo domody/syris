@@ -5,7 +5,7 @@ import { Pressable, Text, View } from "react-native";
 import { Badge } from "@/components/ui/badge";
 import { RISK_BADGE, nowTimestamp } from "@/helpers/command";
 import { monoFont, type Theme } from "@/theme";
-import type { ApprovalSurfacedResponse } from "@/types/api/responses";
+import type { ApprovalSurfacedResponse } from "@/types";
 
 export function ApprovalContent({ r }: { r: ApprovalSurfacedResponse }) {
   const { colors } = useTheme<Theme>();

@@ -3,7 +3,7 @@ import { Text, View } from "react-native";
 
 import { UnderstoodRow } from "@/components/command-understood-row";
 import { monoFont, type Theme } from "@/theme";
-import type { DryRunResponse } from "@/types/api/responses";
+import type { DryRunResponse } from "@/types";
 
 export function DryRunContent({ r }: { r: DryRunResponse }) {
   const { colors } = useTheme<Theme>();

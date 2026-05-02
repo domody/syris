@@ -1,4 +1,4 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { SymbolView } from "expo-symbols";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,7 +7,7 @@ import { OutcomePill } from "@/components/audit-outcome-pill";
 import { StageChip } from "@/components/audit-stage-chip";
 import { formatTimestamp, stageColorKey } from "@/helpers/audit";
 import { monoFont, type Theme } from "@/theme";
-import type { AuditEvent } from "@/types/api/audit";
+import type { AuditEvent } from "@/types";
 
 export function TraceDetail({
   traceId,
