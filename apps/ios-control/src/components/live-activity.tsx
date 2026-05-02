@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Platform, Pressable, View } from "react-native";
 
 import { type Theme } from "@/theme";
+import { router } from "expo-router";
 import { RadialGlow } from "./radial-glow";
 
 type LiveActivityCardProps = {
@@ -21,6 +22,9 @@ export function LiveActivityCard({ children }: LiveActivityCardProps) {
         borderColor: colors.accentSubtle40,
         opacity: pressed ? 0.7 : 1,
       })}
+      onPress={() =>
+        router.push({ pathname: "/task/[id]", params: { id: "done" } })
+      }
     >
       <LinearGradient
         style={{ position: "absolute", top: 0, left: 0, bottom: 0, right: 0 }}

@@ -2,8 +2,9 @@ import { useTheme } from "@shopify/restyle";
 import { Text, View } from "react-native";
 
 import type { Theme } from "@/theme";
+import type { BadgeVariant } from "@/types/ui/badge";
 
-export type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral";
+export type { BadgeVariant };
 
 type BadgeConfig = {
   bgKey: keyof Theme["colors"];
