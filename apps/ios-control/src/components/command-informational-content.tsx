@@ -1,8 +1,8 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { Text } from "react-native";
 
 import type { Theme } from "@/theme";
-import type { InformationalResponse } from "@/types/ui/command";
+import type { InformationalResponse } from "@/types/api/responses";
 
 export function InformationalContent({ r }: { r: InformationalResponse }) {
   const { colors } = useTheme<Theme>();

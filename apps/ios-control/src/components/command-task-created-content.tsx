@@ -1,15 +1,15 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { Text, View } from "react-native";
 
 import { UnderstoodRow } from "@/components/command-understood-row";
 import { monoFont, type Theme } from "@/theme";
-import type { TaskCreatedResponse } from "@/types/ui/command";
+import type { TaskCreatedResponse } from "@/types/api/responses";
 
 export function TaskCreatedContent({ r }: { r: TaskCreatedResponse }) {
   const { colors } = useTheme<Theme>();
   return (
     <>
-      <UnderstoodRow label={`Task · ${r.steps} steps`} />
+      <UnderstoodRow label={`Task Â· ${r.steps} steps`} />
       <View
         style={{
           borderTopWidth: 1,

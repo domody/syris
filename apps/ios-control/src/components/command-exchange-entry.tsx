@@ -1,11 +1,11 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { Text, View } from "react-native";
 
 import { ChatBubbleSys } from "@/components/command-chat-bubble-sys";
 import { ChatBubbleUser } from "@/components/command-chat-bubble-user";
 import { ThinkingBubble } from "@/components/command-thinking-bubble";
 import { monoFont, type Theme } from "@/theme";
-import type { Exchange } from "@/types/ui/command";
+import type { Exchange } from "@/types/api/responses";
 
 export function ExchangeEntry({ item }: { item: Exchange }) {
   const { colors } = useTheme<Theme>();

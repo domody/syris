@@ -1,4 +1,4 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useRef, useState } from "react";
@@ -20,38 +20,38 @@ import {
 } from "@/components/notif-detail-helpers";
 import { Badge } from "@/components/ui/badge";
 import { monoFont, type Theme } from "@/theme";
-import type { AgentItem } from "@/types/ui/inbox";
+import type { AgentItem } from "@/types/api/inbox";
 
 const STEPS = [
   {
-    title: "Read calendar · next 14h",
+    title: "Read calendar Â· next 14h",
     key: "calendar.read",
     state: "done",
     dur: "0.3s",
   },
   {
-    title: "Triage inbox · 47 → 4 signal",
+    title: "Triage inbox Â· 47 â†’ 4 signal",
     key: "mail.triage",
     state: "done",
-    dur: "12.1s · LLM",
+    dur: "12.1s Â· LLM",
   },
   {
-    title: "Draft brief · synthesize",
+    title: "Draft brief Â· synthesize",
     key: "llm.compose",
     state: "running",
-    dur: "00:34 · LLM",
+    dur: "00:34 Â· LLM",
   },
   {
     title: "Render to speaker & notify",
     key: "speaker.tts",
     state: "pending",
-    dur: "—",
+    dur: "â€”",
   },
   {
-    title: "Finalize · log run",
+    title: "Finalize Â· log run",
     key: "run.finalize",
     state: "pending",
-    dur: "—",
+    dur: "â€”",
   },
 ] as const;
 
@@ -136,7 +136,7 @@ export function AgentDetail({ item }: { item: AgentItem }) {
                 color: colors.accent,
               }}
             >
-              Agent flow · {paused ? "paused" : "in progress"}
+              Agent flow Â· {paused ? "paused" : "in progress"}
             </Text>
           </View>
           <Text
@@ -190,7 +190,7 @@ export function AgentDetail({ item }: { item: AgentItem }) {
                 color: colors.muted,
               }}
             >
-              Step 3 of 5 · {paused ? "paused" : "running"}
+              Step 3 of 5 Â· {paused ? "paused" : "running"}
             </Text>
             <Text
               style={{
@@ -240,7 +240,7 @@ export function AgentDetail({ item }: { item: AgentItem }) {
           <Text
             style={{ fontFamily: monoFont, fontSize: 11, color: colors.muted }}
           >
-            tokens: 1,244 · model: claude-haiku-4-5 · tool_calls: 7
+            tokens: 1,244 Â· model: claude-haiku-4-5 Â· tool_calls: 7
           </Text>
         </View>
 
@@ -270,7 +270,7 @@ export function AgentDetail({ item }: { item: AgentItem }) {
                 color: colors.muted,
               }}
             >
-              5 steps · 2 done
+              5 steps Â· 2 done
             </Text>
           </View>
           <View style={{ gap: 10 }}>
@@ -343,7 +343,7 @@ export function AgentDetail({ item }: { item: AgentItem }) {
                       color: colors.muted,
                     }}
                   >
-                    {step.key} · {step.dur}
+                    {step.key} Â· {step.dur}
                   </Text>
                 </View>
               </View>
@@ -368,7 +368,7 @@ export function AgentDetail({ item }: { item: AgentItem }) {
                 color: colors.foreground,
               }}
             >
-              Live output · step 3
+              Live output Â· step 3
             </Text>
             <Badge label="streaming" variant="info" />
           </View>
@@ -395,8 +395,8 @@ export function AgentDetail({ item }: { item: AgentItem }) {
               <Text style={{ color: colors.foreground }}>
                 {'"Good morning. Three things today:"\n'}
                 {'"1. Standup at 10, you\'re presenting the routing"\n'}
-                {'"   changes — notes from yesterday attached."\n'}
-                {'"2. Dentist reminder at 14:30 — leave by 14:05."\n'}
+                {'"   changes â€” notes from yesterday attached."\n'}
+                {'"2. Dentist reminder at 14:30 â€” leave by 14:05."\n'}
                 {'"3. Alarm panel battery low'}
               </Text>
               <Text style={{ color: colors.muted }}>|</Text>

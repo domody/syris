@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+﻿import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Pressable, Text, View } from "react-native";
 
@@ -7,7 +7,8 @@ import { Middot } from "@/components/mid-dot";
 import { Badge } from "@/components/ui/badge";
 import { RISK_VARIANT } from "@/helpers/inbox";
 import { monoFont } from "@/theme";
-import type { ApprovalItem, CardColors } from "@/types/ui/inbox";
+import type { ApprovalItem } from "@/types/api/inbox";
+import type { CardColors } from "@/types/ui/inbox";
 
 export function ApprovalCard({
   item,

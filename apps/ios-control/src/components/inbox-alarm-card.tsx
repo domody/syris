@@ -1,11 +1,12 @@
-import { SymbolView } from "expo-symbols";
+﻿import { SymbolView } from "expo-symbols";
 import { Pressable, Text, View } from "react-native";
 
 import { UnreadDot } from "@/components/inbox-unread-dot";
 import { Middot } from "@/components/mid-dot";
 import { Badge } from "@/components/ui/badge";
 import { monoFont } from "@/theme";
-import type { AlarmItem, CardColors } from "@/types/ui/inbox";
+import type { AlarmItem } from "@/types/api/inbox";
+import type { CardColors } from "@/types/ui/inbox";
 
 export function AlarmCard({
   item,

@@ -1,11 +1,11 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Badge } from "@/components/ui/badge";
 import { RISK_BADGE, nowTimestamp } from "@/helpers/command";
 import { monoFont, type Theme } from "@/theme";
-import type { ApprovalSurfacedResponse } from "@/types/ui/command";
+import type { ApprovalSurfacedResponse } from "@/types/api/responses";
 
 export function ApprovalContent({ r }: { r: ApprovalSurfacedResponse }) {
   const { colors } = useTheme<Theme>();

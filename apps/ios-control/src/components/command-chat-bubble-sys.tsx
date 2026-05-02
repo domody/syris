@@ -1,4 +1,4 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { View } from "react-native";
 
 import { ApprovalContent } from "@/components/command-approval-content";
@@ -10,7 +10,7 @@ import { TaskCreatedContent } from "@/components/command-task-created-content";
 import { TraceId } from "@/components/ui/trace-id";
 import { laneForKind } from "@/helpers/command";
 import type { Theme } from "@/theme";
-import type { SyrisResponse } from "@/types/ui/command";
+import type { SyrisResponse } from "@/types/api/responses";
 
 export function ChatBubbleSys({ response }: { response: SyrisResponse }) {
   const { colors } = useTheme<Theme>();

@@ -1,8 +1,8 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { Text, View } from "react-native";
 
 import { monoFont, type Theme } from "@/theme";
-import type { Lane } from "@/types/ui/command";
+import type { Lane } from "@/types/api/responses";
 
 export function LaneChip({ lane }: { lane: Lane }) {
   const { colors } = useTheme<Theme>();
@@ -83,7 +83,7 @@ export function LaneChip({ lane }: { lane: Lane }) {
             color: colors.warningEmphasis,
           }}
         >
-          Gated · approval
+          Gated Â· approval
         </Text>
       </View>
     );

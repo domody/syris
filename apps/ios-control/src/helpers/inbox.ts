@@ -1,6 +1,7 @@
-import type { BadgeVariant } from "@/types/ui/badge";
+﻿import type { BadgeVariant } from "@/types/ui/badge";
 import type { RiskLevel } from "@/types/common";
-import type { FilterId, InboxItem } from "@/types/ui/inbox";
+import type { InboxItem } from "@/types/api/inbox";
+import type { FilterId } from "@/types/ui/inbox";
 
 export const RISK_VARIANT: Record<RiskLevel, BadgeVariant> = {
   low: "success",

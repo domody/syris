@@ -1,4 +1,4 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { RISK_VARIANT } from "@/helpers/inbox";
 import { useBiometricGate } from "@/hooks/use-biometric-gate";
 import { monoFont, type Theme } from "@/theme";
-import type { ApprovalItem } from "@/types/ui/inbox";
+import type { ApprovalItem } from "@/types/api/inbox";
 import type { ApprovalState } from "@/types/ui/notif-detail-approval";
 
 function formatTime(s: number): string {
@@ -109,7 +109,7 @@ export function ApprovalDetail({ item }: { item: ApprovalItem }) {
                 color: colors.warning,
               }}
             >
-              Approval request · gated {item.expiresIn ? "A3" : ""}
+              Approval request Â· gated {item.expiresIn ? "A3" : ""}
             </Text>
           </View>
           <Text
@@ -225,7 +225,7 @@ export function ApprovalDetail({ item }: { item: ApprovalItem }) {
                   marginTop: 2,
                 }}
               >
-                tool.call · home.door.unlock
+                tool.call Â· home.door.unlock
               </Text>
             </View>
             <Pressable
@@ -300,7 +300,7 @@ export function ApprovalDetail({ item }: { item: ApprovalItem }) {
         <DetailCard>
           <KVRow label="Initiated" value="2026-04-28 14:08:22" mono />
           <HairlineDivider />
-          <KVRow label="Source" value="BLE proximity · dad.iphone @ 1.2m" />
+          <KVRow label="Source" value="BLE proximity Â· dad.iphone @ 1.2m" />
           <HairlineDivider />
           <KVRow
             label="Matched rule"
@@ -311,7 +311,7 @@ export function ApprovalDetail({ item }: { item: ApprovalItem }) {
           <HairlineDivider />
           <KVRow label="Trace" value={traceId} mono />
           <HairlineDivider />
-          <KVRow label="Last 7d" value="3 approvals · 0 denials" />
+          <KVRow label="Last 7d" value="3 approvals Â· 0 denials" />
         </DetailCard>
 
         {/* Actions */}
@@ -345,7 +345,7 @@ export function ApprovalDetail({ item }: { item: ApprovalItem }) {
                 textAlign: "center",
               }}
             >
-              Face ID required · action logged to{" "}
+              Face ID required Â· action logged to{" "}
               <Text style={{ color: colors.accent }}>audit.approvals</Text>
             </Text>
           </>
@@ -387,8 +387,8 @@ export function ApprovalDetail({ item }: { item: ApprovalItem }) {
                 }}
               >
                 {state === "approved"
-                  ? "Approved · executing"
-                  : "Denied · gate closed"}
+                  ? "Approved Â· executing"
+                  : "Denied Â· gate closed"}
               </Text>
               <Text
                 style={{
@@ -410,4 +410,4 @@ export function ApprovalDetail({ item }: { item: ApprovalItem }) {
   );
 }
 
-// StyleSheet.create not used in this file — all values come from theme tokens via useTheme
+// StyleSheet.create not used in this file â€” all values come from theme tokens via useTheme

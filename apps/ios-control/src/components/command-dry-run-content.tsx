@@ -1,9 +1,9 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { Text, View } from "react-native";
 
 import { UnderstoodRow } from "@/components/command-understood-row";
 import { monoFont, type Theme } from "@/theme";
-import type { DryRunResponse } from "@/types/ui/command";
+import type { DryRunResponse } from "@/types/api/responses";
 
 export function DryRunContent({ r }: { r: DryRunResponse }) {
   const { colors } = useTheme<Theme>();
@@ -31,7 +31,7 @@ export function DryRunContent({ r }: { r: DryRunResponse }) {
                 marginTop: 1,
               }}
             >
-              →
+              â†’
             </Text>
             <Text
               style={{

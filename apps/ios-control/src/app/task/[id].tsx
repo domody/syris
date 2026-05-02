@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+﻿import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "@shopify/restyle";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -25,8 +25,10 @@ import type {
   TaskContextRow,
   TaskContext,
   Task,
+  TaskStatus,
+  StepRef,
 } from "@/types/api/task";
-import type { TaskStatus, FilterKey, TabView, StepRef } from "@/types/ui/task-details";
+import type { FilterKey, TabView } from "@/types/ui/task-details";
 
 // Type assertion required: SymbolView name prop is a string literal union (SFSymbols7_0),
 // not plain string. All values passed to sym() are valid SF Symbol names.
@@ -34,10 +36,10 @@ function sym(name: string): SymbolViewProps["name"] {
   return name as SymbolViewProps["name"];
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function fmtMs(ms: number | null): string {
-  if (ms == null) return "—";
+  if (ms == null) return "â€”";
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60_000) return `${(ms / 1000).toFixed(ms < 10_000 ? 2 : 1)}s`;
   const m = Math.floor(ms / 60_000);
@@ -45,11 +47,11 @@ function fmtMs(ms: number | null): string {
   return `${m}m ${String(s).padStart(2, "0")}s`;
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Mock data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TASK_RUNNING: Task = {
   task_id: "run_01JH7B2QX",
-  trace_id: "b82c…771e",
+  trace_id: "b82câ€¦771e",
   name: "morning_brief",
   goal: "Compile the weekday morning brief: agenda, inbox triage, weather, household state.",
   status: "running",
@@ -60,7 +62,7 @@ const TASK_RUNNING: Task = {
   stepTotal: 5,
   autonomy_level: "A3",
   risk_level: "low",
-  causedBy: "scheduler · cron weekday@09:39",
+  causedBy: "scheduler Â· cron weekday@09:39",
   phases: [
     {
       id: "p_acquire",
@@ -73,7 +75,7 @@ const TASK_RUNNING: Task = {
           t: "+0.00s",
           dur: 12,
           title: "Plan: 5-step brief",
-          why: "Operator profile · weekday template · last-success template hash 8b2f.",
+          why: "Operator profile Â· weekday template Â· last-success template hash 8b2f.",
           detail:
             "Selected morning_brief.template@v4 because today=weekday and last successful run used v4 within 7d.",
           refs: [{ k: "template", v: "tpl_morning_brief.v4" }],
@@ -84,16 +86,16 @@ const TASK_RUNNING: Task = {
           kind: "action",
           t: "+0.04s",
           dur: 8042,
-          title: "tool_call · calendar.day_agenda",
+          title: "tool_call Â· calendar.day_agenda",
           why: "Need today's events to anchor the brief. Standard tool, A3 scoped.",
           detail:
-            "GET /v1/calendars/primary/events · range=today · timeout=8000ms.",
+            "GET /v1/calendars/primary/events Â· range=today Â· timeout=8000ms.",
           refs: [
             { k: "tool", v: "calendar.day_agenda" },
             { k: "connector", v: "gcal" },
           ],
           state: "failed",
-          error: "timeout · upstream gcal · no response within 8.0s",
+          error: "timeout Â· upstream gcal Â· no response within 8.0s",
         },
         {
           id: "s3",
@@ -112,16 +114,16 @@ const TASK_RUNNING: Task = {
           kind: "action",
           t: "+8.10s",
           dur: 2310,
-          title: "tool_call · mail.triage",
+          title: "tool_call Â· mail.triage",
           why: "Independent of calendar; can run in parallel while retry is pending.",
           detail:
-            "Triaged 14 unread → 4 actionable, 0 VIP. Cached at brief.inbox.snapshot@09:39.",
+            "Triaged 14 unread â†’ 4 actionable, 0 VIP. Cached at brief.inbox.snapshot@09:39.",
           refs: [
             { k: "tool", v: "mail.triage" },
             { k: "connector", v: "gmail" },
           ],
           state: "done",
-          outcome: "14 unread · 4 actionable · 0 VIP",
+          outcome: "14 unread Â· 4 actionable Â· 0 VIP",
         },
       ],
     },
@@ -135,21 +137,21 @@ const TASK_RUNNING: Task = {
           kind: "action",
           t: "+10.4s",
           dur: 412,
-          title: "tool_call · weather.brief",
+          title: "tool_call Â· weather.brief",
           why: "Brief template requires weather block.",
-          detail: "Returned: 11°C, light rain 30%, sunset 20:14.",
+          detail: "Returned: 11Â°C, light rain 30%, sunset 20:14.",
           refs: [{ k: "tool", v: "weather.brief" }],
           state: "done",
-          outcome: "11°C · light rain · sunset 20:14",
+          outcome: "11Â°C Â· light rain Â· sunset 20:14",
         },
         {
           id: "s6",
           kind: "action",
           t: "+10.8s",
           dur: 6200,
-          title: "tool_call · calendar.day_agenda · retry 1/2",
+          title: "tool_call Â· calendar.day_agenda Â· retry 1/2",
           why: "Backoff window elapsed. Same args, fresh connection.",
-          detail: "In flight…",
+          detail: "In flightâ€¦",
           refs: [
             { k: "tool", v: "calendar.day_agenda" },
             { k: "attempt", v: "2 of 3" },
@@ -159,22 +161,22 @@ const TASK_RUNNING: Task = {
         {
           id: "s7",
           kind: "decision",
-          t: "—",
+          t: "â€”",
           dur: null,
           title: "Compose brief",
           why: "Pending: needs agenda block before render.",
-          detail: "—",
+          detail: "â€”",
           refs: [],
           state: "pending",
         },
         {
           id: "s8",
           kind: "action",
-          t: "—",
+          t: "â€”",
           dur: null,
-          title: "tool_call · push.deliver",
+          title: "tool_call Â· push.deliver",
           why: "Deliver brief to operator phone.",
-          detail: "—",
+          detail: "â€”",
           refs: [{ k: "tool", v: "push.deliver" }],
           state: "pending",
         },
@@ -186,7 +188,7 @@ const TASK_RUNNING: Task = {
       id: "ck_01",
       t: "+0.00s",
       label: "Task armed",
-      summary: "scheduler.fired · template v4 · args frozen.",
+      summary: "scheduler.fired Â· template v4 Â· args frozen.",
       state: "committed",
     },
     {
@@ -209,18 +211,18 @@ const TASK_RUNNING: Task = {
     inputs: [
       { k: "cron", v: "weekday@09:39" },
       { k: "profile", v: "operator.default" },
-      { k: "window", v: "06:00–11:00 local" },
+      { k: "window", v: "06:00â€“11:00 local" },
       { k: "template", v: "morning_brief.v4" },
     ],
     state: [
-      { k: "inbox.snapshot", v: "14 unread · 4 actionable" },
-      { k: "weather.brief", v: "11°C · rain 30%" },
-      { k: "calendar.day", v: "pending · retry queued" },
+      { k: "inbox.snapshot", v: "14 unread Â· 4 actionable" },
+      { k: "weather.brief", v: "11Â°C Â· rain 30%" },
+      { k: "calendar.day", v: "pending Â· retry queued" },
     ],
     external: [
-      { k: "gmail", v: "1 call · 2.31s · ok" },
-      { k: "gcal", v: "2 calls · 1 timeout · retrying" },
-      { k: "weather", v: "1 call · 0.41s · ok" },
+      { k: "gmail", v: "1 call Â· 2.31s Â· ok" },
+      { k: "gcal", v: "2 calls Â· 1 timeout Â· retrying" },
+      { k: "weather", v: "1 call Â· 0.41s Â· ok" },
     ],
   },
 };
@@ -229,7 +231,7 @@ const TASK_BLOCKED: Task = {
   ...TASK_RUNNING,
   status: "blocked",
   task_id: "run_01JH7C9PR",
-  trace_id: "3f9e…b214",
+  trace_id: "3f9eâ€¦b214",
   name: "unlock_door",
   goal: "Unlock front door for arriving guest (intent from operator chat).",
   startedAt: "09:41:02",
@@ -237,7 +239,7 @@ const TASK_BLOCKED: Task = {
   etaMs: null,
   stepIdx: 2,
   stepTotal: 3,
-  causedBy: "operator · chat intent",
+  causedBy: "operator Â· chat intent",
   phases: [
     {
       id: "p_dispatch",
@@ -251,7 +253,7 @@ const TASK_BLOCKED: Task = {
           dur: 38,
           title: "Plan: unlock front lock",
           why: "Intent parsed as home.lock.unlock(front). High-trust operator phrasing.",
-          detail: "Confidence 0.97 · no ambiguity.",
+          detail: "Confidence 0.97 Â· no ambiguity.",
           refs: [{ k: "intent", v: "home.lock.unlock" }],
           state: "done",
         },
@@ -273,7 +275,7 @@ const TASK_BLOCKED: Task = {
           dur: null,
           title: "Awaiting operator approval",
           why: "Gate policy requires Face ID approval. Notification dispatched.",
-          detail: "Approval id apr_01JH7A4K · expires in 04:13.",
+          detail: "Approval id apr_01JH7A4K Â· expires in 04:13.",
           refs: [{ k: "approval", v: "apr_01JH7A4K" }],
           state: "waiting",
         },
@@ -285,7 +287,7 @@ const TASK_BLOCKED: Task = {
       id: "ck_b1",
       t: "+0.00s",
       label: "Intent received",
-      summary: "parsed · home.lock.unlock(front)",
+      summary: "parsed Â· home.lock.unlock(front)",
       state: "committed",
     },
     {
@@ -319,7 +321,7 @@ const TASK_FAILED: Task = {
           kind: "action" as StepKind,
           t: "+10.8s",
           dur: 8200,
-          title: "tool_call · calendar.day_agenda · retry 2/2",
+          title: "tool_call Â· calendar.day_agenda Â· retry 2/2",
           why: "Backoff window elapsed. Same args, fresh connection.",
           detail:
             "All 3 attempts (8.0s, 8.0s, 8.2s) timed out. Connector status: degraded.",
@@ -328,7 +330,7 @@ const TASK_FAILED: Task = {
             { k: "attempt", v: "3 of 3" },
           ],
           state: "failed" as StepState,
-          error: "timeout · gcal upstream unreachable · max retries exhausted",
+          error: "timeout Â· gcal upstream unreachable Â· max retries exhausted",
         },
         {
           id: "s7f",
@@ -336,8 +338,8 @@ const TASK_FAILED: Task = {
           t: "+24.6s",
           dur: 4,
           title: "Halt: required input missing",
-          why: "Compose step depends on calendar.day_agenda · template enforces hard requirement.",
-          detail: "Task halted at compose · last good checkpoint: ck_03.",
+          why: "Compose step depends on calendar.day_agenda Â· template enforces hard requirement.",
+          detail: "Task halted at compose Â· last good checkpoint: ck_03.",
           refs: [{ k: "policy", v: "halt.on_missing_required" }],
           state: "done" as StepState,
         },
@@ -373,22 +375,22 @@ const TASK_DONE: Task = {
           ...TASK_RUNNING.phases[1]!.steps[1]!,
           state: "done" as StepState,
           dur: 1840,
-          title: "tool_call · calendar.day_agenda · retry 1/2",
-          outcome: "6 events · next at 10:30 (standup)",
+          title: "tool_call Â· calendar.day_agenda Â· retry 1/2",
+          outcome: "6 events Â· next at 10:30 (standup)",
         },
         {
           ...TASK_RUNNING.phases[1]!.steps[2]!,
           state: "done" as StepState,
           t: "+12.4s",
           dur: 280,
-          outcome: "rendered · 4 sections",
+          outcome: "rendered Â· 4 sections",
         },
         {
           ...TASK_RUNNING.phases[1]!.steps[3]!,
           state: "done" as StepState,
           t: "+12.7s",
           dur: 142,
-          outcome: "delivered · operator.default",
+          outcome: "delivered Â· operator.default",
         },
       ],
     },
@@ -402,23 +404,23 @@ const MOCK_TASKS: Record<string, Task> = {
   done: TASK_DONE,
 };
 
-// ─── Meta maps ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Meta maps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const STATUS_META: Record<TaskStatus, { label: string; sub: string }> = {
-  running: { label: "RUNNING", sub: "live · streaming" },
+  running: { label: "RUNNING", sub: "live Â· streaming" },
   waiting: { label: "WAITING", sub: "awaiting upstream" },
   blocked: { label: "BLOCKED", sub: "awaiting operator" },
-  failed: { label: "FAILED", sub: "halted · last ck retained" },
-  completed: { label: "COMPLETED", sub: "all steps · ok" },
+  failed: { label: "FAILED", sub: "halted Â· last ck retained" },
+  completed: { label: "COMPLETED", sub: "all steps Â· ok" },
 };
 
 const KIND_META: Record<StepKind, { glyph: string; label: string }> = {
-  decision: { glyph: "◇", label: "DECISION" },
-  action: { glyph: "▶", label: "ACTION" },
-  intervention: { glyph: "◆", label: "OPERATOR" },
+  decision: { glyph: "â—‡", label: "DECISION" },
+  action: { glyph: "â–¶", label: "ACTION" },
+  intervention: { glyph: "â—†", label: "OPERATOR" },
 };
 
-// ─── StyleSheet (animated values: progress fill/pulse require Animated.Value opacity) ─
+// â”€â”€â”€ StyleSheet (animated values: progress fill/pulse require Animated.Value opacity) â”€
 
 const S = StyleSheet.create({
   progressFill: {
@@ -437,7 +439,7 @@ const S = StyleSheet.create({
   },
 });
 
-// ─── Atoms ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Atoms â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function StatusDot({ status }: { status: TaskStatus }) {
   const { colors } = useTheme<Theme>();
@@ -594,7 +596,7 @@ function StatePill({ state }: { state: StepState }) {
   );
 }
 
-// ─── StepNode ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ StepNode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function StepNode({
   step,
@@ -624,7 +626,7 @@ function StepNode({
     <View style={{ flexDirection: "row" }}>
       {/* Left rail */}
       <View style={{ width: 32, alignItems: "center", position: "relative" }}>
-        {/* Connector from top to glyph — left:15 centers it in the 32px rail */}
+        {/* Connector from top to glyph â€” left:15 centers it in the 32px rail */}
         {!isFirst && (
           <View
             style={{
@@ -759,7 +761,7 @@ function StepNode({
                 letterSpacing: 0.1,
               }}
             >
-              → {step.outcome}
+              â†’ {step.outcome}
             </Text>
           )}
 
@@ -773,7 +775,7 @@ function StepNode({
                 letterSpacing: 0.1,
               }}
             >
-              ⨯ {step.error}
+              â¨¯ {step.error}
             </Text>
           )}
 
@@ -901,7 +903,7 @@ function StepNode({
   );
 }
 
-// ─── PhaseBlock ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ PhaseBlock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function PhaseBlock({
   phase,
@@ -954,7 +956,7 @@ function PhaseBlock({
             color: colors.accent,
           }}
         >
-          PHASE · {String(phaseIndex + 1).padStart(2, "0")}
+          PHASE Â· {String(phaseIndex + 1).padStart(2, "0")}
         </Text>
         <Text
           style={{
@@ -1015,7 +1017,7 @@ function PhaseBlock({
   );
 }
 
-// ─── HeroSection ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ HeroSection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function HeroSection({
   task,
@@ -1135,7 +1137,7 @@ function HeroSection({
               letterSpacing: 0.3,
             }}
           >
-            ⌁ {task.trace_id}
+            âŒ {task.trace_id}
           </Text>
           <View
             style={{
@@ -1244,7 +1246,7 @@ function HeroSection({
             /{task.stepTotal}
           </Text>
           <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.border, opacity: 0.6 }}>
-            ·
+            Â·
           </Text>
           <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted }}>
             elapsed{" "}
@@ -1255,7 +1257,7 @@ function HeroSection({
           {task.etaMs != null && (
             <>
               <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.border, opacity: 0.6 }}>
-                ·
+                Â·
               </Text>
               <Text style={{ fontFamily: monoFont, fontSize: 10, color: colors.muted }}>
                 eta{" "}
@@ -1285,7 +1287,7 @@ function HeroSection({
                 color: colors.accent,
               }}
             >
-              jump to now ↓
+              jump to now â†“
             </Text>
           </Pressable>
         </View>
@@ -1302,7 +1304,7 @@ function HeroSection({
   );
 }
 
-// ─── FailureCard ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ FailureCard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function FailureCard({
   task,
@@ -1359,7 +1361,7 @@ function FailureCard({
             marginLeft: "auto",
           }}
         >
-          {failedStep.t} · {fmtMs(failedStep.dur)}
+          {failedStep.t} Â· {fmtMs(failedStep.dur)}
         </Text>
       </View>
       <Text style={{ fontSize: 13, fontWeight: "500", color: colors.foreground }}>
@@ -1427,7 +1429,7 @@ function FailureCard({
   );
 }
 
-// ─── BlockedCard ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ BlockedCard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function BlockedCard({
   task,
@@ -1489,8 +1491,8 @@ function BlockedCard({
         </Text>
       </View>
       <Text style={{ fontSize: 12, lineHeight: 18, color: colors.foreground }}>
-        Waiting on operator approval ·{" "}
-        <Text style={{ fontFamily: monoFont }}>{approvalRef?.v ?? "—"}</Text>.
+        Waiting on operator approval Â·{" "}
+        <Text style={{ fontFamily: monoFont }}>{approvalRef?.v ?? "â€”"}</Text>.
         {"\n"}Task is paused at{" "}
         <Text style={{ fontFamily: monoFont, color: colors.accent }}>
           step {task.stepIdx}/{task.stepTotal}
@@ -1522,7 +1524,7 @@ function BlockedCard({
           <Text
             style={{ fontSize: 13, fontWeight: "600", color: colors.success }}
           >
-            Approve · Face ID
+            Approve Â· Face ID
           </Text>
         </Pressable>
         <Pressable
@@ -1549,7 +1551,7 @@ function BlockedCard({
   );
 }
 
-// ─── TabBar ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ TabBar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TABS: { key: TabView; label: string; icon: SymbolViewProps["name"] }[] = [
   { key: "trace", label: "Trace", icon: sym("waveform") },
@@ -1622,13 +1624,13 @@ function TabBar({
   );
 }
 
-// ─── TraceFilterBar ───────────────────────────────────────────────────────────
+// â”€â”€â”€ TraceFilterBar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "all", label: "All steps" },
-  { key: "decision", label: "◇ Decisions" },
-  { key: "action", label: "▶ Actions" },
-  { key: "intervention", label: "◆ Operator" },
+  { key: "decision", label: "â—‡ Decisions" },
+  { key: "action", label: "â–¶ Actions" },
+  { key: "intervention", label: "â—† Operator" },
   { key: "failed", label: "Failures" },
 ];
 
@@ -1681,7 +1683,7 @@ function TraceFilterBar({
   );
 }
 
-// ─── TraceView ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ TraceView â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function TraceView({
   task,
@@ -1713,12 +1715,12 @@ function TraceView({
 
   const tailCopy =
     task.status === "running"
-      ? "tail · streaming"
+      ? "tail Â· streaming"
       : task.status === "completed"
-        ? `end of trace · ${task.phases.flatMap((p) => p.steps).length} steps`
+        ? `end of trace Â· ${task.phases.flatMap((p) => p.steps).length} steps`
         : task.status === "failed"
-          ? "halted · last good ck_03"
-          : "paused at gate · awaiting approval";
+          ? "halted Â· last good ck_03"
+          : "paused at gate Â· awaiting approval";
 
   return (
     <View style={{ gap: 10 }}>
@@ -1786,7 +1788,7 @@ function TraceView({
   );
 }
 
-// ─── CheckpointsView ─────────────────────────────────────────────────────────
+// â”€â”€â”€ CheckpointsView â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CheckpointsView({
   task,
@@ -1813,7 +1815,7 @@ function CheckpointsView({
           paddingHorizontal: 4,
         }}
       >
-        Snapshots of state. Tap to inspect · long-press to compare two.
+        Snapshots of state. Tap to inspect Â· long-press to compare two.
       </Text>
 
       <View>
@@ -2062,7 +2064,7 @@ function CheckpointsView({
   );
 }
 
-// ─── ContextView ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ ContextView â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ContextPanel({
   label,
@@ -2149,7 +2151,7 @@ function ContextView({ task }: { task: Task }) {
   );
 }
 
-// ─── BottomBar ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ BottomBar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function BottomBar({
   task,
@@ -2368,7 +2370,7 @@ function BottomBar({
       >
         Operator actions are logged to{" "}
         <Text style={{ fontFamily: monoFont, color: colors.accent }}>
-          ⌁ {task.trace_id}
+          âŒ {task.trace_id}
         </Text>{" "}
         and require Face ID for autonomy changes.
       </Text>
@@ -2376,7 +2378,7 @@ function BottomBar({
   );
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function Toast({ message, bottomInset }: { message: string; bottomInset: number }) {
   const { colors } = useTheme<Theme>();
@@ -2412,7 +2414,7 @@ function Toast({ message, bottomInset }: { message: string; bottomInset: number 
   );
 }
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const HEADER_HEIGHT = 64;
 
@@ -2447,13 +2449,13 @@ export default function TaskDetailScreen() {
   const onAction = (action: string) => {
     const messages: Record<string, string> = {
       pause: "Paused at next safe point.",
-      cancel: "Cancel queued · awaiting Face ID.",
-      retry: "Retrying from ck_03 · acquire phase preserved.",
-      inspect: "Opening diagnostics…",
+      cancel: "Cancel queued Â· awaiting Face ID.",
+      retry: "Retrying from ck_03 Â· acquire phase preserved.",
+      inspect: "Opening diagnosticsâ€¦",
       replay: "Replaying trace as read-only.",
       rerun: "Re-running with frozen args.",
       compare: "Select a second checkpoint to compare.",
-      rewind: "Rewind queued · awaiting Face ID.",
+      rewind: "Rewind queued Â· awaiting Face ID.",
     };
     showToast(messages[action] ?? action);
   };
@@ -2471,7 +2473,7 @@ export default function TaskDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ── Header ─────────────────────────────────────────────────── */}
+      {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <View
         style={{
           paddingTop: insets.top,
@@ -2535,7 +2537,7 @@ export default function TaskDetailScreen() {
               }}
               numberOfLines={1}
             >
-              {task.name} · {task.task_id}
+              {task.name} Â· {task.task_id}
             </Text>
           </View>
 
@@ -2563,7 +2565,7 @@ export default function TaskDetailScreen() {
         </View>
       </View>
 
-      {/* ── Scrollable body ─────────────────────────────────────────── */}
+      {/* â”€â”€ Scrollable body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
@@ -2578,7 +2580,7 @@ export default function TaskDetailScreen() {
         <HeroSection
           task={task}
           onJumpNow={() => scrollRef.current?.scrollToEnd({ animated: true })}
-          onCopyTrace={() => showToast(`Copied ⌁ ${task.trace_id}`)}
+          onCopyTrace={() => showToast(`Copied âŒ ${task.trace_id}`)}
         />
 
         {task.status === "failed" && (
@@ -2597,7 +2599,7 @@ export default function TaskDetailScreen() {
           <BlockedCard
             task={task}
             onApprove={() => onAction("approve")}
-            onDecline={() => showToast("Declined · task will cancel.")}
+            onDecline={() => showToast("Declined Â· task will cancel.")}
           />
         )}
 
@@ -2620,14 +2622,14 @@ export default function TaskDetailScreen() {
         {view === "context" && <ContextView task={task} />}
       </ScrollView>
 
-      {/* ── Floating bottom bar ──────────────────────────────────────── */}
+      {/* â”€â”€ Floating bottom bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <BottomBar
         task={task}
         onAction={onAction}
         bottomInset={insets.bottom}
       />
 
-      {/* ── Toast ───────────────────────────────────────────────────── */}
+      {/* â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {toast != null && (
         <Toast message={toast} bottomInset={insets.bottom} />
       )}

@@ -1,5 +1,11 @@
 import { RiskLevel } from "../common";
-import { StepRef, TaskStatus } from "../ui/task-details";
+
+export type TaskStatus = "running" | "waiting" | "blocked" | "failed" | "completed";
+
+export type StepRef = {
+  k: string;
+  v: string;
+};
 
 export type StepState = "done" | "running" | "waiting" | "failed" | "pending";
 export type StepKind = "decision" | "action" | "intervention";

@@ -1,4 +1,4 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { ScrollView, Text, View } from "react-native";
@@ -14,7 +14,7 @@ import {
 } from "@/components/notif-detail-helpers";
 import { Badge } from "@/components/ui/badge";
 import { type Theme } from "@/theme";
-import type { InfoItem } from "@/types/ui/inbox";
+import type { InfoItem } from "@/types/api/inbox";
 
 export function InfoDetail({ item }: { item: InfoItem }) {
   const router = useRouter();
@@ -61,7 +61,7 @@ export function InfoDetail({ item }: { item: InfoItem }) {
                 color: colors.muted,
               }}
             >
-              Informational · no action required
+              Informational Â· no action required
             </Text>
           </View>
           <Text
@@ -84,11 +84,11 @@ export function InfoDetail({ item }: { item: InfoItem }) {
         <DetailCard>
           <KVRow label="Time" value="14:02:11" mono />
           <HairlineDivider />
-          <KVRow label="Sensor" value="foyer.pir · dev_0x4A21" mono />
+          <KVRow label="Sensor" value="foyer.pir Â· dev_0x4A21" mono />
           <HairlineDivider />
           <KVRow label="Duration" value="2.4s" mono />
           <HairlineDivider />
-          <KVRow label="Presence" value="away · last geofence exit 6h ago" />
+          <KVRow label="Presence" value="away Â· last geofence exit 6h ago" />
           <HairlineDivider />
           <KVRow label="Rule" value="sensors.presence.cat" mono highlight />
           <HairlineDivider />
@@ -139,7 +139,7 @@ export function InfoDetail({ item }: { item: InfoItem }) {
 
         {/* Actions */}
         <OutlineButton
-          label="Open trace · audit log"
+          label="Open trace Â· audit log"
           onPress={() => router.back()}
         />
         <View

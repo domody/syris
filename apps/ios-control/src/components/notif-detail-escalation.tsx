@@ -1,4 +1,4 @@
-import { useTheme } from "@shopify/restyle";
+﻿import { useTheme } from "@shopify/restyle";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
@@ -15,25 +15,25 @@ import {
 } from "@/components/notif-detail-helpers";
 import { Badge } from "@/components/ui/badge";
 import { monoFont, type Theme } from "@/theme";
-import type { EscalationItem } from "@/types/ui/inbox";
+import type { EscalationItem } from "@/types/api/inbox";
 
 const INTERPRETATIONS = [
   {
     id: "i1",
     title: "Close garage door when I leave home",
-    sub: "watch.proximity → home.garage.close",
+    sub: "watch.proximity â†’ home.garage.close",
     conf: 72,
   },
   {
     id: "i2",
     title: "Close the garage door now",
-    sub: "home.garage.close · immediate",
+    sub: "home.garage.close Â· immediate",
     conf: 18,
   },
   {
     id: "i3",
     title: "Close all exterior doors when I leave",
-    sub: "watch.proximity → home.exterior.close",
+    sub: "watch.proximity â†’ home.exterior.close",
     conf: 10,
   },
 ] as const;
@@ -85,7 +85,7 @@ export function EscalationDetail({ item }: { item: EscalationItem }) {
                 color: colors.accent,
               }}
             >
-              Ambiguous event · operator input needed
+              Ambiguous event Â· operator input needed
             </Text>
           </View>
           <Text
@@ -124,7 +124,7 @@ export function EscalationDetail({ item }: { item: EscalationItem }) {
                 color: colors.muted,
               }}
             >
-              {"// sms from dad · 14:02\n"}
+              {"// sms from dad Â· 14:02\n"}
               <Text style={{ color: colors.foreground }}>
                 {'"yo can you close up when you leave"'}
               </Text>
@@ -161,7 +161,7 @@ export function EscalationDetail({ item }: { item: EscalationItem }) {
                   marginTop: 2,
                 }}
               >
-                rules missed · LLM confidence 0.62 (below 0.85 threshold)
+                rules missed Â· LLM confidence 0.62 (below 0.85 threshold)
               </Text>
             </View>
             <Badge label="no match" variant="warning" />

@@ -1,11 +1,12 @@
-import { View } from "react-native";
+﻿import { View } from "react-native";
 
 import { AgentCard } from "@/components/inbox-agent-card";
 import { AlarmCard } from "@/components/inbox-alarm-card";
 import { ApprovalCard } from "@/components/inbox-approval-card";
 import { EscalationCard } from "@/components/inbox-escalation-card";
 import { InfoCard } from "@/components/inbox-info-card";
-import type { CardColors, InboxItem } from "@/types/ui/inbox";
+import type { InboxItem } from "@/types/api/inbox";
+import type { CardColors } from "@/types/ui/inbox";
 
 export function InboxRow({
   item,
