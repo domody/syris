@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, ClassVar, Optional
 
-from sqlalchemy import Boolean, Column, Index, Integer, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, Float, ForeignKey, Index, Integer, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, UUID as PGUUID
 from sqlmodel import SQLModel, Field
 
@@ -98,6 +98,8 @@ class MessageEventRow(SQLModel, table=True):
         Index("ix_message_events_created_at", "created_at"),
         Index("ix_message_events_idempotency_key", "idempotency_key"),
         Index("ix_message_events_parent_event_id", "parent_event_id"),
+        Index("ix_message_events_is_anchor", "is_anchor"),
+        Index("ix_message_events_memory_processed_at", "memory_processed_at"),
     )
 
     event_id: uuid.UUID = Field(
@@ -123,6 +125,21 @@ class MessageEventRow(SQLModel, table=True):
     )
     parent_event_id: Optional[uuid.UUID] = Field(
         default=None, sa_column=Column(PGUUID(as_uuid=True), nullable=True)
+    )
+    significance_score: float = Field(
+        default=0.0, sa_column=Column(Float, nullable=False, server_default="0.0")
+    )
+    significance_tags: list[str] = Field(
+        default_factory=list, sa_column=Column(JSONB, nullable=False, server_default="[]")
+    )
+    is_anchor: bool = Field(
+        default=False, sa_column=Column(Boolean, nullable=False, server_default="false")
+    )
+    anchor_reason: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
+    memory_processed_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True)
     )
 
 
@@ -382,6 +399,80 @@ class RuleRow(SQLModel, table=True):
     )
     quiet_hours_policy_id: Optional[uuid.UUID] = Field(
         default=None, sa_column=Column(PGUUID(as_uuid=True), nullable=True)
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+
+
+class MemoryEpisodeRow(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "memory_episodes"
+    __table_args__: tuple = (
+        Index("ix_memory_episodes_covers_to", "covers_to"),
+    )
+
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
+    )
+    covers_from: datetime = Field(
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    covers_to: datetime = Field(
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+    content: str = Field(sa_column=Column(Text, nullable=False))
+    topics: list[str] = Field(
+        default_factory=list, sa_column=Column(JSONB, nullable=False, server_default="[]")
+    )
+    tools_invoked: list[str] = Field(
+        default_factory=list, sa_column=Column(JSONB, nullable=False, server_default="[]")
+    )
+    outcome_summary: str = Field(default="", sa_column=Column(Text, nullable=False, server_default=""))
+    source_event_ids: list[str] = Field(
+        default_factory=list, sa_column=Column(JSONB, nullable=False, server_default="[]")
+    )
+    event_count: int = Field(default=0, sa_column=Column(Integer, nullable=False, server_default="0"))
+    semantic_processed_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(TIMESTAMP(timezone=True), nullable=True)
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(TIMESTAMP(timezone=True), nullable=False),
+    )
+
+
+class MemoryFactRow(SQLModel, table=True):
+    __tablename__: ClassVar[str] = "memory_facts"
+    __table_args__: tuple = (
+        Index("ix_memory_facts_category_key", "category", "key"),
+    )
+
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
+    )
+    category: str = Field(sa_column=Column(Text, nullable=False))
+    key: str = Field(sa_column=Column(Text, nullable=False))
+    value: str = Field(sa_column=Column(Text, nullable=False))
+    confidence: float = Field(
+        default=1.0, sa_column=Column(Float, nullable=False, server_default="1.0")
+    )
+    is_anchor: bool = Field(
+        default=False, sa_column=Column(Boolean, nullable=False, server_default="false")
+    )
+    source_episode_id: Optional[uuid.UUID] = Field(
+        default=None,
+        sa_column=Column(PGUUID(as_uuid=True), ForeignKey("memory_episodes.id"), nullable=True),
+    )
+    superseded_by: Optional[uuid.UUID] = Field(
+        default=None,
+        sa_column=Column(PGUUID(as_uuid=True), ForeignKey("memory_facts.id"), nullable=True),
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

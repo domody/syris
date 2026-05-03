@@ -19,6 +19,17 @@ class LLMSettings(BaseModel):
     )
 
 
+class MemorySettings(BaseModel):
+    """Tuning knobs for the layered memory system."""
+
+    working_buffer_size: int = Field(default=10, ge=1)
+    working_buffer_window_minutes: int = Field(default=30, ge=1)
+    episodic_interval_s: int = Field(default=900, ge=60)
+    episodic_batch_size: int = Field(default=20, ge=1)
+    semantic_interval_s: int = Field(default=14400, ge=60)
+    significance_anchor_threshold: float = Field(default=0.85, ge=0.0, le=1.0)
+
+
 class Settings(BaseSettings):
     """
         v3.0.x settings:
@@ -48,3 +59,4 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     llm: LLMSettings = Field(default_factory=LLMSettings)
+    memory: MemorySettings = Field(default_factory=MemorySettings)
