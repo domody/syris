@@ -185,11 +185,6 @@ export default function AuditScreen() {
       </View>
 
       {/* Feed */}
-      {/* Potentially convert into SectionList component
-          so section headers stick to top with
-          stickySectionHeadersEnabled - requires to group
-          events by section though.
-      */}
       <SectionList
         sections={feedItems}
         keyExtractor={(item) => item.audit_id}
@@ -211,35 +206,6 @@ export default function AuditScreen() {
         )}
         stickySectionHeadersEnabled
       />
-      {/*<FlatList
-        data={feedItems}
-        keyExtractor={(item) => item.key}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingBottom: 32,
-          gap: density === "compact" ? 4 : 8,
-        }}
-        renderItem={({ item }) => {
-          if (item.kind === "divider") {
-            return <DayDivider iso={item.iso} />;
-          }
-          return (
-            <EventRow
-              event={item.event}
-              density={density}
-              onTracePress={(id) => setActiveTraceId(id)}
-            />
-          );
-        }}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={{ alignItems: "center", paddingTop: 40 }}>
-            <Text style={{ color: colors.muted, fontSize: 14 }}>
-              No events match your filters.
-            </Text>
-          </View>
-        }
-      />*/}
 
       <FilterSheet
         visible={filterSheetVisible}
