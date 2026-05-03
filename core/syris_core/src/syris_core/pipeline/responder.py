@@ -28,7 +28,7 @@ class Responder:
         self,
         client: LLMClient,
         audit: AuditWriter,
-        session_maker: async_sessionmaker[AsyncSession],
+        session_maker: Optional[async_sessionmaker[AsyncSession]] = None,
         dispatch: Optional[DispatchHook] = None,
     ) -> None:
         self._client = client
@@ -40,11 +40,12 @@ class Responder:
         self,
         event: MessageEvent,
         result: ExecutionResult,
-    ) -> tuple[str | None, str]:
+    ) -> tuple[str | None, str, MessageEvent]:
         """Compose, persist, and (optionally) dispatch a reply.
 
-        Returns (thinking, reply) — thinking is None when the provider does
-        not emit extended thinking output.
+        Returns (thinking, reply, reply_event). thinking is None when the
+        provider does not emit extended thinking output. reply_event is
+        returned so callers can perform post-execution significance scoring.
         """
         llm_response = await self._client.chat(event, result=result)
 
@@ -58,8 +59,10 @@ class Responder:
             content=reply,
             parent_event_id=event.event_id,
         )
-        async with session_scope(self._session_maker) as session:
-            await EventRepo(session).create(reply_event)
+
+        if self._session_maker is not None:
+            async with session_scope(self._session_maker) as session:
+                await EventRepo(session).create(reply_event)
 
         if self._dispatch is not None:
             await self._dispatch(event, reply)
@@ -82,4 +85,4 @@ class Responder:
             event.source,
             len(reply),
         )
-        return thinking, reply
+        return thinking, reply, reply_event

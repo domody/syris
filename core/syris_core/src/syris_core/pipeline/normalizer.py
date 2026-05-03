@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from ..memory.significance import score_event
 from ..observability.audit import AuditWriter
 from ..schemas.events import MessageEvent, RawInput
 from ..storage.db import session_scope
@@ -49,16 +50,31 @@ class Normalizer:
             idempotency_key=raw.idempotency_key,
         )
 
+        sig = score_event(event.content, event.source, event.structured)
+
         if self._session_maker is not None:
             async with session_scope(self._session_maker) as session:
                 repo = EventRepo(session)
                 await repo.create(event)
+                await repo.update_significance(event.event_id, sig)
 
         await self._audit.emit(
             trace_id,
             stage="normalize",
             type="event.ingested",
             summary=f"MessageEvent {event.event_id} ingested from {event.source}",
+            outcome="info",
+            ref_event_id=event.event_id,
+        )
+
+        await self._audit.emit(
+            trace_id,
+            stage="memory",
+            type="memory.scored",
+            summary=(
+                f"Scored event {event.event_id}: {sig.score:.2f} "
+                f"tags=[{', '.join(sig.tags)}] anchor={sig.is_anchor}"
+            ),
             outcome="info",
             ref_event_id=event.event_id,
         )
