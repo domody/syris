@@ -5,6 +5,7 @@ import type {
     AuditEventStage,
 } from "@/types";
 import type { FeedItem } from "@/types";
+import { FeedSection } from "@/types/ui/audit";
 
 export const ALL_STAGES: AuditEventStage[] = [
   "normalize",
@@ -90,14 +91,42 @@ export function formatTimestamp(iso: string): string {
   });
 }
 
+type Unit = 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
+
+function formatRelativeEn(value: number, unit: Unit): string {
+  const abs = Math.abs(value);
+  const plural = abs === 1 ? unit : `${unit}s`;
+
+  if (unit === 'day') {
+    if (value === -1) return 'yesterday';
+    if (value === 1) return 'tomorrow';
+  }
+
+  if (value === 0) return `this ${unit}`;
+  if (value > 0) return `in ${abs} ${plural}`;
+  return `${abs} ${plural} ago`;
+}
+
+export function formatRelative(iso: string, now = Date.now()): string {
+  const then = new Date(iso).getTime()
+  const diffMs = then - now;
+
+  const seconds = Math.round(diffMs / 1000);
+  const minutes = Math.round(seconds / 60);
+  const hours   = Math.round(minutes / 60);
+  const days    = Math.round(hours / 24);
+  const weeks   = Math.round(days / 7);
+  const months  = Math.round(days / 30);
+  const years   = Math.round(days / 365);
+
+  if (Math.abs(days) < 7)   return formatRelativeEn(days, "day");
+  if (Math.abs(weeks) < 4)  return formatRelativeEn(weeks, "week");
+  if (Math.abs(months) < 12) return formatRelativeEn(months, "month");
+  return formatRelativeEn(years, "year");
+}
+
 export function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  return iso.slice(0, 10)
 }
 
 export function dayKey(iso: string): string {
@@ -127,19 +156,29 @@ export function outcomeCount(
   return events.filter((e) => e.outcome === o).length;
 }
 
-export function buildFeedItems(events: AuditEvent[]): FeedItem[] {
+export function buildFeedItems(events: AuditEvent[]): FeedSection[] {
   const sorted = [...events].sort((a, b) =>
-    b.timestamp.localeCompare(a.timestamp),
-  );
-  const items: FeedItem[] = [];
+    b.timestamp.localeCompare(a.timestamp)
+  )
+
+  const sections: FeedSection[] = [];
+  let currentSection: FeedSection | null = null;
   let lastDay = "";
+
   for (const event of sorted) {
-    const day = dayKey(event.timestamp);
+    const day = dayKey(event.timestamp)
+
     if (day !== lastDay) {
-      items.push({ kind: "divider", key: `div-${day}`, iso: event.timestamp });
-      lastDay = day;
+      currentSection = {
+        iso: event.timestamp,
+        data: [],
+      }
+      sections.push(currentSection);
+      lastDay = day
     }
-    items.push({ kind: "event", key: event.audit_id, event });
+
+    currentSection!.data.push(event);
   }
-  return items;
+
+  return sections
 }

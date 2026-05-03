@@ -39,8 +39,6 @@ export function SummaryStrip({ events }: { events: AuditEvent[] }) {
         marginBottom: 8,
         borderRadius: 8,
         overflow: "hidden",
-        borderWidth: 1,
-        borderColor: colors.border,
       }}
     >
       {cells.map((cell, i) => (
@@ -48,8 +46,9 @@ export function SummaryStrip({ events }: { events: AuditEvent[] }) {
           key={cell.label}
           style={{
             flex: 1,
-            alignItems: "center",
-            paddingVertical: 8,
+            alignItems: "flex-start",
+            paddingHorizontal: 10,
+            paddingVertical: 10,
             borderLeftWidth: i > 0 ? 1 : 0,
             borderLeftColor: colors.border,
             backgroundColor: colors.surface,

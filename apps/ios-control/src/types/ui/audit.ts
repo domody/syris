@@ -8,6 +8,7 @@ export type Filters = {
   tools: Set<string>;
 };
 
-export type FeedItem =
-  | { kind: "divider"; key: string; iso: string }
-  | { kind: "event"; key: string; event: AuditEvent };
+export type FeedSection = {
+  iso: string;
+  data: AuditEvent[];
+}

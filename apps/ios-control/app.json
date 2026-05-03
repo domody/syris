@@ -38,6 +38,12 @@
             "imageWidth": 76
           }
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "We use Face ID to confirm it's you."
+        }
       ]
     ],
     "experiments": {

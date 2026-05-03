@@ -5,6 +5,7 @@ import {
     FlatList,
     Pressable,
     ScrollView,
+    SectionList,
     Text,
     TextInput,
     View,
@@ -77,67 +78,18 @@ export default function AuditScreen() {
       edges={["top"]}
       style={{ flex: 1, backgroundColor: colors.background, paddingTop: 96 }}
     >
-      {/* Header */}
+      {/* Summary strip */}
+      <View style={{ marginTop: 12 }}>
+        <SummaryStrip events={filtered} />
+      </View>
+
       <View
         style={{
           paddingHorizontal: 16,
           paddingBottom: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
           gap: 10,
         }}
       >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            display: "none",
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 20,
-              fontWeight: "700",
-              color: colors.foreground,
-            }}
-          >
-            Audit Log
-          </Text>
-          {/* Density toggle */}
-          <View
-            style={{
-              flexDirection: "row",
-              backgroundColor: colors.elementBg,
-              borderRadius: 8,
-              padding: 2,
-            }}
-          >
-            {(["comfy", "compact"] as Density[]).map((d) => (
-              <Pressable
-                key={d}
-                onPress={() => setDensity(d)}
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: 6,
-                  backgroundColor: density === d ? colors.card : "transparent",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 11,
-                    fontWeight: "500",
-                    color: density === d ? colors.foreground : colors.muted,
-                  }}
-                >
-                  {d}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
         {/* Search bar */}
         <View
           style={{
@@ -232,13 +184,34 @@ export default function AuditScreen() {
         </ScrollView>
       </View>
 
-      {/* Summary strip */}
-      <View style={{ marginTop: 12 }}>
-        <SummaryStrip events={filtered} />
-      </View>
-
       {/* Feed */}
-      <FlatList
+      {/* Potentially convert into SectionList component
+          so section headers stick to top with
+          stickySectionHeadersEnabled - requires to group
+          events by section though.
+      */}
+      <SectionList
+        sections={feedItems}
+        keyExtractor={(item) => item.audit_id}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingBottom: 32,
+          paddingTop: 0,
+          gap: density == "compact" ? 4 : 8,
+        }}
+        renderItem={({ item }) => (
+          <EventRow
+            event={item}
+            density={density}
+            onTracePress={(id) => setActiveTraceId(id)}
+          />
+        )}
+        renderSectionHeader={({ section }) => (
+          <DayDivider iso={section.iso} count={section.data.length} />
+        )}
+        stickySectionHeadersEnabled
+      />
+      {/*<FlatList
         data={feedItems}
         keyExtractor={(item) => item.key}
         contentContainerStyle={{
@@ -266,7 +239,7 @@ export default function AuditScreen() {
             </Text>
           </View>
         }
-      />
+      />*/}
 
       <FilterSheet
         visible={filterSheetVisible}
@@ -278,3 +251,38 @@ export default function AuditScreen() {
     </SafeAreaView>
   );
 }
+
+
+
+{/* Density toggle */}
+// <View
+//   style={{
+//     flexDirection: "row",
+//     backgroundColor: colors.elementBg,
+//     borderRadius: 8,
+//     padding: 2,
+//   }}
+// >
+//   {(["comfy", "compact"] as Density[]).map((d) => (
+//     <Pressable
+//       key={d}
+//       onPress={() => setDensity(d)}
+//       style={{
+//         paddingHorizontal: 10,
+//         paddingVertical: 4,
+//         borderRadius: 6,
+//         backgroundColor: density === d ? colors.card : "transparent",
+//       }}
+//     >
+//       <Text
+//         style={{
+//           fontSize: 11,
+//           fontWeight: "500",
+//           color: density === d ? colors.foreground : colors.muted,
+//         }}
+//       >
+//         {d}
+//       </Text>
+//     </Pressable>
+//   ))}
+// </View>
